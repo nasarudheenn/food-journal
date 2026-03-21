@@ -1027,8 +1027,9 @@ function App(){
                   <Lbl>Ingredient Name</Lbl>
                   <input ref={ingNameRef} value={ingData.food}
                     onChange={e=>setIngData(p=>({...p,food:e.target.value}))}
-                    onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();ingQtyRef.current&&ingQtyRef.current.focus();}}}
-                    placeholder="e.g. Egg, Chicken, Rice…" style={IS} autoFocus/>
+                    onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();ingQtyRef.current&&ingQtyRef.current.focus();ingQtyRef.current&&ingQtyRef.current.select();}}}
+                    placeholder="e.g. Egg, Chicken, Rice…" style={IS}
+                    enterKeyHint="next" autoComplete="off"/>
                 </div>
                 <div style={{display:"flex",gap:8,marginBottom:12}}>
                   <div style={{flex:2}}>
@@ -1036,7 +1037,8 @@ function App(){
                     <input ref={ingQtyRef} value={ingData.quantity}
                       onChange={e=>setIngData(p=>({...p,quantity:e.target.value}))}
                       onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();ingUnitRef.current&&ingUnitRef.current.focus();}}}
-                      inputMode="decimal" placeholder="100" style={IS}/>
+                      inputMode="decimal" placeholder="100" style={IS}
+                      enterKeyHint="next"/>
                   </div>
                   <div style={{flex:1}}>
                     <Lbl>Unit</Lbl>
@@ -1047,6 +1049,15 @@ function App(){
                       {["g","ml","oz","cup","tbsp","tsp","piece","serving"].map(u=><option key={u}>{u}</option>)}
                     </select>
                   </div>
+                </div>
+                {/* Quick unit selector buttons so user doesn't need to open dropdown */}
+                <div style={{display:"flex",gap:5,marginBottom:12,flexWrap:"wrap"}}>
+                  {["g","ml","piece","tsp","tbsp","cup","serving"].map(u=>(
+                    <button key={u} onClick={()=>{setIngData(p=>({...p,unit:u}));if(ingData.food.trim()&&ingData.quantity){setTimeout(doIngAiFill,100);}}}
+                      style={{padding:"5px 10px",borderRadius:15,border:`1px solid ${ingData.unit===u?C.accent:C.border}`,background:ingData.unit===u?C.accent:"none",color:ingData.unit===u?C.bg:C.muted,fontSize:11,cursor:"pointer",fontFamily:"inherit",fontWeight:ingData.unit===u?700:400}}>
+                      {u}
+                    </button>
+                  ))}
                 </div>
                 <Btn onClick={doIngAiFill} disabled={ingLoading||!ingData.food.trim()||!ingData.quantity}
                   color={`linear-gradient(135deg,${C.accent},${C.accentDim})`} style={{marginBottom:6}}>
