@@ -62,16 +62,16 @@ const C = {bg:"#0f0e0c",card:"#1a1917",border:"#2a2825",accent:"#e8c547",accentD
 const MEAL_TYPES = ["Breakfast","Mid-Morning","Lunch","Evening","Dinner"];
 const MEAL_ICONS = {Breakfast:"☀️","Mid-Morning":"🫐",Lunch:"🥗",Evening:"🍎",Dinner:"🌙"};
 const MACRO_FIELDS = [
-  {key:"calories",    label:"Calories",         unit:"kcal", color:C.accent},
-  {key:"protein",     label:"Protein",           unit:"g",    color:C.blue},
-  {key:"carbs",       label:"Carbs",             unit:"g",    color:C.orange},
-  {key:"fat",         label:"Fat",               unit:"g",    color:C.accentDim},
-  {key:"fiber",       label:"Fiber",             unit:"g",    color:C.green},
-  {key:"sugar",       label:"Sugar",             unit:"g",    color:"#e07ab0"},
-  {key:"saturatedFat",label:"Saturated Fat",     unit:"g",    color:"#c4704a"},
-  {key:"polyFat",     label:"Polyunsat. Fat",    unit:"g",    color:"#7ab0e0"},
-  {key:"monoFat",     label:"Monounsat. Fat",    unit:"g",    color:"#a0c07a"},
-  {key:"cholesterol", label:"Cholesterol",       unit:"mg",   color:"#d4a04a"},
+  {key:"calories",     label:"Calories",          unit:"kcal", color:C.accent},
+  {key:"protein",      label:"Protein",            unit:"g",    color:C.blue},
+  {key:"carbs",        label:"Carbs",              unit:"g",    color:C.orange},
+  {key:"fat",          label:"Fat (Total)",        unit:"g",    color:C.accentDim},
+  {key:"saturatedFat", label:"Saturated Fat",      unit:"g",    color:"#c4704a"},
+  {key:"polyFat",      label:"Polyunsat. Fat",     unit:"g",    color:"#7ab0e0"},
+  {key:"monoFat",      label:"Monounsat. Fat",     unit:"g",    color:"#a0c07a"},
+  {key:"cholesterol",  label:"Cholesterol",        unit:"mg",   color:"#d4a04a"},
+  {key:"fiber",        label:"Fiber",              unit:"g",    color:C.green},
+  {key:"sugar",        label:"Sugar",              unit:"g",    color:"#e07ab0"},
 ];
 const MICRO_FIELDS = [
   {key:"sodium",   label:"Sodium",   unit:"mg"},
@@ -310,7 +310,7 @@ function App() {
         headers:{"Content-Type":"application/json","x-api-key":apiKey.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
         body:JSON.stringify({
         model:"claude-haiku-4-5-20251001",max_tokens:2000,
-        messages:[{role:"user",content:`Extract food items + nutrition from text. Return ONLY JSON array. Each: food,quantity(num),unit(default g),calories,protein,carbs,fat,fiber,sodium,potassium,calcium,iron,vitC,vitD,vitB12,zinc (numbers). Estimate missing.\nText:\n${importTxt}`}]
+        messages:[{role:"user",content:`Extract food items + nutrition from text. Return ONLY JSON array, no markdown. Each: food,quantity(num),unit(default g),calories,protein,carbs,fat,saturatedFat,polyFat,monoFat,cholesterol,fiber,sugar,sodium,potassium,calcium,iron,vitC,vitD,vitB12,zinc (numbers). Estimate missing.\nText:\n${importTxt}`}]
       })});
       const data=await res.json();
       if(data.error){setImpStatus("⚠ API error: "+data.error.message);setImpLoading(false);return;}
@@ -352,7 +352,7 @@ function App() {
           max_tokens: 500,
           messages: [{
             role: "user",
-            content: `Give nutrition for ${it.quantity} ${it.unit} of ${it.food}. Reply with ONLY this JSON, no other text:\n{"calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"saturatedFat":0,"polyFat":0,"monoFat":0,"cholesterol":0,"sodium":0,"potassium":0,"calcium":0,"iron":0,"vitC":0,"vitD":0,"vitB12":0,"zinc":0}\nReplace the 0s with the actual numeric values.`
+            content: `Give nutrition for ${it.quantity} ${it.unit} of ${it.food}. Reply with ONLY this JSON object, no markdown, no explanation:\n{"calories":0,"protein":0,"carbs":0,"fat":0,"saturatedFat":0,"polyFat":0,"monoFat":0,"cholesterol":0,"fiber":0,"sugar":0,"sodium":0,"potassium":0,"calcium":0,"iron":0,"vitC":0,"vitD":0,"vitB12":0,"zinc":0}\nReplace every 0 with the correct numeric value for ${it.quantity} ${it.unit} of ${it.food}.`
           }]
         })
       });
@@ -388,7 +388,7 @@ function App() {
         headers:{"Content-Type":"application/json","x-api-key":apiKey.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
         body:JSON.stringify({
           model:"claude-haiku-4-5-20251001",max_tokens:2000,
-          messages:[{role:"user",content:`Extract all food ingredients and nutrition from this text. Return ONLY a JSON array. Each item must have: food(string), quantity(number), unit(string, default "g"), calories, protein, carbs, fat, fiber, sodium, potassium, calcium, iron, vitC, vitD, vitB12, zinc (all numbers). Estimate any missing values.\nText:\n${recImportTxt}`}]
+          messages:[{role:"user",content:`Extract all food ingredients and nutrition from this text. Return ONLY a JSON array, no markdown. Each item must have exactly these keys: food(string), quantity(number), unit(string default "g"), calories, protein, carbs, fat, saturatedFat, polyFat, monoFat, cholesterol, fiber, sugar, sodium, potassium, calcium, iron, vitC, vitD, vitB12, zinc (all numbers). Estimate any missing values.\nText:\n${recImportTxt}`}]
         })});
       const data=await res.json();
       if(data.error){setRecImpStatus("⚠ API error: "+data.error.message);setRecImpLoading(false);return;}
@@ -800,7 +800,7 @@ function App() {
                     method:"POST",
                     headers:{"Content-Type":"application/json","x-api-key":apiKey.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
                     body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:500,
-                      messages:[{role:"user",content:`Give nutrition for ${qty} ${unit} of ${foodName}. Reply with ONLY this JSON, no other text:\n{"calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"saturatedFat":0,"polyFat":0,"monoFat":0,"cholesterol":0,"sodium":0,"potassium":0,"calcium":0,"iron":0,"vitC":0,"vitD":0,"vitB12":0,"zinc":0}\nReplace the 0s with actual numeric values.`}]
+                      messages:[{role:"user",content:`Give nutrition for ${qty} ${unit} of ${foodName}. Reply with ONLY this JSON object, no markdown, no explanation:\n{"calories":0,"protein":0,"carbs":0,"fat":0,"saturatedFat":0,"polyFat":0,"monoFat":0,"cholesterol":0,"fiber":0,"sugar":0,"sodium":0,"potassium":0,"calcium":0,"iron":0,"vitC":0,"vitD":0,"vitB12":0,"zinc":0}\nReplace every 0 with the correct numeric value for ${qty} ${unit} of ${foodName}.`}]
                     })
                   });
                   const data=await res.json();
