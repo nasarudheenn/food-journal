@@ -57,7 +57,13 @@ const store = {
 };
 
 // ── Constants ───────────────────────────────────────────────────────────────
-const DEFAULT_PROFILE = {name:"",currentWeight:"",targetWeight:"",height:"",calorieGoal:1800,protein:130,carbs:180,fat:55,fiber:25};
+const DEFAULT_PROFILE = {
+  name:"", currentWeight:"", targetWeight:"", height:"",
+  calorieGoal:1800, protein:130, carbs:180, fat:55, fiber:25,
+  sugar:50, saturatedFat:20, polyFat:10, monoFat:15, cholesterol:300,
+  sodium:2300, potassium:3500, calcium:1000, iron:18,
+  vitC:90, vitD:20, vitB12:2.4, zinc:11
+};
 const C = {bg:"#0f0e0c",card:"#1a1917",border:"#2a2825",accent:"#e8c547",accentDim:"#b89c2f",text:"#f0ece0",muted:"#7a7060",red:"#e05252",green:"#52c47a",blue:"#5299e0",orange:"#e08a52",purple:"#a07ee0"};
 const MEAL_TYPES = ["Breakfast","Mid-Morning","Lunch","Evening","Dinner"];
 const MEAL_ICONS = {Breakfast:"☀️","Mid-Morning":"🫐",Lunch:"🥗",Evening:"🍎",Dinner:"🌙"};
@@ -266,7 +272,26 @@ function App() {
   // Backup
   const [backupMsg,setBackupMsg]=useState("");
 
-  const goals={calories:Number(profile.calorieGoal)||1800,protein:Number(profile.protein)||130,carbs:Number(profile.carbs)||180,fat:Number(profile.fat)||55,fiber:Number(profile.fiber)||25};
+  const goals={
+    calories:    Number(profile.calorieGoal)||1800,
+    protein:     Number(profile.protein)||130,
+    carbs:       Number(profile.carbs)||180,
+    fat:         Number(profile.fat)||55,
+    fiber:       Number(profile.fiber)||25,
+    sugar:       Number(profile.sugar)||50,
+    saturatedFat:Number(profile.saturatedFat)||20,
+    polyFat:     Number(profile.polyFat)||10,
+    monoFat:     Number(profile.monoFat)||15,
+    cholesterol: Number(profile.cholesterol)||300,
+    sodium:      Number(profile.sodium)||2300,
+    potassium:   Number(profile.potassium)||3500,
+    calcium:     Number(profile.calcium)||1000,
+    iron:        Number(profile.iron)||18,
+    vitC:        Number(profile.vitC)||90,
+    vitD:        Number(profile.vitD)||20,
+    vitB12:      Number(profile.vitB12)||2.4,
+    zinc:        Number(profile.zinc)||11,
+  };
 
   // ── Persist helpers ────────────────────────────────────────────────────
   const pE=d=>{setEntries(d);store.set(SK.entries,d);};
@@ -930,9 +955,55 @@ function App() {
             </div>
           </div>
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
-            <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>Daily Nutrition Goals</div>
+            <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>Daily Nutrition Goals</div>
+            <div style={{fontSize:11,color:C.muted,marginBottom:14}}>Set your daily targets — used in reports to show achievement %</div>
+
+            <div style={{fontSize:11,color:C.accent,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>Energy & Macros</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+              {[
+                {label:"Calories (kcal)",key:"calorieGoal",ph:"1800"},
+                {label:"Protein (g)",    key:"protein",    ph:"130"},
+                {label:"Carbs (g)",      key:"carbs",      ph:"180"},
+                {label:"Fat (g)",        key:"fat",        ph:"55"},
+                {label:"Fiber (g)",      key:"fiber",      ph:"25"},
+                {label:"Sugar (g)",      key:"sugar",      ph:"50"},
+              ].map(({label,key,ph})=>(
+                <div key={key}><Lbl>{label}</Lbl><input value={profEdit[key]||""} onChange={e=>setProfEdit(p=>({...p,[key]:e.target.value}))} type="number" placeholder={ph} style={IS}/></div>
+              ))}
+            </div>
+
+            <div style={{fontSize:11,color:C.accentDim,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>Fats Detail</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+              {[
+                {label:"Saturated Fat (g)",    key:"saturatedFat", ph:"20"},
+                {label:"Polyunsat. Fat (g)",   key:"polyFat",      ph:"10"},
+                {label:"Monounsat. Fat (g)",   key:"monoFat",      ph:"15"},
+                {label:"Cholesterol (mg)",     key:"cholesterol",  ph:"300"},
+              ].map(({label,key,ph})=>(
+                <div key={key}><Lbl>{label}</Lbl><input value={profEdit[key]||""} onChange={e=>setProfEdit(p=>({...p,[key]:e.target.value}))} type="number" placeholder={ph} style={IS}/></div>
+              ))}
+            </div>
+
+            <div style={{fontSize:11,color:C.purple,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>Minerals</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+              {[
+                {label:"Sodium (mg)",    key:"sodium",    ph:"2300"},
+                {label:"Potassium (mg)", key:"potassium", ph:"3500"},
+                {label:"Calcium (mg)",  key:"calcium",   ph:"1000"},
+                {label:"Iron (mg)",     key:"iron",      ph:"18"},
+                {label:"Zinc (mg)",     key:"zinc",      ph:"11"},
+              ].map(({label,key,ph})=>(
+                <div key={key}><Lbl>{label}</Lbl><input value={profEdit[key]||""} onChange={e=>setProfEdit(p=>({...p,[key]:e.target.value}))} type="number" placeholder={ph} style={IS}/></div>
+              ))}
+            </div>
+
+            <div style={{fontSize:11,color:C.green,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>Vitamins</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {[{label:"Calories (kcal)",key:"calorieGoal",ph:"1800"},{label:"Protein (g)",key:"protein",ph:"130"},{label:"Carbs (g)",key:"carbs",ph:"180"},{label:"Fat (g)",key:"fat",ph:"55"},{label:"Fiber (g)",key:"fiber",ph:"25"}].map(({label,key,ph})=>(
+              {[
+                {label:"Vit C (mg)",   key:"vitC",   ph:"90"},
+                {label:"Vit D (μg)",   key:"vitD",   ph:"20"},
+                {label:"Vit B12 (μg)", key:"vitB12", ph:"2.4"},
+              ].map(({label,key,ph})=>(
                 <div key={key}><Lbl>{label}</Lbl><input value={profEdit[key]||""} onChange={e=>setProfEdit(p=>({...p,[key]:e.target.value}))} type="number" placeholder={ph} style={IS}/></div>
               ))}
             </div>
@@ -1155,40 +1226,122 @@ function App() {
                 <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Calories{repPeriod!=="daily"?" (avg/day)":""}</div>
                 <BarChart data={repData.map(d=>({label:d.label,value:d.totals.calories}))} goal={goals.calories} color={C.accent}/>
               </div>
-              {[{key:"protein",label:"Protein (g)",color:C.blue,goal:goals.protein},{key:"carbs",label:"Carbs (g)",color:C.orange,goal:goals.carbs},{key:"fat",label:"Fat (g)",color:C.accentDim,goal:goals.fat},{key:"fiber",label:"Fiber (g)",color:C.green,goal:goals.fiber}].map(({key,label,color,goal})=>(
+
+              {/* Achievement vs Goal — all nutrients */}
+              <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:10}}>
+                <div style={{fontSize:13,fontWeight:600,marginBottom:4}}>Achievement vs Goal</div>
+                <div style={{fontSize:11,color:C.muted,marginBottom:14}}>
+                  {repPeriod==="daily"?"Each day's intake vs your daily goal":repPeriod==="weekly"?"Weekly avg per day vs goal":"Monthly avg per day vs goal"}
+                </div>
+                {(()=>{
+                  // All fields with goals
+                  const allGoalFields = [
+                    ...ALL_FIELDS.filter(f=>goals[f.key]>0)
+                  ];
+                  return allGoalFields.map(({key,label,unit:u,color})=>{
+                    const g = goals[key];
+                    if(!g) return null;
+                    const avg = repData.reduce((s,d)=>s+(d.totals[key]||0),0) / (repData.length||1);
+                    const pct = Math.min(Math.round((avg/g)*100), 200);
+                    const over = avg > g;
+                    const barColor = over ? C.red : (pct>=90 ? C.green : pct>=60 ? C.accent : C.muted);
+                    const diff = avg - g;
+                    return(
+                      <div key={key} style={{marginBottom:12}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                          <span style={{fontSize:11,color:C.text}}>{label}</span>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            <span style={{fontSize:10,color:C.muted,fontFamily:"monospace"}}>{avg<1?avg.toFixed(1):Math.round(avg)}/{g}{u}</span>
+                            <span style={{fontSize:10,fontFamily:"monospace",fontWeight:700,
+                              color:over?C.red:pct>=90?C.green:C.accent,
+                              background:over?"rgba(224,82,82,0.12)":pct>=90?"rgba(82,196,122,0.12)":"rgba(232,197,71,0.12)",
+                              padding:"1px 6px",borderRadius:5}}>
+                              {pct}%
+                            </span>
+                            <span style={{fontSize:9,color:over?C.red:C.green,fontFamily:"monospace"}}>
+                              {diff>0?"+":""}{diff<1&&diff>-1?diff.toFixed(1):Math.round(diff)}{u}
+                            </span>
+                          </div>
+                        </div>
+                        <div style={{height:5,background:C.border,borderRadius:3,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:`${Math.min(pct,100)}%`,background:barColor,borderRadius:3,transition:"width 0.4s ease"}}/>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+
+              {/* Per-nutrient bar charts */}
+              {[
+                {key:"protein",     label:"Protein (g)",        color:C.blue,      goal:goals.protein},
+                {key:"carbs",       label:"Carbs (g)",           color:C.orange,    goal:goals.carbs},
+                {key:"fat",         label:"Fat (g)",             color:C.accentDim, goal:goals.fat},
+                {key:"fiber",       label:"Fiber (g)",           color:C.green,     goal:goals.fiber},
+                {key:"sugar",       label:"Sugar (g)",           color:"#e07ab0",   goal:goals.sugar},
+                {key:"saturatedFat",label:"Saturated Fat (g)",   color:"#c4704a",   goal:goals.saturatedFat},
+                {key:"cholesterol", label:"Cholesterol (mg)",    color:"#d4a04a",   goal:goals.cholesterol},
+                {key:"sodium",      label:"Sodium (mg)",         color:C.purple,    goal:goals.sodium},
+                {key:"potassium",   label:"Potassium (mg)",      color:C.purple,    goal:goals.potassium},
+              ].map(({key,label,color,goal})=>(
                 <div key={key} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:10}}>
-                  <div style={{fontSize:13,fontWeight:600,marginBottom:8}}>{label}</div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <div style={{fontSize:12,fontWeight:600}}>{label}</div>
+                    {goal&&<div style={{fontSize:10,color:C.muted}}>Goal: {goal}</div>}
+                  </div>
                   <BarChart data={repData.map(d=>({label:d.label,value:d.totals[key]}))} goal={goal} color={color}/>
                 </div>
               ))}
+
               <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:10}}>
-                <div style={{fontSize:13,fontWeight:600,marginBottom:12}}>Micronutrients (avg)</div>
+                <div style={{fontSize:13,fontWeight:600,marginBottom:12}}>Micronutrients — Avg vs Goal</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                   {MICRO_FIELDS.map(({key,label,unit:u})=>{
                     const avg=repData.reduce((s,d)=>s+(d.totals[key]||0),0)/repData.length;
-                    return(<div key={key} style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:9,padding:"11px 12px"}}><div style={{fontSize:11,color:C.muted,marginBottom:3}}>{label}</div><div style={{fontSize:16,fontWeight:700,fontFamily:"monospace",color:C.purple}}>{avg<1?avg.toFixed(1):Math.round(avg)}<span style={{fontSize:10,color:C.muted}}>{u}</span></div></div>);
+                    const g=goals[key];
+                    const pct=g?Math.min(Math.round((avg/g)*100),200):null;
+                    const over=g&&avg>g;
+                    return(
+                      <div key={key} style={{background:C.bg,border:`1px solid ${over?C.red:pct>=90?C.green:C.border}`,borderRadius:9,padding:"10px 12px"}}>
+                        <div style={{fontSize:10,color:C.muted,marginBottom:3}}>{label}</div>
+                        <div style={{fontSize:15,fontWeight:700,fontFamily:"monospace",color:over?C.red:pct>=90?C.green:C.purple}}>
+                          {avg<1?avg.toFixed(1):Math.round(avg)}<span style={{fontSize:9,color:C.muted}}>{u}</span>
+                        </div>
+                        {g&&<div style={{marginTop:4}}>
+                          <div style={{height:3,background:C.border,borderRadius:2,overflow:"hidden"}}>
+                            <div style={{height:"100%",width:`${Math.min(pct,100)}%`,background:over?C.red:pct>=90?C.green:C.accent,borderRadius:2}}/>
+                          </div>
+                          <div style={{fontSize:9,color:over?C.red:pct>=90?C.green:C.muted,marginTop:2,textAlign:"right"}}>{pct}% of {g}{u} goal</div>
+                        </div>}
+                      </div>
+                    );
                   })}
                 </div>
               </div>
+
               <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16}}>
                 <div style={{fontSize:13,fontWeight:600,marginBottom:12}}>Detailed Breakdown</div>
                 <div style={{overflowX:"auto"}}>
                   <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
-                    <thead><tr>{["Period","Kcal","Prot","Carb","Fat","Fib","Na","K","Ca"].map(h=><th key={h} style={{textAlign:"left",padding:"5px 6px",color:C.muted,fontWeight:600,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
+                    <thead><tr>{["Period","Kcal","%","Prot","%","Carb","%","Fat","%"].map(h=><th key={h} style={{textAlign:"left",padding:"4px 5px",color:C.muted,fontWeight:600,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
                     <tbody>
-                      {repData.map((d,i)=>(
-                        <tr key={i} style={{borderBottom:`1px solid ${C.border}`}}>
-                          <td style={{padding:"6px",color:C.muted,whiteSpace:"nowrap"}}>{d.label}</td>
-                          <td style={{padding:"6px",fontFamily:"monospace",color:C.accent}}>{Math.round(d.totals.calories)}</td>
-                          <td style={{padding:"6px",fontFamily:"monospace"}}>{Math.round(d.totals.protein)}</td>
-                          <td style={{padding:"6px",fontFamily:"monospace"}}>{Math.round(d.totals.carbs)}</td>
-                          <td style={{padding:"6px",fontFamily:"monospace"}}>{Math.round(d.totals.fat)}</td>
-                          <td style={{padding:"6px",fontFamily:"monospace"}}>{Math.round(d.totals.fiber)}</td>
-                          <td style={{padding:"6px",fontFamily:"monospace",color:C.muted}}>{Math.round(d.totals.sodium)}</td>
-                          <td style={{padding:"6px",fontFamily:"monospace",color:C.muted}}>{Math.round(d.totals.potassium)}</td>
-                          <td style={{padding:"6px",fontFamily:"monospace",color:C.muted}}>{Math.round(d.totals.calcium)}</td>
-                        </tr>
-                      ))}
+                      {repData.map((d,i)=>{
+                        const pctOf=(val,goal)=>goal?Math.round((val/goal)*100):"-";
+                        const clr=(val,goal)=>!goal?C.text:val>goal?C.red:val/goal>=0.9?C.green:C.accent;
+                        return(
+                          <tr key={i} style={{borderBottom:`1px solid ${C.border}`}}>
+                            <td style={{padding:"5px",color:C.muted,whiteSpace:"nowrap"}}>{d.label}</td>
+                            <td style={{padding:"5px",fontFamily:"monospace",color:C.accent}}>{Math.round(d.totals.calories)}</td>
+                            <td style={{padding:"5px",fontFamily:"monospace",fontSize:10,color:clr(d.totals.calories,goals.calories)}}>{pctOf(d.totals.calories,goals.calories)}%</td>
+                            <td style={{padding:"5px",fontFamily:"monospace"}}>{Math.round(d.totals.protein)}</td>
+                            <td style={{padding:"5px",fontFamily:"monospace",fontSize:10,color:clr(d.totals.protein,goals.protein)}}>{pctOf(d.totals.protein,goals.protein)}%</td>
+                            <td style={{padding:"5px",fontFamily:"monospace"}}>{Math.round(d.totals.carbs)}</td>
+                            <td style={{padding:"5px",fontFamily:"monospace",fontSize:10,color:clr(d.totals.carbs,goals.carbs)}}>{pctOf(d.totals.carbs,goals.carbs)}%</td>
+                            <td style={{padding:"5px",fontFamily:"monospace"}}>{Math.round(d.totals.fat)}</td>
+                            <td style={{padding:"5px",fontFamily:"monospace",fontSize:10,color:clr(d.totals.fat,goals.fat)}}>{pctOf(d.totals.fat,goals.fat)}%</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
