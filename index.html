@@ -363,9 +363,9 @@ function App(){
   }
   function saveNewRecipe(){
     if(!recName.trim()||!recItems.length)return;
-    const rec={id:`rb_${Date.now()}`,name:recName.trim(),items:recItems,mealTags:recTags};
-    pRB([...recipeBook,rec]);
-    setRecName("");setRecItems([]);setRecTags([]);setRecAiMsg("");
+    const rec={id:editRecId||`rb_${Date.now()}`,name:recName.trim(),items:recItems,mealTags:recTags};
+    pRB(editRecId?recipeBook.map(r=>r.id===editRecId?rec:r):[...recipeBook,rec]);
+    setRecName("");setRecItems([]);setRecTags([]);setRecAiMsg("");setEditRecId(null);
     setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setRecImpStatus("");
     setView("main");
   }
@@ -502,7 +502,7 @@ function App(){
     return grouped;
   })();
 
-  const pageTitle=view==="recipe-new"?"New Recipe":view==="recipe-use"?"Use Recipe":view==="add"?"Log Food":view==="history"?"History":tab==="diary"?fmtDate(selDate):tab==="profile"?"My Profile":tab==="recipes"?"Recipe Book":"Reports";
+  const pageTitle=view==="recipe-new"?(editRecId?"Edit Recipe":"New Recipe"):view==="recipe-use"?"Use Recipe":view==="add"?"Log Food":view==="history"?"History":tab==="diary"?fmtDate(selDate):tab==="profile"?"My Profile":tab==="recipes"?"Recipe Book":"Reports";
 
   return(
     <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"Georgia,serif",maxWidth:480,margin:"0 auto",paddingBottom:80}}>
@@ -871,42 +871,21 @@ function App(){
                 </div>
                 {recs.map(rec=>{
                   const rt=sumE(rec.items);
-                  const isEditing=editRecId===rec.id;
-                  const ed=editRecData[rec.id]||{name:rec.name,items:rec.items,mealTags:rec.mealTags||[]};
                   return(
-                    <div key={rec.id} style={{background:C.card,border:`1px solid ${isEditing?C.accent:C.border}`,borderRadius:14,marginBottom:10,overflow:"hidden"}}>
-                      {/* Card header — tap to expand/edit */}
-                      <div onClick={()=>{if(!isEditing){setEditRecId(rec.id);setEditRecData(p=>({...p,[rec.id]:{name:rec.name,items:[...rec.items],mealTags:[...(rec.mealTags||[])]}}));}}} style={{padding:"14px 15px",cursor:"pointer"}}>
-                        {isEditing?(
-                          <input value={ed.name} onChange={e=>setEditRecData(p=>({...p,[rec.id]:{...p[rec.id],name:e.target.value}}))} onClick={e=>e.stopPropagation()} style={{...IS,fontSize:15,fontWeight:700,marginBottom:8}} placeholder="Recipe name"/>
-                        ):(
-                          <div style={{fontSize:15,fontWeight:700,marginBottom:4}}>{rec.name}</div>
-                        )}
-                        <div style={{fontSize:11,color:C.muted,marginBottom:6}}>{rec.items.length} ingredients</div>
+                    <div key={rec.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,marginBottom:10,overflow:"hidden"}}>
+                      <div onClick={()=>{setRecName(rec.name);setRecItems(rec.items.map((x,i)=>({...x,_id:x._id??i})));setRecTags(rec.mealTags||[]);setRecAiMsg("");setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setEditRecId(rec.id);setView("recipe-new");}} style={{padding:"14px 15px",cursor:"pointer"}}>
+                        <div style={{fontSize:15,fontWeight:700,marginBottom:4}}>{rec.name}</div>
+                        {rec.mealTags&&rec.mealTags.length>0&&<div style={{fontSize:10,color:C.accent,marginBottom:4}}>{rec.mealTags.map(t=>MEAL_ICONS[t]).join(" ")} {rec.mealTags.join(", ")}</div>}
+                        <div style={{fontSize:11,color:C.muted,marginBottom:6}}>{rec.items.length} ingredients · tap to edit</div>
                         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                           <span style={{fontSize:13,color:C.accent,fontFamily:"monospace",fontWeight:700}}>{Math.round(rt.calories)} kcal</span>
                           <span style={{fontSize:11,color:C.muted}}>P:{Math.round(rt.protein)}g C:{Math.round(rt.carbs)}g F:{Math.round(rt.fat)}g</span>
                         </div>
                       </div>
-                      {isEditing&&(
-                        <div style={{borderTop:`1px solid ${C.border}`,padding:"12px 15px",background:C.bg}}>
-                          <div style={{marginBottom:10}}>
-                            <Lbl>Suitable for</Lbl>
-                            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                              {MEAL_TYPES.map(m=>{
-                                const sel=ed.mealTags.includes(m);
-                                return <button key={m} onClick={()=>setEditRecData(p=>({...p,[rec.id]:{...p[rec.id],mealTags:sel?ed.mealTags.filter(x=>x!==m):[...ed.mealTags,m]}}))} style={{padding:"5px 10px",borderRadius:20,fontSize:11,cursor:"pointer",fontFamily:"inherit",border:`1px solid ${sel?C.accent:C.border}`,background:sel?C.accent:"none",color:sel?C.bg:C.muted,fontWeight:sel?700:400}}>{MEAL_ICONS[m]} {m}</button>;
-                              })}
-                            </div>
-                          </div>
-                          <div style={{display:"flex",gap:8}}>
-                            <button onClick={()=>saveInlineEdit(rec.id)} style={{flex:2,padding:"10px",background:C.green,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Save Changes</button>
-                            <button onClick={()=>setEditRecId(null)} style={{flex:1,padding:"10px",background:"none",border:`1px solid ${C.border}`,borderRadius:9,color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
-                            <button onClick={()=>setConfirmModal({msg:`Delete recipe "${rec.name}"?`,onConfirm:()=>{pRB(recipeBook.filter(r=>r.id!==rec.id));setEditRecId(null);}})} style={{padding:"10px 12px",background:"none",border:`1px solid ${C.red}`,borderRadius:9,color:C.red,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
-                          </div>
-                        </div>
-                      )}
-                      {!isEditing&&<div style={{padding:"0 15px 14px"}}><button onClick={()=>startUse(rec)} style={{width:"100%",padding:"10px",background:C.green,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🍳 Use This Recipe</button></div>}
+                      <div style={{padding:"0 15px 14px",display:"flex",gap:8}}>
+                        <button onClick={e=>{e.stopPropagation();startUse(rec);}} style={{flex:1,padding:"10px",background:C.green,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🍳 Use This Recipe</button>
+                        <button onClick={e=>{e.stopPropagation();setConfirmModal({msg:`Delete "${rec.name}"?`,onConfirm:()=>pRB(recipeBook.filter(r=>r.id!==rec.id))});}} style={{padding:"10px 12px",background:"none",border:`1px solid ${C.red}`,borderRadius:9,color:C.red,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
+                      </div>
                     </div>
                   );
                 })}
@@ -1020,105 +999,109 @@ function App(){
           </div>
           {repData.length===0?(
             <div style={{textAlign:"center",padding:"40px",color:C.muted}}>No data yet for this period.</div>
-          ):(
-            <>
-              {/* Avg summary */}
-              {(()=>{
-                const avg=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,repData.reduce((s,d)=>s+(d.totals[f.key]||0),0)/repData.length]));
-                return(
-                  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
-                    <div style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:10}}>{repPeriod==="daily"?"Last 14 Days Avg":repPeriod==="weekly"?"Weekly Avg/day":"Monthly Avg/day"}</div>
-                    <div style={{display:"flex",gap:5,marginBottom:8}}>
-                      {[{label:"Calories",value:avg.calories,goal:goals.calories,unit:"kcal",color:C.accent},{label:"Protein",value:avg.protein,goal:goals.protein,unit:"g",color:C.blue},{label:"Carbs",value:avg.carbs,goal:goals.carbs,unit:"g",color:C.orange},{label:"Fat",value:avg.fat,goal:goals.fat,unit:"g",color:C.accentDim}].map(b=><Badge key={b.label} {...b}/>)}
-                    </div>
-                    <div style={{display:"flex",gap:5}}>
-                      {[{label:"Fiber",value:avg.fiber,goal:goals.fiber,unit:"g",color:C.green},{label:"Sodium",value:avg.sodium,goal:goals.sodium,unit:"mg",color:C.purple},{label:"Calcium",value:avg.calcium,goal:goals.calcium,unit:"mg",color:C.purple},{label:"Iron",value:avg.iron,goal:goals.iron,unit:"mg",color:C.purple}].map(b=><Badge key={b.label} {...b}/>)}
-                    </div>
-                  </div>
-                );
-              })()}
+          ):(()=>{
+            // Calculate period multiplier for goals
+            const now=new Date();
+            const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+            const periodMult=repPeriod==="weekly"?7:repPeriod==="monthly"?daysInMonth:1;
+            const periodGoals=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,(goals[f.key]||0)*periodMult]));
+            // For weekly/monthly: sum all data; for daily: avg
+            const periodTotals=(()=>{
+              if(repPeriod==="daily"){
+                const t=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,0]));
+                repData.forEach(d=>ALL_FIELDS.forEach(f=>{t[f.key]+=(d.totals[f.key]||0);}));
+                ALL_FIELDS.forEach(f=>{t[f.key]=t[f.key]/(repData.length||1);});
+                return t;
+              } else {
+                // Sum all entries in current week/month
+                const ad=Object.keys(entries).sort();
+                const cutDays=repPeriod==="weekly"?7:daysInMonth;
+                const cutDate=new Date();cutDate.setDate(cutDate.getDate()-cutDays);
+                const cutStr=cutDate.toISOString().split("T")[0];
+                const inRange=ad.filter(d=>d>=cutStr);
+                const allE=inRange.flatMap(d=>entries[d]||[]);
+                return sumE(allE);
+              }
+            })();
+            // Meal contribution totals for period
+            const mealPeriodTotals=MEAL_TYPES.map(m=>{
+              if(repPeriod==="daily"){
+                const sourceDate=entries[selDate]?selDate:(histDates[0]||selDate);
+                return{meal:m,totals:sumE((entries[sourceDate]||[]).filter(e=>e.meal===m))};
+              } else {
+                const cutDays=repPeriod==="weekly"?7:daysInMonth;
+                const cutDate=new Date();cutDate.setDate(cutDate.getDate()-cutDays);
+                const cutStr=cutDate.toISOString().split("T")[0];
+                const inRange=Object.keys(entries).filter(d=>d>=cutStr);
+                return{meal:m,totals:sumE(inRange.flatMap(d=>(entries[d]||[]).filter(e=>e.meal===m)))};
+              }
+            }).filter(m=>m.totals.calories>0);
 
-              {/* Achievement vs Goal */}
-              <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
-                <div style={{fontSize:13,fontWeight:600,marginBottom:4}}>Achievement vs Goal</div>
-                <div style={{fontSize:11,color:C.muted,marginBottom:14}}>{repPeriod==="daily"?"Each day's avg vs goal":repPeriod==="weekly"?"Weekly avg/day vs goal":"Monthly avg/day vs goal"}</div>
-                {ALL_FIELDS.map(({key,label,unit:u,color})=>{
-                  const g=goals[key];if(!g)return null;
-                  const avg=repData.reduce((s,d)=>s+(d.totals[key]||0),0)/(repData.length||1);
-                  const pct=Math.min(Math.round((avg/g)*100),200);
-                  const over=avg>g;
-                  const barColor=over?C.red:pct>=90?C.green:pct>=60?C.accent:C.muted;
-                  const diff=avg-g;
-                  return(
-                    <div key={key} style={{marginBottom:12}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                        <span style={{fontSize:11,color:C.text}}>{label}</span>
-                        <div style={{display:"flex",alignItems:"center",gap:6}}>
-                          <span style={{fontSize:10,color:C.muted,fontFamily:"monospace"}}>{avg<1?avg.toFixed(1):Math.round(avg)}/{g}{u}</span>
-                          <span style={{fontSize:10,fontFamily:"monospace",fontWeight:700,color:over?C.red:pct>=90?C.green:C.accent,background:over?"rgba(224,82,82,0.12)":pct>=90?"rgba(82,196,122,0.12)":"rgba(232,197,71,0.12)",padding:"1px 6px",borderRadius:5}}>{pct}%</span>
-                          <span style={{fontSize:9,color:over?C.red:C.green,fontFamily:"monospace"}}>{diff>0?"+":""}{diff<1&&diff>-1?diff.toFixed(1):Math.round(diff)}{u}</span>
+            const periodLabel=repPeriod==="daily"?"Daily Avg (last 14 days)":repPeriod==="weekly"?"This Week Total":"This Month Total";
+            return(
+              <>
+                {/* Achievement vs Goal */}
+                <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
+                  <div style={{fontSize:13,fontWeight:600,marginBottom:2}}>Achievement vs Goal</div>
+                  <div style={{fontSize:11,color:C.muted,marginBottom:14}}>{periodLabel} vs {repPeriod==="daily"?"daily":repPeriod==="weekly"?"weekly (×7)":"monthly (×"+daysInMonth+")"} goal</div>
+                  {ALL_FIELDS.map(({key,label,unit:u,color})=>{
+                    const g=periodGoals[key];if(!g)return null;
+                    const val=periodTotals[key]||0;
+                    const pct=Math.min(Math.round((val/g)*100),200);
+                    const over=val>g;
+                    const barColor=over?C.red:pct>=90?C.green:pct>=60?C.accent:C.muted;
+                    const diff=val-g;
+                    return(
+                      <div key={key} style={{marginBottom:12}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                          <span style={{fontSize:11,color:C.text}}>{label}</span>
+                          <div style={{display:"flex",alignItems:"center",gap:6}}>
+                            <span style={{fontSize:10,color:C.muted,fontFamily:"monospace"}}>{val<1?val.toFixed(1):Math.round(val)}/{Math.round(g)}{u}</span>
+                            <span style={{fontSize:10,fontFamily:"monospace",fontWeight:700,color:over?C.red:pct>=90?C.green:C.accent,background:over?"rgba(224,82,82,0.12)":pct>=90?"rgba(82,196,122,0.12)":"rgba(232,197,71,0.12)",padding:"1px 6px",borderRadius:5}}>{pct}%</span>
+                            <span style={{fontSize:9,color:over?C.red:C.green,fontFamily:"monospace"}}>{diff>0?"+":""}{diff<1&&diff>-1?diff.toFixed(1):Math.round(diff)}{u}</span>
+                          </div>
+                        </div>
+                        <div style={{height:5,background:C.border,borderRadius:3,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:`${Math.min(pct,100)}%`,background:barColor,borderRadius:3,transition:"width 0.4s ease"}}/>
                         </div>
                       </div>
-                      <div style={{height:5,background:C.border,borderRadius:3,overflow:"hidden"}}>
-                        <div style={{height:"100%",width:`${Math.min(pct,100)}%`,background:barColor,borderRadius:3,transition:"width 0.4s ease"}}/>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
 
-              {/* Meal Summary */}
-              <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
-                <div style={{fontSize:13,fontWeight:600,marginBottom:4}}>Meal Contribution</div>
-                <div style={{fontSize:11,color:C.muted,marginBottom:14}}>Each meal's nutrition as % of daily goal</div>
-                {(()=>{
-                  // For daily: use selected date or most recent date with data
-                  const sourceDate=repPeriod==="daily"?(entries[selDate]?selDate:(histDates[0]||selDate)):null;
-                  const mealData=MEAL_TYPES.map(m=>{
-                    let items=[];
-                    if(repPeriod==="daily"&&sourceDate){
-                      items=(entries[sourceDate]||[]).filter(e=>e.meal===m);
-                    } else {
-                      // avg across all dates in repData
-                      const dates=repPeriod==="weekly"
-                        ?Object.keys(entries).sort().slice(-7)
-                        :Object.keys(entries).sort().slice(-30);
-                      const byMeal=dates.flatMap(d=>(entries[d]||[]).filter(e=>e.meal===m));
-                      if(dates.length>0){
-                        const t=sumE(byMeal);
-                        const n=dates.filter(d=>(entries[d]||[]).some(e=>e.meal===m)).length||1;
-                        ALL_FIELDS.forEach(f=>t[f.key]=t[f.key]/n);
-                        return{meal:m,totals:t};
-                      }
-                    }
-                    return{meal:m,totals:sumE(items)};
-                  }).filter(m=>m.totals.calories>0);
-                  if(!mealData.length)return <div style={{color:C.muted,fontSize:12}}>No meal data for this period.</div>;
-                  return mealData.map(({meal,totals})=>(
-                    <div key={meal} style={{marginBottom:14}}>
+                {/* Meal Contribution */}
+                <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
+                  <div style={{fontSize:13,fontWeight:600,marginBottom:2}}>Meal Contribution</div>
+                  <div style={{fontSize:11,color:C.muted,marginBottom:14}}>{repPeriod==="daily"?"Today's meals vs daily goal":repPeriod==="weekly"?"This week's meals vs weekly goal":"This month's meals vs monthly goal"}</div>
+                  {mealPeriodTotals.length===0?<div style={{color:C.muted,fontSize:12}}>No meal data for this period.</div>:mealPeriodTotals.map(({meal,totals})=>(
+                    <div key={meal} style={{marginBottom:16}}>
                       <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
                         <span>{MEAL_ICONS[meal]}</span>
                         <span style={{fontSize:12,fontWeight:600}}>{meal}</span>
-                        <span style={{fontSize:11,color:C.accent,fontFamily:"monospace",marginLeft:"auto"}}>{Math.round(totals.calories)} kcal ({Math.round((totals.calories/goals.calories)*100)}%)</span>
+                        <span style={{fontSize:11,color:C.accent,fontFamily:"monospace",marginLeft:"auto"}}>
+                          {Math.round(totals.calories)} kcal
+                          <span style={{fontSize:10,color:C.muted}}> ({Math.round((totals.calories/periodGoals.calories)*100)}% of goal)</span>
+                        </span>
                       </div>
                       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
                         {[{key:"protein",label:"Protein",color:C.blue},{key:"carbs",label:"Carbs",color:C.orange},{key:"fat",label:"Fat",color:C.accentDim},{key:"fiber",label:"Fiber",color:C.green},{key:"sodium",label:"Sodium",color:C.purple},{key:"calcium",label:"Calcium",color:C.purple}].map(({key,label,color})=>{
-                          const pct=goals[key]?Math.round((totals[key]/goals[key])*100):0;
+                          const pct=periodGoals[key]?Math.round((totals[key]/periodGoals[key])*100):0;
+                          const fld=ALL_FIELDS.find(f=>f.key===key);
                           return(
                             <div key={key} style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 9px"}}>
                               <div style={{fontSize:9,color:C.muted,marginBottom:2}}>{label}</div>
                               <div style={{fontSize:12,fontWeight:700,fontFamily:"monospace",color}}>{pct}%</div>
-                              <div style={{fontSize:9,color:C.muted}}>{totals[key]<1?totals[key].toFixed(1):Math.round(totals[key])}{ALL_FIELDS.find(f=>f.key===key)?.unit||"g"}</div>
+                              <div style={{fontSize:9,color:C.muted}}>{totals[key]<1?totals[key].toFixed(1):Math.round(totals[key])}{fld?.unit||"g"}</div>
                             </div>
                           );
                         })}
                       </div>
                     </div>
-                  ));
-                })()}
-              </div>
-            </>
-          )}
+                  ))}
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
 
