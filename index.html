@@ -1025,39 +1025,38 @@ function App(){
                 </div>
                 <div style={{marginBottom:10}}>
                   <Lbl>Ingredient Name</Lbl>
-                  <input ref={ingNameRef} value={ingData.food}
-                    onChange={e=>setIngData(p=>({...p,food:e.target.value}))}
-                    onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();ingQtyRef.current&&ingQtyRef.current.focus();ingQtyRef.current&&ingQtyRef.current.select();}}}
-                    placeholder="e.g. Egg, Chicken, Rice…" style={IS}
-                    enterKeyHint="next" autoComplete="off"/>
+                  <div style={{display:"flex",gap:6}}>
+                    <input ref={ingNameRef} value={ingData.food}
+                      onChange={e=>setIngData(p=>({...p,food:e.target.value}))}
+                      placeholder="e.g. Egg, Chicken, Rice…" style={{...IS,flex:1}}
+                      autoComplete="off"/>
+                    <button onClick={()=>ingQtyRef.current&&ingQtyRef.current.focus()}
+                      style={{padding:"10px 14px",background:C.accent,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Next ▶</button>
+                  </div>
                 </div>
-                <div style={{display:"flex",gap:8,marginBottom:12}}>
+                <div style={{display:"flex",gap:8,marginBottom:8}}>
                   <div style={{flex:2}}>
                     <Lbl>Quantity</Lbl>
-                    <input ref={ingQtyRef} value={ingData.quantity}
-                      onChange={e=>setIngData(p=>({...p,quantity:e.target.value}))}
-                      onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();ingUnitRef.current&&ingUnitRef.current.focus();}}}
-                      inputMode="decimal" placeholder="100" style={IS}
-                      enterKeyHint="next"/>
-                  </div>
-                  <div style={{flex:1}}>
-                    <Lbl>Unit</Lbl>
-                    <select ref={ingUnitRef} value={ingData.unit}
-                      onChange={e=>{setIngData(p=>({...p,unit:e.target.value}));}}
-                      onBlur={()=>{if(ingData.food.trim()&&ingData.quantity){doIngAiFill();}}}
-                      style={IS}>
-                      {["g","ml","oz","cup","tbsp","tsp","piece","serving"].map(u=><option key={u}>{u}</option>)}
-                    </select>
+                    <div style={{display:"flex",gap:6}}>
+                      <input ref={ingQtyRef} value={ingData.quantity}
+                        onChange={e=>setIngData(p=>({...p,quantity:e.target.value}))}
+                        inputMode="decimal" placeholder="100" style={{...IS,flex:1}}/>
+                      <button onClick={()=>ingUnitRef.current&&ingUnitRef.current.focus()}
+                        style={{padding:"10px 14px",background:C.accent,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Next ▶</button>
+                    </div>
                   </div>
                 </div>
-                {/* Quick unit selector buttons so user doesn't need to open dropdown */}
-                <div style={{display:"flex",gap:5,marginBottom:12,flexWrap:"wrap"}}>
-                  {["g","ml","piece","tsp","tbsp","cup","serving"].map(u=>(
-                    <button key={u} onClick={()=>{setIngData(p=>({...p,unit:u}));if(ingData.food.trim()&&ingData.quantity){setTimeout(doIngAiFill,100);}}}
-                      style={{padding:"5px 10px",borderRadius:15,border:`1px solid ${ingData.unit===u?C.accent:C.border}`,background:ingData.unit===u?C.accent:"none",color:ingData.unit===u?C.bg:C.muted,fontSize:11,cursor:"pointer",fontFamily:"inherit",fontWeight:ingData.unit===u?700:400}}>
-                      {u}
-                    </button>
-                  ))}
+                <div style={{marginBottom:8}}>
+                  <Lbl>Unit — tap to select then AI fills automatically</Lbl>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {["g","ml","piece","tsp","tbsp","cup","oz","serving"].map(u=>(
+                      <button key={u} ref={u===ingData.unit?ingUnitRef:null}
+                        onClick={()=>{setIngData(p=>({...p,unit:u}));if(ingData.food.trim()&&ingData.quantity){setTimeout(doIngAiFill,50);}}}
+                        style={{padding:"8px 14px",borderRadius:18,border:`1px solid ${ingData.unit===u?C.accent:C.border}`,background:ingData.unit===u?C.accent:"none",color:ingData.unit===u?C.bg:C.muted,fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:ingData.unit===u?700:400}}>
+                        {u}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <Btn onClick={doIngAiFill} disabled={ingLoading||!ingData.food.trim()||!ingData.quantity}
                   color={`linear-gradient(135deg,${C.accent},${C.accentDim})`} style={{marginBottom:6}}>
