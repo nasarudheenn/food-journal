@@ -191,7 +191,7 @@ function ConfirmModal({msg,onConfirm,onCancel}){
   );
 }
 
-export default function App(){
+function App(){
   const [entries,setEntries]=useState(()=>store.get(SK.entries)||{});
   const [profile,setProfile]=useState(()=>{const p=store.get(SK.profile);return p?{...DEFAULT_PROFILE,...p}:DEFAULT_PROFILE;});
   const [weights,setWeights]=useState(()=>store.get(SK.weights)||[]);
