@@ -8,141 +8,94 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="Food Journal"/>
-<meta name="application-name" content="Food Journal"/>
 <title>Food Journal</title>
 <link rel="manifest" href="manifest.json"/>
 <link rel="apple-touch-icon" href="icon-192.png"/>
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
-<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
 <style>
-  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{height:100%;background:#0f0e0c;color:#f0ece0;font-family:Georgia,'Times New Roman',serif;overscroll-behavior:none;}
-  #root{height:100%;}
-  input,select,textarea,button{font-family:Georgia,'Times New Roman',serif;}
-  ::-webkit-scrollbar{display:none;}
-  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
-  #install-banner{
-    display:none;position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
-    width:calc(100% - 36px);max-width:444px;
-    background:linear-gradient(135deg,#e8c547,#b89c2f);
-    color:#0f0e0c;border-radius:14px;padding:14px 18px;
-    z-index:999;box-shadow:0 4px 24px rgba(232,197,71,0.5);
-    display:none;align-items:center;gap:14px;cursor:pointer;border:none;
-    font-family:Georgia,serif;
-  }
-  #install-banner.show{display:flex!important;}
-  #install-banner img{width:44px;height:44px;border-radius:10px;flex-shrink:0;}
-  #install-banner .txt{flex:1;text-align:left;}
-  #install-banner .txt strong{display:block;font-size:14px;font-weight:700;margin-bottom:2px;}
-  #install-banner .txt span{font-size:11px;opacity:0.75;}
-  #install-banner .arrow{font-size:20px;flex-shrink:0;}
-  #install-dismiss{position:absolute;top:8px;right:10px;background:none;border:none;color:#0f0e0c;font-size:16px;cursor:pointer;opacity:0.6;padding:2px 6px;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:#0f0e0c;color:#f0ece0;font-family:Georgia,'Times New Roman',serif;overscroll-behavior:none;}
+#root{height:100%;}
+input,select,textarea,button{font-family:Georgia,'Times New Roman',serif;}
+::-webkit-scrollbar{display:none;}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
+#install-banner{display:none;position:fixed;bottom:90px;left:50%;transform:translateX(-50%);width:calc(100% - 36px);max-width:444px;background:linear-gradient(135deg,#e8c547,#b89c2f);color:#0f0e0c;border-radius:14px;padding:14px 18px;z-index:999;box-shadow:0 4px 24px rgba(232,197,71,0.5);align-items:center;gap:14px;cursor:pointer;border:none;font-family:Georgia,serif;}
+#install-banner.show{display:flex!important;}
+#install-banner img{width:44px;height:44px;border-radius:10px;flex-shrink:0;}
+#install-banner .txt{flex:1;text-align:left;}
+#install-banner .txt strong{display:block;font-size:14px;font-weight:700;margin-bottom:2px;}
+#install-banner .txt span{font-size:11px;opacity:0.75;}
+#install-dismiss{position:absolute;top:8px;right:10px;background:none;border:none;color:#0f0e0c;font-size:16px;cursor:pointer;opacity:0.6;padding:2px 6px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;display:flex;align-items:flex-end;justify-content:center;}
+.modal-box{background:#1a1917;border-radius:20px 20px 0 0;padding:20px 18px 32px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto;}
 </style>
 </head>
 <body>
 <div id="root"></div>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-
 <script type="text/babel">
-const { useState, useEffect, useCallback } = React;
-
-// ── Storage (localStorage for PWA) ─────────────────────────────────────────
-const SK = { entries:"fd-entries-v2", profile:"fd-profile-v2", weights:"fd-weights-v2", recipes:"fd-recipebook-v2", apiKey:"fd-apikey-v1" };
-const store = {
-  get: key => { try { const v=localStorage.getItem(key); return v?JSON.parse(v):null; } catch{ return null; } },
-  set: (key,val) => { try { localStorage.setItem(key,JSON.stringify(val)); } catch{} }
+const {useState,useEffect,useRef}=React;
+const SK={entries:"fd-entries-v2",profile:"fd-profile-v2",weights:"fd-weights-v2",recipes:"fd-recipebook-v2",apiKey:"fd-apikey-v1"};
+const store={
+  get:k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}},
+  set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 };
-
-// ── Constants ───────────────────────────────────────────────────────────────
-const DEFAULT_PROFILE = {
-  name:"", currentWeight:"", targetWeight:"", height:"",
-  calorieGoal:1800, protein:130, carbs:180, fat:55, fiber:25,
-  sugar:50, saturatedFat:20, polyFat:10, monoFat:15, cholesterol:300,
-  sodium:2300, potassium:3500, calcium:1000, iron:18,
-  vitC:90, vitD:20, vitB12:2.4, zinc:11
+const HARDCODED_KEY="";
+const DEFAULT_PROFILE={
+  name:"Nasarudheen N",currentWeight:"81",targetWeight:"70",height:"175",
+  calorieGoal:1800,protein:130,carbs:180,fat:55,fiber:25,
+  sugar:50,saturatedFat:20,polyFat:10,monoFat:15,cholesterol:300,
+  sodium:2300,potassium:3500,calcium:1000,iron:18,vitC:90,vitD:20,vitB12:2.4,zinc:11
 };
-const C = {bg:"#0f0e0c",card:"#1a1917",border:"#2a2825",accent:"#e8c547",accentDim:"#b89c2f",text:"#f0ece0",muted:"#7a7060",red:"#e05252",green:"#52c47a",blue:"#5299e0",orange:"#e08a52",purple:"#a07ee0"};
-const MEAL_TYPES = ["Breakfast","Mid-Morning","Lunch","Evening","Dinner"];
-const MEAL_ICONS = {Breakfast:"☀️","Mid-Morning":"🫐",Lunch:"🥗",Evening:"🍎",Dinner:"🌙"};
-const MACRO_FIELDS = [
-  {key:"calories",     label:"Calories",          unit:"kcal", color:C.accent},
-  {key:"protein",      label:"Protein",            unit:"g",    color:C.blue},
-  {key:"carbs",        label:"Carbs",              unit:"g",    color:C.orange},
-  {key:"fat",          label:"Fat (Total)",        unit:"g",    color:C.accentDim},
-  {key:"saturatedFat", label:"Saturated Fat",      unit:"g",    color:"#c4704a"},
-  {key:"polyFat",      label:"Polyunsat. Fat",     unit:"g",    color:"#7ab0e0"},
-  {key:"monoFat",      label:"Monounsat. Fat",     unit:"g",    color:"#a0c07a"},
-  {key:"cholesterol",  label:"Cholesterol",        unit:"mg",   color:"#d4a04a"},
-  {key:"fiber",        label:"Fiber",              unit:"g",    color:C.green},
-  {key:"sugar",        label:"Sugar",              unit:"g",    color:"#e07ab0"},
+const C={bg:"#0f0e0c",card:"#1a1917",border:"#3a3835",accent:"#e8c547",accentDim:"#b89c2f",text:"#f0ece0",muted:"#7a7060",red:"#e05252",green:"#52c47a",blue:"#5299e0",orange:"#e08a52",purple:"#a07ee0"};
+const MEAL_TYPES=["Breakfast","Mid-Morning","Lunch","Evening","Dinner"];
+const MEAL_ICONS={Breakfast:"☀️","Mid-Morning":"🫐",Lunch:"🥗",Evening:"🍎",Dinner:"🌙"};
+const MACRO_FIELDS=[
+  {key:"calories",label:"Calories",unit:"kcal",color:C.accent},
+  {key:"protein",label:"Protein",unit:"g",color:C.blue},
+  {key:"carbs",label:"Carbs",unit:"g",color:C.orange},
+  {key:"fat",label:"Fat (Total)",unit:"g",color:C.accentDim},
+  {key:"saturatedFat",label:"Saturated Fat",unit:"g",color:"#c4704a"},
+  {key:"polyFat",label:"Polyunsat. Fat",unit:"g",color:"#7ab0e0"},
+  {key:"monoFat",label:"Monounsat. Fat",unit:"g",color:"#a0c07a"},
+  {key:"cholesterol",label:"Cholesterol",unit:"mg",color:"#d4a04a"},
+  {key:"fiber",label:"Fiber",unit:"g",color:C.green},
+  {key:"sugar",label:"Sugar",unit:"g",color:"#e07ab0"},
 ];
-const MICRO_FIELDS = [
-  {key:"sodium",   label:"Sodium",   unit:"mg"},
+const MICRO_FIELDS=[
+  {key:"sodium",label:"Sodium",unit:"mg"},
   {key:"potassium",label:"Potassium",unit:"mg"},
-  {key:"calcium",  label:"Calcium",  unit:"mg"},
-  {key:"iron",     label:"Iron",     unit:"mg"},
-  {key:"vitC",     label:"Vit C",    unit:"mg"},
-  {key:"vitD",     label:"Vit D",    unit:"μg"},
-  {key:"vitB12",   label:"Vit B12",  unit:"μg"},
-  {key:"zinc",     label:"Zinc",     unit:"mg"},
+  {key:"calcium",label:"Calcium",unit:"mg"},
+  {key:"iron",label:"Iron",unit:"mg"},
+  {key:"vitC",label:"Vit C",unit:"mg"},
+  {key:"vitD",label:"Vit D",unit:"μg"},
+  {key:"vitB12",label:"Vit B12",unit:"μg"},
+  {key:"zinc",label:"Zinc",unit:"mg"},
 ];
-const ALL_FIELDS = [...MACRO_FIELDS,...MICRO_FIELDS];
-const TABS = [{id:"diary",icon:"📖",label:"Diary"},{id:"recipes",icon:"📚",label:"Recipes"},{id:"reports",icon:"📊",label:"Reports"},{id:"profile",icon:"👤",label:"Profile"}];
-
-// ── Helpers ─────────────────────────────────────────────────────────────────
-const todayStr = () => new Date().toISOString().split("T")[0];
-const fmtDate = d => new Date(d+"T00:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
-const fmtShort = d => new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"});
-const isoWeek = d => { const dt=new Date(d+"T00:00:00"),j=new Date(dt.getFullYear(),0,1); return Math.ceil(((dt-j)/86400000+j.getDay()+1)/7); };
-const isoMonth = d => d.slice(0,7);
-const emptyNut = () => Object.fromEntries(ALL_FIELDS.map(f=>[f.key,""]));
-const sumE = list => { const o=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,0])); list.forEach(e=>ALL_FIELDS.forEach(f=>{o[f.key]+=(Number(e[f.key])||0);})); return o; };
-
-// ── AI Lookup ───────────────────────────────────────────────────────────────
-async function aiLookup(fname,q,u,onRes,onSt,apiKey) {
-  if(!apiKey||!apiKey.trim()){
-    onSt("⚠ No API key. Add your Anthropic API key in the Profile tab.");
-    return;
-  }
-  onSt("Looking up…");
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",
-      headers:{"Content-Type":"application/json","x-api-key":apiKey.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-      body: JSON.stringify({
-        model:"claude-haiku-4-5-20251001", max_tokens:800,
-        messages:[{role:"user",content:`Nutrition facts for ${q} ${u} of ${fname}. Return ONLY a JSON object, no markdown, no explanation. Keys: calories, protein, carbs, fat, fiber, sodium, potassium, calcium, iron, vitC, vitD, vitB12, zinc. All values must be positive numbers. Example: {"calories":143,"protein":13,"carbs":1,"fat":10,"fiber":0,"sodium":140,"potassium":130,"calcium":50,"iron":1.8,"vitC":0,"vitD":2,"vitB12":1.1,"zinc":1.3}`}]
-      })
-    });
-    const data = await res.json();
-    if(data.error){ onSt("⚠ API error: "+data.error.message); return; }
-    const txt = data.content?.map(b=>b.text||"").join("")||"";
-    const clean = txt.replace(/```json|```/g,"").trim();
-    const p = JSON.parse(clean);
-    // Return as strings so input fields show them correctly
-    const r = {};
-    ALL_FIELDS.forEach(f => {
-      const val = Number(p[f.key]);
-      r[f.key] = isNaN(val) ? "0" : String(Math.round(val * 10) / 10);
-    });
-    onRes(r);
-    onSt("✓ Filled — adjust if needed");
-  } catch(e) { onSt("⚠ Failed: "+(e.message||"Check API key & internet")); }
-}
-
-// ── Small Components ────────────────────────────────────────────────────────
-const IS = {width:"100%",padding:"10px 12px",background:C.card,border:`1px solid ${C.border}`,borderRadius:9,color:C.text,fontSize:14,fontFamily:"Georgia,serif",outline:"none",boxSizing:"border-box"};
-
-function MacroBar({label,value,goal,color}) {
+const ALL_FIELDS=[...MACRO_FIELDS,...MICRO_FIELDS];
+const TABS=[{id:"diary",icon:"📖",label:"Diary"},{id:"recipes",icon:"📚",label:"Recipes"},{id:"reports",icon:"📊",label:"Reports"},{id:"profile",icon:"👤",label:"Profile"}];
+const todayStr=()=>new Date().toISOString().split("T")[0];
+const fmtDate=d=>new Date(d+"T00:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+const fmtShort=d=>new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"});
+const isoWeek=d=>{const dt=new Date(d+"T00:00:00"),j=new Date(dt.getFullYear(),0,1);return Math.ceil(((dt-j)/86400000+j.getDay()+1)/7);};
+const isoMonth=d=>d.slice(0,7);
+const emptyNut=()=>Object.fromEntries(ALL_FIELDS.map(f=>[f.key,""]));
+const sumE=list=>{const o=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,0]));list.forEach(e=>ALL_FIELDS.forEach(f=>{o[f.key]+=(Number(e[f.key])||0);}));return o;};
+const IS={width:"100%",padding:"10px 12px",background:"#222120",border:"1px solid #4a4845",borderRadius:9,color:"#f0ece0",fontSize:14,fontFamily:"Georgia,serif",outline:"none",boxSizing:"border-box"};
+function Lbl({children}){return <div style={{fontSize:10,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>{children}</div>;}
+function Btn({onClick,disabled,color,children,style={}}){return <button onClick={onClick} disabled={disabled} style={{width:"100%",padding:"13px",borderRadius:10,border:"none",cursor:disabled?"not-allowed":"pointer",background:disabled?C.border:(color||C.green),color:C.bg,fontSize:14,fontWeight:700,fontFamily:"Georgia,serif",opacity:disabled?0.5:1,...style}}>{children}</button>;}
+function MacroBar({label,value,goal,color,showPct}){
   const pct=Math.min((value/goal)*100,100),over=value>goal;
-  return (
+  return(
     <div style={{marginBottom:8}}>
       <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
         <span style={{fontSize:11,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>{label}</span>
-        <span style={{fontSize:11,color:over?C.red:C.text,fontFamily:"monospace"}}>{Math.round(value)}<span style={{color:C.muted}}>/{goal}</span></span>
+        <span style={{fontSize:11,color:over?C.red:C.text,fontFamily:"monospace"}}>
+          {Math.round(value)}<span style={{color:C.muted}}>/{goal}g</span>
+          {showPct&&<span style={{marginLeft:6,color:over?C.red:C.accent}}>{Math.round(pct)}%</span>}
+        </span>
       </div>
       <div style={{height:5,background:C.border,borderRadius:3,overflow:"hidden"}}>
         <div style={{height:"100%",width:`${pct}%`,background:over?C.red:color,borderRadius:3,transition:"width 0.5s ease"}}/>
@@ -150,41 +103,30 @@ function MacroBar({label,value,goal,color}) {
     </div>
   );
 }
-
-function Badge({label,value,unit,color}) {
-  return (
-    <div style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 6px",textAlign:"center",flex:1,minWidth:0}}>
-      <div style={{fontSize:14,fontWeight:700,color:color||C.text,fontFamily:"monospace",whiteSpace:"nowrap"}}>{Math.round(value)}<span style={{fontSize:9,color:C.muted}}>{unit}</span></div>
-      <div style={{fontSize:9,color:C.muted,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</div>
+function Badge({label,value,goal,unit,color}){
+  return(
+    <div style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 5px",textAlign:"center",flex:1,minWidth:0}}>
+      <div style={{fontSize:12,fontWeight:700,color:color||C.text,fontFamily:"monospace",whiteSpace:"nowrap"}}>{Math.round(value)}<span style={{fontSize:8,color:C.muted}}>/{goal}{unit}</span></div>
+      <div style={{fontSize:8,color:C.muted,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</div>
     </div>
   );
 }
-
-function Btn({onClick,disabled,color,children,style={}}) {
-  return <button onClick={onClick} disabled={disabled} style={{width:"100%",padding:"13px",borderRadius:10,border:"none",cursor:disabled?"not-allowed":"pointer",background:disabled?C.border:(color||C.green),color:C.bg,fontSize:14,fontWeight:700,fontFamily:"Georgia,serif",opacity:disabled?0.5:1,...style}}>{children}</button>;
-}
-
-function Lbl({children}) {
-  return <div style={{fontSize:10,color:C.muted,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:6}}>{children}</div>;
-}
-
-// ── Weight Chart ────────────────────────────────────────────────────────────
-function WeightChart({weights,target}) {
-  if (!weights.length) return <div style={{textAlign:"center",padding:"24px 0",color:C.muted,fontSize:13}}>No weight entries yet.</div>;
-  const W=320,H=100,P={t:8,r:24,b:20,l:36};
+function WeightChart({weights,target}){
+  if(!weights.length)return null;
+  const W=320,H=100,P={t:8,r:28,b:20,l:36};
   const vals=weights.map(w=>w.weight),dates=weights.map(w=>w.date);
   const all=target?[...vals,target]:vals;
-  const mn=Math.min(...all)-1,mx=Math.max(...all)+1;
+  const mn=Math.min(...all)-0.5,mx=Math.max(...all)+0.5;
   const xOf=i=>P.l+(i/(weights.length-1||1))*(W-P.l-P.r);
   const yOf=v=>P.t+((mx-v)/(mx-mn))*(H-P.t-P.b);
   const pathD=vals.map((v,i)=>`${i===0?"M":"L"}${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`).join(" ");
   const areaD=`${pathD} L${xOf(vals.length-1).toFixed(1)},${H-P.b} L${xOf(0).toFixed(1)},${H-P.b} Z`;
   const tY=target?yOf(target):null;
   const ticks=weights.length<=5?weights.map((_,i)=>i):[0,Math.floor(weights.length/2),weights.length-1];
-  return (
+  return(
     <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{display:"block"}}>
       <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C.accent} stopOpacity="0.3"/><stop offset="100%" stopColor={C.accent} stopOpacity="0"/></linearGradient></defs>
-      {[0,0.5,1].map(t=>{const y=P.t+t*(H-P.t-P.b),v=mx-t*(mx-mn);return(<g key={t}><line x1={P.l} y1={y} x2={W-P.r} y2={y} stroke={C.border} strokeDasharray="3,3"/><text x={P.l-3} y={y+3} fontSize="9" fill={C.muted} textAnchor="end">{Math.round(v)}</text></g>);})}
+      {[0,0.5,1].map(t=>{const y=P.t+t*(H-P.t-P.b),v=mx-t*(mx-mn);return(<g key={t}><line x1={P.l} y1={y} x2={W-P.r} y2={y} stroke={C.border} strokeDasharray="3,3"/><text x={P.l-3} y={y+3} fontSize="9" fill={C.muted} textAnchor="end">{v.toFixed(1)}</text></g>);})}
       {tY&&<><line x1={P.l} y1={tY} x2={W-P.r} y2={tY} stroke={C.green} strokeDasharray="4,3" strokeWidth="1.5"/><text x={W-P.r+2} y={tY+3} fontSize="8" fill={C.green}>Goal</text></>}
       {vals.length>1&&<path d={areaD} fill="url(#wg)"/>}
       {vals.length>1&&<path d={pathD} fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>}
@@ -193,113 +135,154 @@ function WeightChart({weights,target}) {
     </svg>
   );
 }
-
-function BarChart({data,goal,color}) {
-  if (!data.length) return null;
-  const W=320,H=80,P={t:5,r:8,b:20,l:36};
-  const vals=data.map(d=>d.value),mx=Math.max(...vals,goal||0,1);
-  const bw=Math.max(4,(W-P.l-P.r)/data.length-4);
-  const yOf=v=>P.t+((mx-v)/mx)*(H-P.t-P.b);
-  const gY=goal?yOf(goal):null;
-  return (
-    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{display:"block"}}>
-      {gY&&<line x1={P.l} y1={gY} x2={W-P.r} y2={gY} stroke={C.green} strokeDasharray="4,3" strokeWidth="1"/>}
-      {data.map((d,i)=>{
-        const x=P.l+i*(W-P.l-P.r)/data.length+((W-P.l-P.r)/data.length-bw)/2;
-        const bH=Math.max(1,(H-P.t-P.b)-(yOf(d.value)-P.t));
-        return(<g key={i}><rect x={x} y={yOf(d.value)} width={bw} height={bH} rx="2" fill={goal&&d.value>goal?C.red:color} opacity="0.85"/><text x={x+bw/2} y={H-4} fontSize="8" fill={C.muted} textAnchor="middle">{d.label}</text></g>);
-      })}
-      {[0,0.5,1].map(t=><text key={t} x={P.l-3} y={P.t+t*(H-P.t-P.b)+3} fontSize="8" fill={C.muted} textAnchor="end">{Math.round(mx*(1-t))}</text>)}
-    </svg>
+// Nutrition detail modal
+function NutModal({item,onClose}){
+  if(!item)return null;
+  return(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <div>
+            <div style={{fontSize:16,fontWeight:700}}>{item.food}</div>
+            <div style={{fontSize:11,color:C.muted}}>{item.quantity}</div>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",color:C.muted,fontSize:22,cursor:"pointer"}}>✕</button>
+        </div>
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:10,color:C.accent,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>Macronutrients</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {MACRO_FIELDS.map(({key,label,unit:u,color})=>(
+              <div key={key} style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 11px"}}>
+                <div style={{fontSize:10,color:C.muted,marginBottom:2}}>{label}</div>
+                <div style={{fontSize:16,fontWeight:700,fontFamily:"monospace",color}}>{Number(item[key]||0)<1?(Number(item[key]||0)).toFixed(1):Math.round(Number(item[key]||0))}<span style={{fontSize:9,color:C.muted}}>{u}</span></div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div style={{fontSize:10,color:C.purple,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>Micronutrients</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {MICRO_FIELDS.map(({key,label,unit:u})=>(
+              <div key={key} style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 11px"}}>
+                <div style={{fontSize:10,color:C.muted,marginBottom:2}}>{label}</div>
+                <div style={{fontSize:16,fontWeight:700,fontFamily:"monospace",color:C.purple}}>{Number(item[key]||0)<1?(Number(item[key]||0)).toFixed(1):Math.round(Number(item[key]||0))}<span style={{fontSize:9,color:C.muted}}>{u}</span></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+// Confirm delete modal
+function ConfirmModal({msg,onConfirm,onCancel}){
+  return(
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="modal-box" onClick={e=>e.stopPropagation()} style={{borderRadius:20}}>
+        <div style={{fontSize:36,textAlign:"center",marginBottom:12}}>⚠️</div>
+        <div style={{fontSize:15,fontWeight:700,textAlign:"center",marginBottom:8}}>Delete Item?</div>
+        <div style={{fontSize:13,color:C.muted,textAlign:"center",marginBottom:20,lineHeight:1.6}}>{msg}</div>
+        <div style={{display:"flex",gap:10}}>
+          <button onClick={onCancel} style={{flex:1,padding:"12px",background:"none",border:`1px solid ${C.border}`,borderRadius:10,color:C.muted,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+          <button onClick={onConfirm} style={{flex:1,padding:"12px",background:C.red,border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Delete</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-function App() {
-  const [entries,    setEntries]    = useState(()=>store.get(SK.entries)||{});
-  const [profile,    setProfile]    = useState(()=>store.get(SK.profile)||DEFAULT_PROFILE);
-  const [weights,    setWeights]    = useState(()=>store.get(SK.weights)||[]);
-  const [recipeBook, setRecipeBook] = useState(()=>store.get(SK.recipes)||[]);
-
-  const [tab,  setTab]  = useState("diary");
-  const [view, setView] = useState("main");
-  const [selDate, setSelDate] = useState(todayStr());
-  const [expR, setExpR] = useState({});
-
+export default function App(){
+  const [entries,setEntries]=useState(()=>store.get(SK.entries)||{});
+  const [profile,setProfile]=useState(()=>{const p=store.get(SK.profile);return p?{...DEFAULT_PROFILE,...p}:DEFAULT_PROFILE;});
+  const [weights,setWeights]=useState(()=>store.get(SK.weights)||[]);
+  const [recipeBook,setRecipeBook]=useState(()=>store.get(SK.recipes)||[]);
+  const [tab,setTab]=useState("diary");
+  const [view,setView]=useState("main");
+  const [selDate,setSelDate]=useState(todayStr());
+  const [expR,setExpR]=useState({});
+  // Modals
+  const [nutModal,setNutModal]=useState(null);
+  const [confirmModal,setConfirmModal]=useState(null);
   // Add food
-  const [addMeal, setAddMeal] = useState("Breakfast");
-  const [logMode, setLogMode] = useState("recipe"); // recipe | manual | paste
-  const [foodName,setFoodName]= useState("");
-  const [qty,     setQty]     = useState("");
-  const [unit,    setUnit]    = useState("g");
-  const [nut,     setNut]     = useState(emptyNut());
-  const [loading, setLoading] = useState(false);
-  const [aiMsg,   setAiMsg]   = useState("");
-  const [importMode,setImportMode]=useState(false);
-  const [importTxt, setImportTxt] =useState("");
+  const [addMeal,setAddMeal]=useState("Breakfast");
+  const [logMode,setLogMode]=useState("recipe");
+  const [foodName,setFoodName]=useState("");
+  const [qty,setQty]=useState("");
+  const [unit,setUnit]=useState("g");
+  const [nut,setNut]=useState(emptyNut());
+  const [loading,setLoading]=useState(false);
+  const [aiMsg,setAiMsg]=useState("");
+  const [importTxt,setImportTxt]=useState("");
   const [impLoading,setImpLoading]=useState(false);
-  const [impStatus, setImpStatus] =useState("");
-  const [parsed,    setParsed]    =useState([]);
-  const [impName,   setImpName]   =useState("");
-
+  const [impStatus,setImpStatus]=useState("");
+  const [parsed,setParsed]=useState([]);
+  const [impName,setImpName]=useState("");
   // Profile
-  const [profEdit, setProfEdit]=useState(()=>store.get(SK.profile)||DEFAULT_PROFILE);
-  const [newWt,    setNewWt]   =useState("");
-
+  const [profEdit,setProfEdit]=useState(()=>{const p=store.get(SK.profile);return p?{...DEFAULT_PROFILE,...p}:DEFAULT_PROFILE;});
+  const [newWt,setNewWt]=useState("");
+  // API Key - prefilled
+  const [apiKey,setApiKey]=useState(()=>localStorage.getItem(SK.apiKey)||HARDCODED_KEY);
+  const [apiKeyInput,setApiKeyInput]=useState(()=>localStorage.getItem(SK.apiKey)||HARDCODED_KEY);
+  const [apiKeyMsg,setApiKeyMsg]=useState("");
   // Recipes
-  const [editRec,  setEditRec]  =useState(null);
-  const [useRec,   setUseRec]   =useState(null);
-  const [useQtys,  setUseQtys]  =useState({});
-  const [useMeal,  setUseMeal]  =useState("Lunch");
-  const [recName,  setRecName]  =useState("");
-  const [recItems, setRecItems] =useState([]);
-  const [recAiMsg, setRecAiMsg] =useState("");
-  const [recLoad,  setRecLoad]  =useState(false);
-  const [recImportMode, setRecImportMode] =useState(false);
-  const [recImportTxt,  setRecImportTxt]  =useState("");
-  const [recImpLoading, setRecImpLoading] =useState(false);
-  const [recImpStatus,  setRecImpStatus]  =useState("");
-  const [recParsed,     setRecParsed]     =useState([]);
-
+  const [editRecId,setEditRecId]=useState(null); // id of recipe being edited inline
+  const [editRecData,setEditRecData]=useState({}); // {id:{name,items,mealTags}}
+  const [useRec,setUseRec]=useState(null);
+  const [useQtys,setUseQtys]=useState({});
+  const [useMeal,setUseMeal]=useState("Lunch");
+  const [recName,setRecName]=useState("");
+  const [recItems,setRecItems]=useState([]);
+  const [recTags,setRecTags]=useState([]);
+  const [recAiMsg,setRecAiMsg]=useState("");
+  const [recLoad,setRecLoad]=useState(false);
+  const [recImportMode,setRecImportMode]=useState(false);
+  const [recImportTxt,setRecImportTxt]=useState("");
+  const [recImpLoading,setRecImpLoading]=useState(false);
+  const [recImpStatus,setRecImpStatus]=useState("");
+  const [recParsed,setRecParsed]=useState([]);
+  // Quick log from diary
+  const [quickRecipe,setQuickRecipe]=useState(null);
+  const [quickQtys,setQuickQtys]=useState({});
   // Reports
   const [repPeriod,setRepPeriod]=useState("daily");
-
-  // API Key
-  const [apiKey,   setApiKey]   =useState(()=>localStorage.getItem(SK.apiKey)||"");
-  const [apiKeyInput,setApiKeyInput]=useState(()=>localStorage.getItem(SK.apiKey)||"");
-  const [apiKeyMsg,setApiKeyMsg]=useState("");
-
   // Backup
   const [backupMsg,setBackupMsg]=useState("");
 
   const goals={
-    calories:    Number(profile.calorieGoal)||1800,
-    protein:     Number(profile.protein)||130,
-    carbs:       Number(profile.carbs)||180,
-    fat:         Number(profile.fat)||55,
-    fiber:       Number(profile.fiber)||25,
-    sugar:       Number(profile.sugar)||50,
-    saturatedFat:Number(profile.saturatedFat)||20,
-    polyFat:     Number(profile.polyFat)||10,
-    monoFat:     Number(profile.monoFat)||15,
-    cholesterol: Number(profile.cholesterol)||300,
-    sodium:      Number(profile.sodium)||2300,
-    potassium:   Number(profile.potassium)||3500,
-    calcium:     Number(profile.calcium)||1000,
-    iron:        Number(profile.iron)||18,
-    vitC:        Number(profile.vitC)||90,
-    vitD:        Number(profile.vitD)||20,
-    vitB12:      Number(profile.vitB12)||2.4,
-    zinc:        Number(profile.zinc)||11,
+    calories:Number(profile.calorieGoal)||1800,protein:Number(profile.protein)||130,
+    carbs:Number(profile.carbs)||180,fat:Number(profile.fat)||55,fiber:Number(profile.fiber)||25,
+    sugar:Number(profile.sugar)||50,saturatedFat:Number(profile.saturatedFat)||20,
+    polyFat:Number(profile.polyFat)||10,monoFat:Number(profile.monoFat)||15,
+    cholesterol:Number(profile.cholesterol)||300,sodium:Number(profile.sodium)||2300,
+    potassium:Number(profile.potassium)||3500,calcium:Number(profile.calcium)||1000,
+    iron:Number(profile.iron)||18,vitC:Number(profile.vitC)||90,vitD:Number(profile.vitD)||20,
+    vitB12:Number(profile.vitB12)||2.4,zinc:Number(profile.zinc)||11,
   };
 
-  // ── Persist helpers ────────────────────────────────────────────────────
   const pE=d=>{setEntries(d);store.set(SK.entries,d);};
   const pP=d=>{setProfile(d);setProfEdit(d);store.set(SK.profile,d);};
   const pW=d=>{setWeights(d);store.set(SK.weights,d);};
   const pRB=d=>{setRecipeBook(d);store.set(SK.recipes,d);};
 
-  // ── Diary ──────────────────────────────────────────────────────────────
+  async function doAI(fname,q,u,onRes,onSt){
+    const key=apiKey||HARDCODED_KEY;
+    onSt("⏳ Looking up "+fname+"…");
+    try{
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
+        headers:{"Content-Type":"application/json","x-api-key":key.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:600,
+          messages:[{role:"user",content:`Give nutrition for ${q} ${u} of ${fname}. Reply with ONLY this JSON object, no markdown:\n{"calories":0,"protein":0,"carbs":0,"fat":0,"saturatedFat":0,"polyFat":0,"monoFat":0,"cholesterol":0,"fiber":0,"sugar":0,"sodium":0,"potassium":0,"calcium":0,"iron":0,"vitC":0,"vitD":0,"vitB12":0,"zinc":0}\nReplace every 0 with correct numeric value.`}]})});
+      const data=await res.json();
+      if(data.error){onSt("⚠ API: "+data.error.message);return;}
+      const raw=data.content?.map(b=>b.text||"").join("")||"";
+      const p=JSON.parse(raw.replace(/```json|```/g,"").trim());
+      const r={};
+      ALL_FIELDS.forEach(f=>{const v=Number(p[f.key]);r[f.key]=isNaN(v)?"0":String(Math.round(v*10)/10);});
+      onRes(r);onSt("✓ Filled — adjust if needed");
+    }catch(e){onSt("⚠ Error: "+(e.message||"unknown"));}
+  }
+
+  // Diary helpers
   function addEntry(){
     if(!foodName.trim()||!nut.calories)return;
     const rid=`r_${Date.now()}`;
@@ -310,7 +293,6 @@ function App() {
     pE({...entries,[selDate]:[...(entries[selDate]||[]),e]});
     setFoodName("");setQty("");setUnit("g");setNut(emptyNut());setAiMsg("");setView("main");
   }
-
   function addParsed(){
     const toAdd=parsed.filter(i=>i.selected);if(!toAdd.length)return;
     const now=new Date().toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"});
@@ -319,24 +301,21 @@ function App() {
       quantity:`${x.quantity} ${x.unit||"g"}`,time:now,recipeId:rid,recipeName:rn,
       ...Object.fromEntries(ALL_FIELDS.map(f=>[f.key,Number(x[f.key])||0]))}));
     pE({...entries,[selDate]:[...(entries[selDate]||[]),...newEs]});
-    setImportTxt("");setParsed([]);setImpStatus("");setImpName("");setImportMode(false);setView("main");
+    setImportTxt("");setParsed([]);setImpStatus("");setImpName("");setView("main");
   }
-
   function delEntry(date,id){const u={...entries,[date]:(entries[date]||[]).filter(e=>e.id!==id)};if(!u[date]?.length)delete u[date];pE(u);}
   function delGroup(date,rid){const u={...entries,[date]:(entries[date]||[]).filter(e=>e.recipeId!==rid)};if(!u[date]?.length)delete u[date];pE(u);}
   function togExp(id){setExpR(p=>({...p,[id]:!p[id]}));}
 
   async function doParse(){
     if(!importTxt.trim())return;
-    if(!apiKey||!apiKey.trim()){setImpStatus("⚠ No API key. Add your Anthropic API key in the Profile tab.");return;}
     setImpLoading(true);setImpStatus("Parsing…");setParsed([]);
     try{
+      const key=apiKey||HARDCODED_KEY;
       const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
-        headers:{"Content-Type":"application/json","x-api-key":apiKey.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-        body:JSON.stringify({
-        model:"claude-haiku-4-5-20251001",max_tokens:2000,
-        messages:[{role:"user",content:`Extract food items + nutrition from text. Return ONLY JSON array, no markdown. Each: food,quantity(num),unit(default g),calories,protein,carbs,fat,saturatedFat,polyFat,monoFat,cholesterol,fiber,sugar,sodium,potassium,calcium,iron,vitC,vitD,vitB12,zinc (numbers). Estimate missing.\nText:\n${importTxt}`}]
-      })});
+        headers:{"Content-Type":"application/json","x-api-key":key.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:2000,
+          messages:[{role:"user",content:`Extract food items + nutrition from text. Return ONLY JSON array, no markdown. Each: food,quantity(num),unit(default g),calories,protein,carbs,fat,saturatedFat,polyFat,monoFat,cholesterol,fiber,sugar,sodium,potassium,calcium,iron,vitC,vitD,vitB12,zinc (numbers).\nText:\n${importTxt}`}]})});
       const data=await res.json();
       if(data.error){setImpStatus("⚠ API error: "+data.error.message);setImpLoading(false);return;}
       const txt=data.content?.map(b=>b.text||"").join("")||"";
@@ -348,108 +327,61 @@ function App() {
     setImpLoading(false);
   }
 
-  // ── Recipe Book ────────────────────────────────────────────────────────
-  function addRI(){
-    setRecItems(p=>[...p,{_id:Date.now(),food:"",quantity:"",unit:"g",
-      ...Object.fromEntries(ALL_FIELDS.map(f=>[f.key,""]))}]);
-  }
-  function updRI(idx,f,v){
-    setRecItems(p=>p.map((x,i)=>i===idx?{...x,[f]:v}:x));
-  }
-
+  // Recipe helpers
+  function addRI(){setRecItems(p=>[...p,{_id:Date.now(),food:"",quantity:"",unit:"g",...Object.fromEntries(ALL_FIELDS.map(f=>[f.key,""]))}]);}
+  function updRI(idx,f,v){setRecItems(p=>p.map((x,i)=>i===idx?{...x,[f]:v}:x));}
   async function aiRI(idx){
     const it=recItems[idx];
-    if(!it.food.trim()||!it.quantity){ setRecAiMsg("⚠ Enter food name and quantity first."); return; }
-    if(!apiKey||!apiKey.trim()){ setRecAiMsg("⚠ No API key. Add it in Profile tab."); return; }
+    if(!it.food.trim()||!it.quantity){setRecAiMsg("⚠ Enter food name and quantity first.");return;}
     setRecLoad(true);
-    setRecAiMsg("⏳ Looking up " + it.food + "…");
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey.trim(),
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true"
-        },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 500,
-          messages: [{
-            role: "user",
-            content: `Give nutrition for ${it.quantity} ${it.unit} of ${it.food}. Reply with ONLY this JSON object, no markdown, no explanation:\n{"calories":0,"protein":0,"carbs":0,"fat":0,"saturatedFat":0,"polyFat":0,"monoFat":0,"cholesterol":0,"fiber":0,"sugar":0,"sodium":0,"potassium":0,"calcium":0,"iron":0,"vitC":0,"vitD":0,"vitB12":0,"zinc":0}\nReplace every 0 with the correct numeric value for ${it.quantity} ${it.unit} of ${it.food}.`
-          }]
-        })
-      });
-      const data = await res.json();
-      if(data.error){
-        setRecAiMsg("⚠ API: " + data.error.message);
-        setRecLoad(false);
-        return;
-      }
-      const raw = data.content?.map(b=>b.text||"").join("") || "";
-      setRecAiMsg("Raw: " + raw.slice(0,80)); // debug — show raw response
-      const jsonStr = raw.replace(/```json|```/g,"").trim();
-      const p = JSON.parse(jsonStr);
-      const updated = {};
-      ALL_FIELDS.forEach(f => {
-        const v = p[f.key];
-        updated[f.key] = (v !== undefined && v !== null) ? String(Math.round(Number(v)*10)/10) : "0";
-      });
-      setRecItems(prev => prev.map((x,i) => i===idx ? {...x, ...updated} : x));
-      setRecAiMsg("✓ Filled — adjust if needed");
-    } catch(e) {
-      setRecAiMsg("⚠ Error: " + (e.message || "unknown"));
-    }
+    await doAI(it.food,it.quantity,it.unit,r=>setRecItems(p=>p.map((x,i)=>i===idx?{...x,...r}:x)),setRecAiMsg);
     setRecLoad(false);
   }
-
   async function doRecipeParse(){
     if(!recImportTxt.trim())return;
-    if(!apiKey||!apiKey.trim()){setRecImpStatus("⚠ No API key. Add it in the Profile tab.");return;}
     setRecImpLoading(true);setRecImpStatus("Parsing…");setRecParsed([]);
     try{
+      const key=apiKey||HARDCODED_KEY;
       const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
-        headers:{"Content-Type":"application/json","x-api-key":apiKey.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-        body:JSON.stringify({
-          model:"claude-haiku-4-5-20251001",max_tokens:2000,
-          messages:[{role:"user",content:`Extract all food ingredients and nutrition from this text. Return ONLY a JSON array, no markdown. Each item must have exactly these keys: food(string), quantity(number), unit(string default "g"), calories, protein, carbs, fat, saturatedFat, polyFat, monoFat, cholesterol, fiber, sugar, sodium, potassium, calcium, iron, vitC, vitD, vitB12, zinc (all numbers). Estimate any missing values.\nText:\n${recImportTxt}`}]
-        })});
+        headers:{"Content-Type":"application/json","x-api-key":key.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:2000,
+          messages:[{role:"user",content:`Extract ingredients+nutrition from text. Return ONLY JSON array. Each: food,quantity(num),unit(default g),calories,protein,carbs,fat,saturatedFat,polyFat,monoFat,cholesterol,fiber,sugar,sodium,potassium,calcium,iron,vitC,vitD,vitB12,zinc (numbers).\nText:\n${recImportTxt}`}]})});
       const data=await res.json();
-      if(data.error){setRecImpStatus("⚠ API error: "+data.error.message);setRecImpLoading(false);return;}
+      if(data.error){setRecImpStatus("⚠ "+data.error.message);setRecImpLoading(false);return;}
       const txt=data.content?.map(b=>b.text||"").join("")||"";
       const p=JSON.parse(txt.replace(/```json|```/g,"").trim());
       if(!Array.isArray(p)||!p.length)throw 0;
       setRecParsed(p.map((x,i)=>({...x,selected:true,_id:Date.now()+i})));
-      setRecImpStatus(`✓ Found ${p.length} ingredient${p.length>1?"s":""} — review & add`);
-    }catch{setRecImpStatus("⚠ Couldn't parse. Try cleaner text.");}
+      setRecImpStatus(`✓ Found ${p.length} ingredient${p.length>1?"s":""}`);
+    }catch{setRecImpStatus("⚠ Couldn't parse.");}
     setRecImpLoading(false);
   }
-
   function addRecipeParsed(){
     const toAdd=recParsed.filter(i=>i.selected);if(!toAdd.length)return;
-    const newItems=toAdd.map(x=>({
-      _id:Date.now()+Math.random(),
-      food:x.food, quantity:String(x.quantity||""), unit:x.unit||"g",
-      ...Object.fromEntries(ALL_FIELDS.map(f=>[f.key,String(x[f.key]||"0")]))
-    }));
-    setRecItems(p=>[...p,...newItems]);
+    setRecItems(p=>[...p,...toAdd.map(x=>({_id:Date.now()+Math.random(),food:x.food,quantity:String(x.quantity||""),unit:x.unit||"g",...Object.fromEntries(ALL_FIELDS.map(f=>[f.key,String(x[f.key]||"0")]))}))])
     setRecImportTxt("");setRecParsed([]);setRecImpStatus("");setRecImportMode(false);
   }
-  function saveRecipe(){
+  function saveNewRecipe(){
     if(!recName.trim()||!recItems.length)return;
-    const rec={id:editRec?.id||`rb_${Date.now()}`,name:recName.trim(),items:recItems};
-    pRB(editRec?recipeBook.map(r=>r.id===editRec.id?rec:r):[...recipeBook,rec]);
-    setEditRec(null);setRecName("");setRecItems([]);setRecAiMsg("");
+    const rec={id:`rb_${Date.now()}`,name:recName.trim(),items:recItems,mealTags:recTags};
+    pRB([...recipeBook,rec]);
+    setRecName("");setRecItems([]);setRecTags([]);setRecAiMsg("");
     setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setRecImpStatus("");
     setView("main");
   }
-  function startEdit(r){
-    setEditRec(r);setRecName(r.name);setRecItems(r.items.map((x,i)=>({...x,_id:x._id??i})));
-    setRecAiMsg("");setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setRecImpStatus("");
-    setView("recipe-edit");
+  function saveInlineEdit(recId){
+    const d=editRecData[recId];if(!d)return;
+    pRB(recipeBook.map(r=>r.id===recId?{...r,...d}:r));
+    setEditRecId(null);
   }
-  function startUse(r){setUseRec(r);setUseQtys(Object.fromEntries(r.items.map(x=>[x._id??x.food,x.quantity])));setUseMeal("Lunch");setView("recipe-use");}
+  function startUse(r){
+    setUseRec(r);
+    setUseQtys(Object.fromEntries(r.items.map(x=>[x._id??x.food,x.quantity])));
+    // Pre-select tagged meals
+    const firstTag=r.mealTags&&r.mealTags.length>0?r.mealTags[0]:"Lunch";
+    setUseMeal(firstTag);
+    setView("recipe-use");
+  }
   function logRecipe(){
     if(!useRec)return;
     const now=new Date().toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"});
@@ -462,37 +394,30 @@ function App() {
     pE({...entries,[selDate]:[...(entries[selDate]||[]),...newEs]});
     setUseRec(null);setView("main");setTab("diary");
   }
-
-  // ── Profile ────────────────────────────────────────────────────────────
-  function saveProfile(){pP(profEdit);}
-
-  // Quick log recipe from diary add screen
-  const [quickRecipe,    setQuickRecipe]    = useState(null);
-  const [quickQtys,      setQuickQtys]      = useState({});
-
   function startQuickLog(rec){
     setQuickRecipe(rec);
-    setQuickQtys(Object.fromEntries(rec.items.map(x=>[x._id??x.food, x.quantity])));
+    setQuickQtys(Object.fromEntries(rec.items.map(x=>[x._id??x.food,x.quantity])));
+    const firstTag=rec.mealTags&&rec.mealTags.length>0?rec.mealTags[0]:addMeal;
+    setAddMeal(firstTag);
   }
-
   function logQuickRecipe(){
-    if(!quickRecipe) return;
+    if(!quickRecipe)return;
     const now=new Date().toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"});
     const rid=`r_${Date.now()}`;
     const newEs=quickRecipe.items.map(x=>{
-      const k=x._id??x.food, oQ=parseFloat(x.quantity)||1, nQ=parseFloat(quickQtys[k])||oQ, ratio=nQ/oQ;
-      return{id:Date.now()+Math.random(),meal:addMeal,food:x.food,quantity:`${nQ} ${x.unit||"g"}`,
-        time:now,recipeId:rid,recipeName:quickRecipe.name,
+      const k=x._id??x.food,oQ=parseFloat(x.quantity)||1,nQ=parseFloat(quickQtys[k])||oQ,ratio=nQ/oQ;
+      return{id:Date.now()+Math.random(),meal:addMeal,food:x.food,quantity:`${nQ} ${x.unit||"g"}`,time:now,recipeId:rid,recipeName:quickRecipe.name,
         ...Object.fromEntries(ALL_FIELDS.map(f=>[f.key,Math.round((Number(x[f.key])||0)*ratio*10)/10]))};
     });
     pE({...entries,[selDate]:[...(entries[selDate]||[]),...newEs]});
-    setQuickRecipe(null); setView("main");
+    setQuickRecipe(null);setView("main");
   }
+  function saveProfile(){pP({...profEdit});}
   function saveApiKey(){
     const k=apiKeyInput.trim();
     localStorage.setItem(SK.apiKey,k);
-    setApiKey(k);
-    setApiKeyMsg(k?"✓ API key saved! AI features are now enabled.":"API key removed.");
+    setApiKey(k||HARDCODED_KEY);
+    setApiKeyMsg(k?"✓ API key saved!":"Using default key.");
     setTimeout(()=>setApiKeyMsg(""),3000);
   }
   function logWeight(){
@@ -502,57 +427,35 @@ function App() {
     pW(u);
     const np={...profEdit,currentWeight:newWt};pP(np);setNewWt("");
   }
-
   function exportData(){
-    const data={
-      version:1,
-      exportedAt:new Date().toISOString(),
-      entries,profile,weights,recipeBook
-    };
-    const json=JSON.stringify(data,null,2);
-    const blob=new Blob([json],{type:"application/json"});
+    const blob=new Blob([JSON.stringify({version:1,exportedAt:new Date().toISOString(),entries,profile,weights,recipeBook},null,2)],{type:"application/json"});
     const url=URL.createObjectURL(blob);
     const a=document.createElement("a");
-    const date=new Date().toISOString().split("T")[0];
-    a.href=url;
-    a.download=`food-journal-backup-${date}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setBackupMsg("✓ Backup saved to your Downloads folder!");
-    setTimeout(()=>setBackupMsg(""),3000);
+    a.href=url;a.download=`food-journal-backup-${todayStr()}.json`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+    setBackupMsg("✓ Backup saved!");setTimeout(()=>setBackupMsg(""),3000);
   }
-
-  function importData(e){
-    const file=e.target.files[0];
-    if(!file)return;
+  function importDataFile(e){
+    const file=e.target.files[0];if(!file)return;
     const reader=new FileReader();
     reader.onload=ev=>{
       try{
         const data=JSON.parse(ev.target.result);
-        if(!data.version||!data.entries) throw new Error("Invalid file");
-        if(!window.confirm("This will REPLACE all your current data with the backup. Are you sure?")) return;
-        pE(data.entries||{});
-        pP(data.profile||DEFAULT_PROFILE);
-        pW(data.weights||[]);
-        pRB(data.recipeBook||[]);
-        setBackupMsg("✓ Data restored successfully!");
-        setTimeout(()=>setBackupMsg(""),3000);
-      }catch{
-        setBackupMsg("⚠ Invalid backup file. Please use a Food Journal backup.");
-        setTimeout(()=>setBackupMsg(""),3000);
-      }
+        if(!data.version||!data.entries)throw new Error();
+        if(!window.confirm("Replace ALL current data with this backup?"))return;
+        pE(data.entries||{});pP({...DEFAULT_PROFILE,...(data.profile||{})});
+        pW(data.weights||[]);pRB(data.recipeBook||[]);
+        setBackupMsg("✓ Data restored!");setTimeout(()=>setBackupMsg(""),3000);
+      }catch{setBackupMsg("⚠ Invalid backup file.");setTimeout(()=>setBackupMsg(""),3000);}
     };
-    reader.readAsText(file);
-    e.target.value="";
+    reader.readAsText(file);e.target.value="";
   }
 
-  // ── Computed ───────────────────────────────────────────────────────────
+  // Computed
   const dayEs=entries[selDate]||[];
   const dayT=sumE(dayEs);
-  const calOver=dayT.calories>goals.calories;
   const calPct=Math.min((dayT.calories/goals.calories)*100,100);
+  const calOver=dayT.calories>goals.calories;
 
   const mealGroups=MEAL_TYPES.map(m=>{
     const mEs=dayEs.filter(e=>e.meal===m),rm={};
@@ -562,9 +465,21 @@ function App() {
 
   const histDates=Object.keys(entries).sort((a,b)=>b.localeCompare(a));
 
+  // Mon-Sun week strip for current week
+  const weekDays=(()=>{
+    const today=new Date();
+    const dow=today.getDay(); // 0=Sun
+    const monday=new Date(today);
+    monday.setDate(today.getDate()-(dow===0?6:dow-1));
+    return Array.from({length:7},(_,i)=>{
+      const d=new Date(monday);d.setDate(monday.getDate()+i);
+      return d.toISOString().split("T")[0];
+    });
+  })();
+
   const repData=(()=>{
     const ad=Object.keys(entries).sort();
-    if(repPeriod==="daily")return ad.slice(-14).map(d=>({label:fmtShort(d),totals:sumE(entries[d]||[])}));
+    if(repPeriod==="daily")return ad.slice(-14).map(d=>({label:fmtShort(d),date:d,totals:sumE(entries[d]||[])}));
     if(repPeriod==="weekly"){
       const bw={};
       ad.forEach(d=>{const wk=`${new Date(d+"T00:00:00").getFullYear()}-W${String(isoWeek(d)).padStart(2,"0")}`;if(!bw[wk])bw[wk]={label:`W${isoWeek(d)}`,dates:[]};bw[wk].dates.push(d);});
@@ -575,34 +490,56 @@ function App() {
     return Object.entries(bm).slice(-6).map(([,v])=>{const all=v.dates.flatMap(d=>entries[d]||[]),t=sumE(all),n=v.dates.length,avg={};ALL_FIELDS.forEach(f=>avg[f.key]=t[f.key]/n);return{label:v.label,totals:avg};});
   })();
 
-  const pageTitle=view==="recipe-edit"?(editRec?"Edit Recipe":"New Recipe"):view==="recipe-use"?"Use Recipe":view==="add"?"Log Food":view==="history"?"History":tab==="diary"?fmtDate(selDate):tab==="profile"?"My Profile":tab==="recipes"?"Recipe Book":"Reports";
+  // Group recipes by meal tags
+  const recipesByMeal=(()=>{
+    const grouped={};
+    MEAL_TYPES.forEach(m=>grouped[m]=[]);
+    grouped["Untagged"]=[];
+    recipeBook.forEach(r=>{
+      if(!r.mealTags||r.mealTags.length===0){grouped["Untagged"].push(r);}
+      else{r.mealTags.forEach(m=>{if(grouped[m])grouped[m].push(r);});}
+    });
+    return grouped;
+  })();
 
-  // ── RENDER ─────────────────────────────────────────────────────────────
-  return (
+  const pageTitle=view==="recipe-new"?"New Recipe":view==="recipe-use"?"Use Recipe":view==="add"?"Log Food":view==="history"?"History":tab==="diary"?fmtDate(selDate):tab==="profile"?"My Profile":tab==="recipes"?"Recipe Book":"Reports";
+
+  return(
     <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"Georgia,serif",maxWidth:480,margin:"0 auto",paddingBottom:80}}>
+      {nutModal&&<NutModal item={nutModal} onClose={()=>setNutModal(null)}/>}
+      {confirmModal&&<ConfirmModal msg={confirmModal.msg} onConfirm={()=>{confirmModal.onConfirm();setConfirmModal(null);}} onCancel={()=>setConfirmModal(null)}/>}
 
       {/* HEADER */}
-      <div style={{padding:"env(safe-area-inset-top, 18px) 18px 10px",paddingTop:"max(env(safe-area-inset-top), 18px)",borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,background:C.bg,zIndex:10}}>
+      <div style={{padding:"max(env(safe-area-inset-top),18px) 18px 10px",borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,background:C.bg,zIndex:10}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div>
             <div style={{fontSize:9,color:C.accent,letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:1}}>Food Journal</div>
             <div style={{fontSize:20,fontWeight:700,letterSpacing:"-0.02em"}}>{pageTitle}</div>
           </div>
           <div style={{display:"flex",gap:6}}>
-            {view!=="main"&&<button onClick={()=>setView("main")} style={{background:"none",border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:13}}>← Back</button>}
+            {view!=="main"&&<button onClick={()=>{setView("main");setQuickRecipe(null);}} style={{background:"none",border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:13}}>← Back</button>}
             {tab==="diary"&&view==="main"&&<button onClick={()=>setView("history")} style={{background:"none",border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:13}}>📅</button>}
           </div>
         </div>
+        {/* Mon-Sun week strip */}
         {tab==="diary"&&view==="main"&&(
-          <div style={{display:"flex",gap:5,marginTop:10,overflowX:"auto",paddingBottom:2}}>
-            {[-2,-1,0,1].map(offset=>{
-              const d=new Date();d.setDate(d.getDate()+offset);
-              const ds=d.toISOString().split("T")[0];
-              const lbl=offset===0?"Today":offset===-1?"Yest":d.toLocaleDateString("en-US",{weekday:"short"});
+          <div style={{display:"flex",gap:4,marginTop:10,overflowX:"auto",paddingBottom:2}}>
+            {weekDays.map(ds=>{
+              const d=new Date(ds+"T00:00:00");
+              const dayName=d.toLocaleDateString("en-US",{weekday:"short"});
+              const dayNum=d.getDate();
+              const isToday=ds===todayStr();
+              const isSel=ds===selDate;
+              const hasData=(entries[ds]||[]).length>0;
               return(
-                <button key={ds} onClick={()=>setSelDate(ds)} style={{flex:"0 0 auto",padding:"6px 14px",borderRadius:20,fontSize:11,cursor:"pointer",fontFamily:"inherit",border:`1px solid ${selDate===ds?C.accent:C.border}`,background:selDate===ds?C.accent:"none",color:selDate===ds?C.bg:C.muted,fontWeight:selDate===ds?700:400,position:"relative"}}>
-                  {lbl}
-                  {entries[ds]?.length>0&&selDate!==ds&&<span style={{position:"absolute",top:2,right:3,width:5,height:5,borderRadius:"50%",background:C.green}}/>}
+                <button key={ds} onClick={()=>setSelDate(ds)} style={{flex:"0 0 auto",padding:"6px 10px",borderRadius:12,fontSize:10,cursor:"pointer",fontFamily:"inherit",
+                  border:`1px solid ${isSel?C.accent:C.border}`,
+                  background:isSel?C.accent:isToday?"rgba(232,197,71,0.1)":"none",
+                  color:isSel?C.bg:isToday?C.accent:C.muted,
+                  fontWeight:isSel||isToday?700:400,position:"relative",textAlign:"center",minWidth:38}}>
+                  <div>{dayName}</div>
+                  <div style={{fontSize:12,fontWeight:700}}>{dayNum}</div>
+                  {hasData&&!isSel&&<span style={{position:"absolute",top:2,right:3,width:4,height:4,borderRadius:"50%",background:C.green}}/>}
                 </button>
               );
             })}
@@ -613,56 +550,58 @@ function App() {
       {/* ── DIARY MAIN ── */}
       {tab==="diary"&&view==="main"&&(
         <div style={{padding:"14px 18px"}}>
+          {/* Summary card */}
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style={{display:"flex",alignItems:"center",gap:16}}>
-              <div style={{position:"relative",width:70,height:70,flexShrink:0}}>
-                <svg width="70" height="70" style={{transform:"rotate(-90deg)"}}>
-                  <circle cx="35" cy="35" r="28" fill="none" stroke={C.border} strokeWidth="5"/>
-                  <circle cx="35" cy="35" r="28" fill="none" stroke={calOver?C.red:C.accent} strokeWidth="5"
-                    strokeDasharray={`${2*Math.PI*28}`} strokeDashoffset={`${2*Math.PI*28*(1-calPct/100)}`}
+              <div style={{position:"relative",width:76,height:76,flexShrink:0}}>
+                <svg width="76" height="76" style={{transform:"rotate(-90deg)"}}>
+                  <circle cx="38" cy="38" r="30" fill="none" stroke={C.border} strokeWidth="6"/>
+                  <circle cx="38" cy="38" r="30" fill="none" stroke={calOver?C.red:C.accent} strokeWidth="6"
+                    strokeDasharray={`${2*Math.PI*30}`} strokeDashoffset={`${2*Math.PI*30*(1-calPct/100)}`}
                     strokeLinecap="round" style={{transition:"stroke-dashoffset 0.6s ease"}}/>
                 </svg>
                 <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-                  <span style={{fontSize:13,fontWeight:700,color:calOver?C.red:C.text,fontFamily:"monospace",lineHeight:1}}>{Math.round(dayT.calories)}</span>
+                  <span style={{fontSize:12,fontWeight:700,color:calOver?C.red:C.text,fontFamily:"monospace",lineHeight:1}}>{Math.round(dayT.calories)}</span>
                   <span style={{fontSize:9,color:C.muted}}>kcal</span>
+                  <span style={{fontSize:11,fontWeight:700,color:calOver?C.red:C.accent,fontFamily:"monospace"}}>{Math.round(calPct)}%</span>
                 </div>
               </div>
               <div style={{flex:1}}>
-                <div style={{fontSize:12,color:C.muted,marginBottom:8}}>{calOver?<span style={{color:C.red}}>+{Math.round(dayT.calories-goals.calories)} over goal</span>:<span>{Math.round(goals.calories-dayT.calories)} kcal remaining</span>}</div>
-                <MacroBar label="Protein" value={dayT.protein} goal={goals.protein} color={C.blue}/>
-                <MacroBar label="Carbs" value={dayT.carbs} goal={goals.carbs} color={C.orange}/>
-                <MacroBar label="Fat" value={dayT.fat} goal={goals.fat} color={C.accentDim}/>
+                <div style={{fontSize:11,color:C.muted,marginBottom:8}}>{calOver?<span style={{color:C.red}}>+{Math.round(dayT.calories-goals.calories)} over goal</span>:<span>{Math.round(goals.calories-dayT.calories)} kcal remaining</span>}</div>
+                <MacroBar label="Protein" value={dayT.protein} goal={goals.protein} color={C.blue} showPct/>
+                <MacroBar label="Carbs" value={dayT.carbs} goal={goals.carbs} color={C.orange} showPct/>
+                <MacroBar label="Fat" value={dayT.fat} goal={goals.fat} color={C.accentDim} showPct/>
+                <MacroBar label="Fiber" value={dayT.fiber} goal={goals.fiber} color={C.green} showPct/>
               </div>
             </div>
             <div style={{display:"flex",gap:5,marginTop:12}}>
-              {[{label:"Protein",value:dayT.protein,unit:"g",color:C.blue},{label:"Carbs",value:dayT.carbs,unit:"g",color:C.orange},{label:"Fat",value:dayT.fat,unit:"g",color:C.accentDim},{label:"Fiber",value:dayT.fiber,unit:"g",color:C.green}].map(b=><Badge key={b.label} {...b}/>)}
+              {[{label:"Protein",value:dayT.protein,goal:goals.protein,unit:"g",color:C.blue},{label:"Carbs",value:dayT.carbs,goal:goals.carbs,unit:"g",color:C.orange},{label:"Fat",value:dayT.fat,goal:goals.fat,unit:"g",color:C.accentDim},{label:"Fiber",value:dayT.fiber,goal:goals.fiber,unit:"g",color:C.green}].map(b=><Badge key={b.label} {...b}/>)}
             </div>
           </div>
+
           {mealGroups.length===0?(
-            <div style={{textAlign:"center",padding:"40px 20px",color:C.muted,fontSize:15,lineHeight:1.8}}><div style={{fontSize:40,marginBottom:12}}>🍽️</div>No meals logged yet.<br/>Tap + to add food.</div>
+            <div style={{textAlign:"center",padding:"40px 20px",color:C.muted,fontSize:15,lineHeight:1.8}}><div style={{fontSize:40,marginBottom:12}}>🍽️</div>No meals logged.<br/>Tap + to add food.</div>
           ):mealGroups.map(({meal,recipes})=>{
-            const mCal=recipes.reduce((s,r)=>s+r.items.reduce((ss,e)=>ss+e.calories,0),0);
-            const mProt=recipes.reduce((s,r)=>s+r.items.reduce((ss,e)=>ss+(Number(e.protein)||0),0),0);
-            const mCarb=recipes.reduce((s,r)=>s+r.items.reduce((ss,e)=>ss+(Number(e.carbs)||0),0),0);
-            const mFat=recipes.reduce((s,r)=>s+r.items.reduce((ss,e)=>ss+(Number(e.fat)||0),0),0);
+            const mT=sumE(recipes.flatMap(r=>r.items));
             return(
               <div key={meal} style={{marginBottom:18}}>
                 <div style={{marginBottom:8}}>
                   <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3,fontSize:11,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase"}}>
                     <span>{MEAL_ICONS[meal]}</span><span>{meal}</span><span style={{color:C.border}}>—</span>
-                    <span style={{fontFamily:"monospace",color:C.accent}}>{Math.round(mCal)} kcal</span>
+                    <span style={{fontFamily:"monospace",color:C.accent}}>{Math.round(mT.calories)} kcal</span>
                   </div>
                   <div style={{display:"flex",gap:10,paddingLeft:4}}>
-                    <span style={{fontSize:10,color:C.blue,fontFamily:"monospace"}}>P:{Math.round(mProt)}g</span>
-                    <span style={{fontSize:10,color:C.orange,fontFamily:"monospace"}}>C:{Math.round(mCarb)}g</span>
-                    <span style={{fontSize:10,color:C.accentDim,fontFamily:"monospace"}}>F:{Math.round(mFat)}g</span>
+                    <span style={{fontSize:10,color:C.blue,fontFamily:"monospace"}}>P:{Math.round(mT.protein)}g</span>
+                    <span style={{fontSize:10,color:C.orange,fontFamily:"monospace"}}>C:{Math.round(mT.carbs)}g</span>
+                    <span style={{fontSize:10,color:C.accentDim,fontFamily:"monospace"}}>F:{Math.round(mT.fat)}g</span>
+                    <span style={{fontSize:10,color:C.green,fontFamily:"monospace"}}>Fi:{Math.round(mT.fiber)}g</span>
                   </div>
                 </div>
                 {recipes.map(recipe=>{
                   const rt=sumE(recipe.items),isExp=!!expR[recipe.recipeId],isMulti=recipe.items.length>1;
                   return(
                     <div key={recipe.recipeId} style={{background:C.card,border:`1px solid ${isExp?C.accent+"55":C.border}`,borderRadius:14,marginBottom:9,overflow:"hidden"}}>
-                      <div onClick={()=>isMulti&&togExp(recipe.recipeId)} style={{padding:"13px 14px",display:"flex",alignItems:"center",gap:10,cursor:isMulti?"pointer":"default"}}>
+                      <div onClick={()=>isMulti?togExp(recipe.recipeId):setNutModal(recipe.items[0])} style={{padding:"13px 14px",display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
                         {isMulti&&<div style={{width:18,height:18,borderRadius:5,flexShrink:0,background:isExp?C.accent+"22":C.border+"55",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:isExp?C.accent:C.muted,transform:isExp?"rotate(90deg)":"none",transition:"transform 0.2s"}}>▶</div>}
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{fontSize:14,fontWeight:600,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{recipe.recipeName}</div>
@@ -674,18 +613,18 @@ function App() {
                             <span style={{fontSize:11,color:C.muted}}>F:{Math.round(rt.fat)}g</span>
                           </div>
                         </div>
-                        <button onClick={e=>{e.stopPropagation();delGroup(selDate,recipe.recipeId);}} style={{background:"none",border:"none",color:C.border,cursor:"pointer",fontSize:18,padding:4,flexShrink:0,lineHeight:1}}>✕</button>
+                        <button onClick={e=>{e.stopPropagation();setConfirmModal({msg:`Delete "${recipe.recipeName}" from diary?`,onConfirm:()=>delGroup(selDate,recipe.recipeId)});}} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:18,padding:4,flexShrink:0,lineHeight:1}}>✕</button>
                       </div>
                       {isMulti&&isExp&&(
                         <div style={{borderTop:`1px solid ${C.border}`,background:C.bg}}>
                           {recipe.items.map((entry,idx)=>(
-                            <div key={entry.id} style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:10,borderBottom:idx<recipe.items.length-1?`1px solid ${C.border}`:"none"}}>
+                            <div key={entry.id} onClick={()=>setNutModal(entry)} style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:10,borderBottom:idx<recipe.items.length-1?`1px solid ${C.border}`:"none",cursor:"pointer"}}>
                               <div style={{width:6,height:6,borderRadius:"50%",background:C.accent+"88",flexShrink:0}}/>
                               <div style={{flex:1}}>
                                 <div style={{fontSize:13,fontWeight:500}}>{entry.food}</div>
                                 <div style={{fontSize:11,color:C.muted,marginTop:2}}>{entry.quantity} · <span style={{fontFamily:"monospace"}}>{entry.calories} kcal</span> · P:{entry.protein}g C:{entry.carbs}g F:{entry.fat}g</div>
                               </div>
-                              <button onClick={()=>delEntry(selDate,entry.id)} style={{background:"none",border:"none",color:C.border,cursor:"pointer",fontSize:15,padding:3}}>✕</button>
+                              <button onClick={e=>{e.stopPropagation();setConfirmModal({msg:`Delete "${entry.food}"?`,onConfirm:()=>delEntry(selDate,entry.id)});}} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:15,padding:3}}>✕</button>
                             </div>
                           ))}
                         </div>
@@ -702,17 +641,11 @@ function App() {
       {/* ── ADD FOOD ── */}
       {tab==="diary"&&view==="add"&&(
         <div style={{padding:"16px 18px"}}>
-          {/* 3-tab mode toggle */}
           <div style={{display:"flex",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:3,marginBottom:16,gap:2}}>
             {[{label:"📚 Recipe",v:"recipe"},{label:"✏️ Manual",v:"manual"},{label:"📋 Claude",v:"paste"}].map(({label,v})=>(
-              <button key={v} onClick={()=>{setLogMode(v);setAiMsg("");setImpStatus("");setQuickRecipe(null);}}
-                style={{flex:1,padding:"9px 4px",borderRadius:7,border:"none",cursor:"pointer",
-                  background:logMode===v?C.accent:"none",color:logMode===v?C.bg:C.muted,
-                  fontSize:11,fontFamily:"inherit",fontWeight:logMode===v?700:400,whiteSpace:"nowrap"}}>{label}</button>
+              <button key={v} onClick={()=>{setLogMode(v);setAiMsg("");setImpStatus("");setQuickRecipe(null);}} style={{flex:1,padding:"9px 4px",borderRadius:7,border:"none",cursor:"pointer",background:logMode===v?C.accent:"none",color:logMode===v?C.bg:C.muted,fontSize:11,fontFamily:"inherit",fontWeight:logMode===v?700:400,whiteSpace:"nowrap"}}>{label}</button>
             ))}
           </div>
-
-          {/* Meal selector — shown on all tabs */}
           <div style={{marginBottom:14}}>
             <Lbl>Meal</Lbl>
             <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
@@ -720,33 +653,25 @@ function App() {
             </div>
           </div>
 
-          {/* ── FROM RECIPE TAB ── */}
+          {/* FROM RECIPE */}
           {logMode==="recipe"&&(
             <div>
               {recipeBook.length===0?(
-                <div style={{textAlign:"center",padding:"40px 20px",color:C.muted,lineHeight:1.8}}>
-                  <div style={{fontSize:36,marginBottom:10}}>📚</div>
-                  No saved recipes yet.<br/>
-                  <span style={{color:C.accent,cursor:"pointer"}} onClick={()=>{setTab("recipes");setView("main");}}>Go to Recipes tab to create one</span>
-                </div>
+                <div style={{textAlign:"center",padding:"40px",color:C.muted,lineHeight:1.8}}><div style={{fontSize:36,marginBottom:10}}>📚</div>No saved recipes.<br/><span style={{color:C.accent,cursor:"pointer"}} onClick={()=>{setTab("recipes");setView("main");}}>Create one in Recipes tab</span></div>
               ):!quickRecipe?(
-                // Recipe list
                 <div>
                   <Lbl>Select a Recipe</Lbl>
                   {recipeBook.map(rec=>{
                     const rt=sumE(rec.items);
                     return(
-                      <div key={rec.id} onClick={()=>startQuickLog(rec)}
-                        style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:10,cursor:"pointer",
-                          display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                        <div style={{flex:1,minWidth:0}}>
+                      <div key={rec.id} onClick={()=>startQuickLog(rec)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                        <div style={{flex:1}}>
                           <div style={{fontSize:14,fontWeight:600,marginBottom:3}}>{rec.name}</div>
-                          <div style={{fontSize:11,color:C.muted,marginBottom:4}}>{rec.items.length} ingredients</div>
-                          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                          {rec.mealTags&&rec.mealTags.length>0&&<div style={{fontSize:10,color:C.accent,marginBottom:4}}>{rec.mealTags.map(t=>MEAL_ICONS[t]).join(" ")} {rec.mealTags.join(", ")}</div>}
+                          <div style={{display:"flex",gap:8}}>
                             <span style={{fontSize:12,color:C.accent,fontFamily:"monospace",fontWeight:700}}>{Math.round(rt.calories)} kcal</span>
                             <span style={{fontSize:11,color:C.blue,fontFamily:"monospace"}}>P:{Math.round(rt.protein)}g</span>
                             <span style={{fontSize:11,color:C.orange,fontFamily:"monospace"}}>C:{Math.round(rt.carbs)}g</span>
-                            <span style={{fontSize:11,color:C.accentDim,fontFamily:"monospace"}}>F:{Math.round(rt.fat)}g</span>
                           </div>
                         </div>
                         <span style={{fontSize:22,color:C.accent,marginLeft:10}}>›</span>
@@ -755,52 +680,26 @@ function App() {
                   })}
                 </div>
               ):(
-                // Quick log with qty adjust
                 <div>
                   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
                     <button onClick={()=>setQuickRecipe(null)} style={{background:"none",border:`1px solid ${C.border}`,color:C.muted,borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>← Back</button>
-                    <div style={{fontSize:14,fontWeight:700,color:C.text}}>{quickRecipe.name}</div>
+                    <div style={{fontSize:14,fontWeight:700}}>{quickRecipe.name}</div>
                   </div>
                   <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:15,marginBottom:14}}>
                     <div style={{fontSize:11,color:C.muted,marginBottom:12}}>Adjust quantities — nutrition scales automatically</div>
                     {quickRecipe.items.map(item=>{
-                      const k=item._id??item.food, oQ=parseFloat(item.quantity)||1, nQ=parseFloat(quickQtys[k])||oQ, ratio=nQ/oQ;
+                      const k=item._id??item.food,oQ=parseFloat(item.quantity)||1,nQ=parseFloat(quickQtys[k])||oQ,ratio=nQ/oQ;
                       return(
                         <div key={k} style={{borderBottom:`1px solid ${C.border}`,paddingBottom:10,marginBottom:10}}>
                           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
                             <div style={{flex:1,fontSize:13,fontWeight:500}}>{item.food}</div>
-                            <input value={quickQtys[k]||""} onChange={e=>setQuickQtys(p=>({...p,[k]:e.target.value}))}
-                              type="number" style={{...IS,width:70,flex:"none",fontFamily:"monospace",padding:"6px 8px"}}/>
-                            <span style={{fontSize:11,color:C.muted,flexShrink:0}}>{item.unit||"g"}</span>
+                            <input value={quickQtys[k]||""} onChange={e=>setQuickQtys(p=>({...p,[k]:e.target.value}))} type="number" style={{...IS,width:70,flex:"none",padding:"6px 8px"}}/>
+                            <span style={{fontSize:11,color:C.muted}}>{item.unit||"g"}</span>
                           </div>
-                          <div style={{fontSize:11,color:C.muted}}>
-                            <span style={{color:C.accent,fontFamily:"monospace"}}>{Math.round((Number(item.calories)||0)*ratio)}</span> kcal ·
-                            P:{Math.round((Number(item.protein)||0)*ratio)}g ·
-                            C:{Math.round((Number(item.carbs)||0)*ratio)}g ·
-                            F:{Math.round((Number(item.fat)||0)*ratio)}g
-                          </div>
+                          <div style={{fontSize:11,color:C.muted}}><span style={{color:C.accent,fontFamily:"monospace"}}>{Math.round((Number(item.calories)||0)*ratio)}</span> kcal · P:{Math.round((Number(item.protein)||0)*ratio)}g · C:{Math.round((Number(item.carbs)||0)*ratio)}g</div>
                         </div>
                       );
                     })}
-                    {/* Recipe total */}
-                    {(()=>{
-                      const tot={cal:0,p:0,c:0,f:0};
-                      quickRecipe.items.forEach(item=>{
-                        const k=item._id??item.food,oQ=parseFloat(item.quantity)||1,nQ=parseFloat(quickQtys[k])||oQ,ratio=nQ/oQ;
-                        tot.cal+=Math.round((Number(item.calories)||0)*ratio);
-                        tot.p+=Math.round((Number(item.protein)||0)*ratio);
-                        tot.c+=Math.round((Number(item.carbs)||0)*ratio);
-                        tot.f+=Math.round((Number(item.fat)||0)*ratio);
-                      });
-                      return(
-                        <div style={{paddingTop:8,display:"flex",gap:10,flexWrap:"wrap"}}>
-                          <span style={{fontSize:13,color:C.accent,fontFamily:"monospace",fontWeight:700}}>Total: {tot.cal} kcal</span>
-                          <span style={{fontSize:12,color:C.blue,fontFamily:"monospace"}}>P:{tot.p}g</span>
-                          <span style={{fontSize:12,color:C.orange,fontFamily:"monospace"}}>C:{tot.c}g</span>
-                          <span style={{fontSize:12,color:C.accentDim,fontFamily:"monospace"}}>F:{tot.f}g</span>
-                        </div>
-                      );
-                    })()}
                   </div>
                   <Btn onClick={logQuickRecipe} color={C.green}>Log {quickRecipe.name} to {addMeal}</Btn>
                 </div>
@@ -808,7 +707,7 @@ function App() {
             </div>
           )}
 
-          {/* ── MANUAL / AI TAB ── */}
+          {/* MANUAL */}
           {logMode==="manual"&&(
             <div>
               <div style={{marginBottom:10}}><Lbl>Food Name</Lbl><input value={foodName} onChange={e=>{setFoodName(e.target.value);setAiMsg("");}} placeholder="e.g. Grilled chicken…" style={IS}/></div>
@@ -816,36 +715,14 @@ function App() {
                 <div style={{flex:2}}><Lbl>Amount</Lbl><input value={qty} onChange={e=>setQty(e.target.value)} type="number" placeholder="150" style={IS}/></div>
                 <div style={{flex:1}}><Lbl>Unit</Lbl><select value={unit} onChange={e=>setUnit(e.target.value)} style={IS}>{["g","ml","oz","cup","tbsp","tsp","piece","serving"].map(u=><option key={u}>{u}</option>)}</select></div>
               </div>
-              <Btn onClick={async ()=>{
-                if(!apiKey||!apiKey.trim()){setAiMsg("⚠ No API key. Add it in Profile tab.");return;}
-                if(!foodName.trim()||!qty){setAiMsg("⚠ Enter food name and amount first.");return;}
-                setLoading(true); setAiMsg("⏳ Looking up "+foodName+"…");
-                try{
-                  const res=await fetch("https://api.anthropic.com/v1/messages",{
-                    method:"POST",
-                    headers:{"Content-Type":"application/json","x-api-key":apiKey.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-                    body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:500,
-                      messages:[{role:"user",content:`Give nutrition for ${qty} ${unit} of ${foodName}. Reply with ONLY this JSON object, no markdown, no explanation:\n{"calories":0,"protein":0,"carbs":0,"fat":0,"saturatedFat":0,"polyFat":0,"monoFat":0,"cholesterol":0,"fiber":0,"sugar":0,"sodium":0,"potassium":0,"calcium":0,"iron":0,"vitC":0,"vitD":0,"vitB12":0,"zinc":0}\nReplace every 0 with the correct numeric value for ${qty} ${unit} of ${foodName}.`}]
-                    })
-                  });
-                  const data=await res.json();
-                  if(data.error){setAiMsg("⚠ API: "+data.error.message);setLoading(false);return;}
-                  const raw=data.content?.map(b=>b.text||"").join("")||"";
-                  const p=JSON.parse(raw.replace(/```json|```/g,"").trim());
-                  const r={};
-                  ALL_FIELDS.forEach(f=>{const v=p[f.key];r[f.key]=(v!==undefined&&v!==null)?String(Math.round(Number(v)*10)/10):"0";});
-                  setNut(r);
-                  setAiMsg("✓ Filled — adjust if needed");
-                }catch(e){setAiMsg("⚠ Error: "+(e.message||"unknown"));}
-                setLoading(false);
-              }} disabled={loading||!foodName.trim()||!qty} color={`linear-gradient(135deg,${C.accent},${C.accentDim})`} style={{marginBottom:8}}>{loading?"⏳ Looking up…":"✨ Auto-fill Nutrition with AI"}</Btn>
-              {aiMsg&&<div style={{fontSize:12,color:aiMsg.startsWith("✓")?C.green:C.muted,marginBottom:10,textAlign:"center"}}>{aiMsg}</div>}
+              <Btn onClick={async()=>{setLoading(true);await doAI(foodName,qty,unit,n=>{setNut(n);},s=>{setAiMsg(s);setLoading(false);});}} disabled={loading||!foodName.trim()||!qty} color={`linear-gradient(135deg,${C.accent},${C.accentDim})`} style={{marginBottom:8}}>{loading?"⏳ Looking up…":"✨ Auto-fill Nutrition with AI"}</Btn>
+              {aiMsg&&<div style={{fontSize:11,color:aiMsg.startsWith("✓")?C.green:C.muted,marginBottom:10,textAlign:"center"}}>{aiMsg}</div>}
               <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:14,marginBottom:14}}>
-                <div style={{fontSize:11,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10}}>Macronutrients</div>
+                <div style={{fontSize:10,color:C.accent,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10}}>Macronutrients</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
                   {MACRO_FIELDS.map(({key,label,unit:u})=>(<div key={key}><div style={{fontSize:9,color:C.muted,marginBottom:3}}>{label} ({u})</div><input value={nut[key]} onChange={e=>setNut(p=>({...p,[key]:e.target.value}))} type="number" placeholder="0" style={{...IS,fontFamily:"monospace",padding:"8px 10px",fontSize:13}}/></div>))}
                 </div>
-                <div style={{fontSize:11,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10}}>Micronutrients</div>
+                <div style={{fontSize:10,color:C.purple,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10}}>Micronutrients</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                   {MICRO_FIELDS.map(({key,label,unit:u})=>(<div key={key}><div style={{fontSize:9,color:C.muted,marginBottom:3}}>{label} ({u})</div><input value={nut[key]} onChange={e=>setNut(p=>({...p,[key]:e.target.value}))} type="number" placeholder="0" style={{...IS,fontFamily:"monospace",padding:"8px 10px",fontSize:13}}/></div>))}
                 </div>
@@ -853,23 +730,25 @@ function App() {
               <Btn onClick={addEntry} disabled={!foodName.trim()||!nut.calories}>Add to {addMeal}</Btn>
             </div>
           )}
+
+          {/* PASTE FROM CLAUDE */}
           {logMode==="paste"&&(
             <div>
               <div style={{marginBottom:10}}><Lbl>Recipe / Meal Name</Lbl><input value={impName} onChange={e=>setImpName(e.target.value)} placeholder="e.g. Lunch Bowl…" style={IS}/></div>
               <div style={{marginBottom:12}}>
                 <Lbl>Paste Claude's Nutrition Text</Lbl>
-                <div style={{fontSize:11,color:C.muted,background:C.bg,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 12px",marginBottom:8,lineHeight:1.6}}>💡 In Claude chat → ask for nutrition → copy the reply → paste below</div>
-                <textarea value={importTxt} onChange={e=>{setImportTxt(e.target.value);setImpStatus("");setParsed([]);}} placeholder={"Paste Claude's response here…\n\n150g chicken: 248 kcal, 46g protein…"} rows={6} style={{...IS,resize:"vertical",lineHeight:1.7}}/>
+                <div style={{fontSize:11,color:C.muted,background:C.bg,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 12px",marginBottom:8,lineHeight:1.6}}>💡 Ask Claude for nutrition → copy reply → paste below</div>
+                <textarea value={importTxt} onChange={e=>{setImportTxt(e.target.value);setImpStatus("");setParsed([]);}} rows={5} placeholder={"Paste Claude's response here…"} style={{...IS,resize:"vertical",lineHeight:1.7}}/>
               </div>
               <Btn onClick={doParse} disabled={impLoading||!importTxt.trim()} color={`linear-gradient(135deg,${C.accent},${C.accentDim})`} style={{marginBottom:8}}>{impLoading?"⏳ Parsing…":"🔍 Parse Nutrition Data"}</Btn>
-              {impStatus&&<div style={{fontSize:12,marginBottom:10,textAlign:"center",color:impStatus.startsWith("✓")?C.green:impStatus.startsWith("⚠")?C.red:C.muted}}>{impStatus}</div>}
+              {impStatus&&<div style={{fontSize:11,marginBottom:10,textAlign:"center",color:impStatus.startsWith("✓")?C.green:impStatus.startsWith("⚠")?C.red:C.muted}}>{impStatus}</div>}
               {parsed.length>0&&(
                 <div>
                   <Lbl>Select items to add</Lbl>
                   {parsed.map((item,idx)=>(
                     <div key={item._id} onClick={()=>setParsed(p=>p.map((x,i)=>i===idx?{...x,selected:!x.selected}:x))} style={{background:item.selected?C.card:C.bg,border:`1px solid ${item.selected?C.accent:C.border}`,borderRadius:10,padding:"10px 13px",marginBottom:8,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
                       <div style={{width:18,height:18,borderRadius:5,flexShrink:0,border:`2px solid ${item.selected?C.accent:C.border}`,background:item.selected?C.accent:"none",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:C.bg,fontWeight:700}}>{item.selected?"✓":""}</div>
-                      <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600}}>{item.food}</div><div style={{fontSize:11,color:C.muted,marginTop:2}}>{item.quantity}{item.unit||"g"} · {item.calories} kcal · P:{item.protein}g C:{item.carbs}g F:{item.fat}g</div></div>
+                      <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600}}>{item.food}</div><div style={{fontSize:11,color:C.muted,marginTop:2}}>{item.quantity}{item.unit||"g"} · {item.calories} kcal</div></div>
                     </div>
                   ))}
                   <Btn onClick={addParsed} disabled={!parsed.some(i=>i.selected)} style={{marginTop:4}}>Add {parsed.filter(i=>i.selected).length} Items to {addMeal}</Btn>
@@ -880,72 +759,40 @@ function App() {
         </div>
       )}
 
-      {/* ── HISTORY ── */}
+      {/* HISTORY */}
       {tab==="diary"&&view==="history"&&(
         <div style={{padding:"14px 18px"}}>
           {histDates.length===0?<div style={{textAlign:"center",padding:"40px",color:C.muted}}>No history yet.</div>
           :histDates.map(date=>{
             const dd=entries[date]||[],cal=dd.reduce((s,e)=>s+e.calories,0),prot=dd.reduce((s,e)=>s+e.protein,0);
             return(
-              <button key={date} onClick={()=>{setSelDate(date);setView("main");}} style={{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"14px 16px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div><div style={{fontSize:14,fontWeight:600}}>{fmtDate(date)}</div><div style={{fontSize:11,color:C.muted,marginTop:3}}>{dd.length} items · {Math.round(prot)}g protein</div></div>
-                <div style={{textAlign:"right"}}><div style={{fontSize:16,fontWeight:700,fontFamily:"monospace",color:cal>goals.calories?C.red:C.accent}}>{Math.round(cal)}</div><div style={{fontSize:10,color:C.muted}}>kcal</div></div>
+              <button key={date} onClick={()=>{setSelDate(date);setView("main");}} style={{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div><div style={{fontSize:13,fontWeight:600}}>{fmtDate(date)}</div><div style={{fontSize:11,color:C.muted,marginTop:2}}>{dd.length} items · P:{Math.round(prot)}g</div></div>
+                <div style={{textAlign:"right"}}><div style={{fontSize:15,fontWeight:700,fontFamily:"monospace",color:cal>goals.calories?C.red:C.accent}}>{Math.round(cal)}</div><div style={{fontSize:9,color:C.muted}}>kcal</div></div>
               </button>
             );
           })}
         </div>
       )}
 
-      {/* ── PROFILE ── */}
+      {/* PROFILE */}
       {tab==="profile"&&view==="main"&&(
         <div style={{padding:"16px 18px"}}>
-
-          {/* API KEY CARD */}
-          <div style={{background: apiKey ? "rgba(82,196,122,0.07)" : "rgba(232,197,71,0.08)", border:`1px solid ${apiKey?C.green:C.accent}`,borderRadius:16,padding:18,marginBottom:14}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-              <span style={{fontSize:22}}>{apiKey?"🔑":"⚠️"}</span>
-              <div>
-                <div style={{fontSize:14,fontWeight:700,color:apiKey?C.green:C.accent}}>
-                  {apiKey?"AI Features Active":"API Key Required for AI"}
-                </div>
-                <div style={{fontSize:11,color:C.muted,marginTop:1}}>
-                  {apiKey?"AI nutrition lookup is working":"Add your key to enable AI auto-fill"}
-                </div>
-              </div>
-            </div>
-            <div style={{fontSize:11,color:C.muted,marginBottom:10,lineHeight:1.6}}>
-              Get a free API key at <span style={{color:C.accent}}>console.anthropic.com</span> → API Keys → Create Key. Your key is stored only on this device.
-            </div>
-            <div style={{display:"flex",gap:8,marginBottom:8}}>
-              <input
-                value={apiKeyInput}
-                onChange={e=>setApiKeyInput(e.target.value)}
-                type="password"
-                placeholder="sk-ant-api03-..."
-                style={{...IS,flex:1,fontFamily:"monospace",fontSize:12,letterSpacing:"0.05em"}}
-              />
-              <button onClick={saveApiKey} style={{padding:"10px 16px",background:C.accent,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Save</button>
-            </div>
-            {apiKeyMsg&&<div style={{fontSize:12,color:apiKeyMsg.startsWith("✓")?C.green:C.muted,marginTop:4}}>{apiKeyMsg}</div>}
-          </div>
-
-          {/* WEIGHT CARD */}
+          {/* Weight card */}
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
-              <div><div style={{fontSize:10,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:2}}>Current Weight</div><div style={{fontSize:30,fontWeight:700,fontFamily:"monospace"}}>{profile.currentWeight||"—"}<span style={{fontSize:14,color:C.muted}}> kg</span></div></div>
-              <div style={{textAlign:"right"}}><div style={{fontSize:10,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:2}}>Target</div><div style={{fontSize:24,fontWeight:700,fontFamily:"monospace",color:C.green}}>{profile.targetWeight||"—"}<span style={{fontSize:12,color:C.muted}}> kg</span></div></div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:weights.length>0?14:8}}>
+              <div><div style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:2}}>Current Weight</div><div style={{fontSize:28,fontWeight:700,fontFamily:"monospace"}}>{profile.currentWeight||"—"}<span style={{fontSize:13,color:C.muted}}> kg</span></div></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:2}}>Target</div><div style={{fontSize:22,fontWeight:700,fontFamily:"monospace",color:C.green}}>{profile.targetWeight||"—"}<span style={{fontSize:11,color:C.muted}}> kg</span></div></div>
             </div>
-            {profile.currentWeight&&profile.targetWeight&&(
-              <div style={{fontSize:12,marginBottom:12}}>
-                {parseFloat(profile.currentWeight)>parseFloat(profile.targetWeight)?<span style={{color:C.orange}}>📉 {(parseFloat(profile.currentWeight)-parseFloat(profile.targetWeight)).toFixed(1)} kg to goal</span>:<span style={{color:C.green}}>🎉 Target reached!</span>}
-              </div>
-            )}
-            <WeightChart weights={weights} target={parseFloat(profile.targetWeight)||null}/>
+            {profile.currentWeight&&profile.targetWeight&&<div style={{fontSize:11,marginBottom:10}}>{parseFloat(profile.currentWeight)>parseFloat(profile.targetWeight)?<span style={{color:C.orange}}>📉 {(parseFloat(profile.currentWeight)-parseFloat(profile.targetWeight)).toFixed(1)} kg to goal</span>:<span style={{color:C.green}}>🎉 Target reached!</span>}</div>}
+            {weights.length>0&&<WeightChart weights={weights} target={parseFloat(profile.targetWeight)||null}/>}
+            {weights.length===0&&<div style={{textAlign:"center",padding:"12px 0",color:C.muted,fontSize:12}}>Log your weight below to see the graph</div>}
             <div style={{display:"flex",gap:8,marginTop:14}}>
               <input value={newWt} onChange={e=>setNewWt(e.target.value)} type="number" placeholder="Log today's weight (kg)" style={{...IS,flex:1}}/>
-              <button onClick={logWeight} disabled={!newWt} style={{padding:"11px 16px",background:newWt?C.accent:C.border,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:newWt?"pointer":"not-allowed",fontFamily:"inherit",flexShrink:0}}>Log</button>
+              <button onClick={logWeight} disabled={!newWt} style={{padding:"10px 14px",background:newWt?C.accent:C.border,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:newWt?"pointer":"not-allowed",fontFamily:"inherit"}}>Log</button>
             </div>
           </div>
+          {/* Personal Info */}
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>Personal Info</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
@@ -954,219 +801,186 @@ function App() {
               ))}
             </div>
           </div>
+          {/* Nutrition Goals */}
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style={{fontSize:14,fontWeight:700,marginBottom:4}}>Daily Nutrition Goals</div>
-            <div style={{fontSize:11,color:C.muted,marginBottom:14}}>Set your daily targets — used in reports to show achievement %</div>
-
+            <div style={{fontSize:11,color:C.muted,marginBottom:14}}>Used in reports to show % achievement</div>
             <div style={{fontSize:11,color:C.accent,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>Energy & Macros</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
-              {[
-                {label:"Calories (kcal)",key:"calorieGoal",ph:"1800"},
-                {label:"Protein (g)",    key:"protein",    ph:"130"},
-                {label:"Carbs (g)",      key:"carbs",      ph:"180"},
-                {label:"Fat (g)",        key:"fat",        ph:"55"},
-                {label:"Fiber (g)",      key:"fiber",      ph:"25"},
-                {label:"Sugar (g)",      key:"sugar",      ph:"50"},
-              ].map(({label,key,ph})=>(
+              {[{label:"Calories (kcal)",key:"calorieGoal",ph:"1800"},{label:"Protein (g)",key:"protein",ph:"130"},{label:"Carbs (g)",key:"carbs",ph:"180"},{label:"Fat (g)",key:"fat",ph:"55"},{label:"Fiber (g)",key:"fiber",ph:"25"},{label:"Sugar (g)",key:"sugar",ph:"50"}].map(({label,key,ph})=>(
                 <div key={key}><Lbl>{label}</Lbl><input value={profEdit[key]||""} onChange={e=>setProfEdit(p=>({...p,[key]:e.target.value}))} type="number" placeholder={ph} style={IS}/></div>
               ))}
             </div>
-
             <div style={{fontSize:11,color:C.accentDim,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>Fats Detail</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
-              {[
-                {label:"Saturated Fat (g)",    key:"saturatedFat", ph:"20"},
-                {label:"Polyunsat. Fat (g)",   key:"polyFat",      ph:"10"},
-                {label:"Monounsat. Fat (g)",   key:"monoFat",      ph:"15"},
-                {label:"Cholesterol (mg)",     key:"cholesterol",  ph:"300"},
-              ].map(({label,key,ph})=>(
+              {[{label:"Saturated Fat (g)",key:"saturatedFat",ph:"20"},{label:"Polyunsat. Fat (g)",key:"polyFat",ph:"10"},{label:"Monounsat. Fat (g)",key:"monoFat",ph:"15"},{label:"Cholesterol (mg)",key:"cholesterol",ph:"300"}].map(({label,key,ph})=>(
                 <div key={key}><Lbl>{label}</Lbl><input value={profEdit[key]||""} onChange={e=>setProfEdit(p=>({...p,[key]:e.target.value}))} type="number" placeholder={ph} style={IS}/></div>
               ))}
             </div>
-
             <div style={{fontSize:11,color:C.purple,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>Minerals</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
-              {[
-                {label:"Sodium (mg)",    key:"sodium",    ph:"2300"},
-                {label:"Potassium (mg)", key:"potassium", ph:"3500"},
-                {label:"Calcium (mg)",  key:"calcium",   ph:"1000"},
-                {label:"Iron (mg)",     key:"iron",      ph:"18"},
-                {label:"Zinc (mg)",     key:"zinc",      ph:"11"},
-              ].map(({label,key,ph})=>(
+              {[{label:"Sodium (mg)",key:"sodium",ph:"2300"},{label:"Potassium (mg)",key:"potassium",ph:"3500"},{label:"Calcium (mg)",key:"calcium",ph:"1000"},{label:"Iron (mg)",key:"iron",ph:"18"},{label:"Zinc (mg)",key:"zinc",ph:"11"}].map(({label,key,ph})=>(
                 <div key={key}><Lbl>{label}</Lbl><input value={profEdit[key]||""} onChange={e=>setProfEdit(p=>({...p,[key]:e.target.value}))} type="number" placeholder={ph} style={IS}/></div>
               ))}
             </div>
-
             <div style={{fontSize:11,color:C.green,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>Vitamins</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {[
-                {label:"Vit C (mg)",   key:"vitC",   ph:"90"},
-                {label:"Vit D (μg)",   key:"vitD",   ph:"20"},
-                {label:"Vit B12 (μg)", key:"vitB12", ph:"2.4"},
-              ].map(({label,key,ph})=>(
+              {[{label:"Vit C (mg)",key:"vitC",ph:"90"},{label:"Vit D (μg)",key:"vitD",ph:"20"},{label:"Vit B12 (μg)",key:"vitB12",ph:"2.4"}].map(({label,key,ph})=>(
                 <div key={key}><Lbl>{label}</Lbl><input value={profEdit[key]||""} onChange={e=>setProfEdit(p=>({...p,[key]:e.target.value}))} type="number" placeholder={ph} style={IS}/></div>
               ))}
             </div>
           </div>
+          {/* API Key - moved to bottom above backup */}
+          <div style={{background:apiKey&&apiKey!==HARDCODED_KEY?"rgba(82,196,122,0.07)":"rgba(232,197,71,0.06)",border:`1px solid ${apiKey?C.green:C.accent}`,borderRadius:16,padding:18,marginBottom:14}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+              <span style={{fontSize:20}}>{apiKey?"🔑":"⚠️"}</span>
+              <div><div style={{fontSize:14,fontWeight:700,color:apiKey?C.green:C.accent}}>API Key {apiKey?"Active":"Required"}</div><div style={{fontSize:11,color:C.muted,marginTop:1}}>Stored only on this device</div></div>
+            </div>
+            <div style={{display:"flex",gap:8,marginBottom:8}}>
+              <input value={apiKeyInput} onChange={e=>setApiKeyInput(e.target.value)} type="password" placeholder="sk-ant-api03-…" style={{...IS,flex:1,fontFamily:"monospace",fontSize:12}}/>
+              <button onClick={saveApiKey} style={{padding:"10px 14px",background:C.accent,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Save</button>
+            </div>
+            {apiKeyMsg&&<div style={{fontSize:11,color:C.green}}>{apiKeyMsg}</div>}
+          </div>
+          {/* Data Backup */}
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style={{fontSize:14,fontWeight:700,marginBottom:6}}>Data Backup</div>
-            <div style={{fontSize:12,color:C.muted,marginBottom:14,lineHeight:1.6}}>
-              Your data is stored on this device only. Export a backup file to keep it safe — restore it anytime if you reinstall the app or switch phones.
-            </div>
-            {backupMsg&&(
-              <div style={{fontSize:12,color:backupMsg.startsWith("✓")?C.green:C.red,marginBottom:12,padding:"10px 12px",background:backupMsg.startsWith("✓")?"rgba(82,196,122,0.1)":"rgba(224,82,82,0.1)",borderRadius:8,border:`1px solid ${backupMsg.startsWith("✓")?C.green:C.red}`}}>
-                {backupMsg}
-              </div>
-            )}
+            <div style={{fontSize:12,color:C.muted,marginBottom:14,lineHeight:1.6}}>Export to keep data safe — restore anytime if you reinstall or switch phones.</div>
+            {backupMsg&&<div style={{fontSize:12,color:backupMsg.startsWith("✓")?C.green:C.red,marginBottom:12,padding:"10px",background:backupMsg.startsWith("✓")?"rgba(82,196,122,0.1)":"rgba(224,82,82,0.1)",borderRadius:8}}>{backupMsg}</div>}
             <div style={{display:"flex",gap:10}}>
-              <button onClick={exportData} style={{flex:1,padding:"13px 10px",background:`linear-gradient(135deg,${C.blue},#3a79c0)`,border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>
-                <span>⬇️</span> Export Backup
-              </button>
-              <label style={{flex:1,padding:"13px 10px",background:`linear-gradient(135deg,${C.orange},#b06830)`,border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:7,textAlign:"center"}}>
-                <span>⬆️</span> Restore Backup
-                <input type="file" accept=".json" onChange={importData} style={{display:"none"}}/>
-              </label>
-            </div>
-            <div style={{marginTop:10,fontSize:10,color:C.muted,textAlign:"center"}}>
-              Backup includes: all diary entries, recipes, weight history &amp; profile
+              <button onClick={exportData} style={{flex:1,padding:"12px 10px",background:`linear-gradient(135deg,${C.blue},#3a79c0)`,border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><span>⬇️</span> Export</button>
+              <label style={{flex:1,padding:"12px 10px",background:`linear-gradient(135deg,${C.orange},#b06830)`,border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><span>⬆️</span> Restore<input type="file" accept=".json" onChange={importDataFile} style={{display:"none"}}/></label>
             </div>
           </div>
           <Btn onClick={saveProfile} color={C.green}>Save Profile &amp; Goals</Btn>
         </div>
       )}
 
-      {/* ── RECIPES LIST ── */}
+      {/* RECIPES LIST */}
       {tab==="recipes"&&view==="main"&&(
         <div style={{padding:"16px 18px"}}>
-          <button onClick={()=>{setEditRec(null);setRecName("");setRecItems([]);setRecAiMsg("");setView("recipe-edit");}} style={{width:"100%",padding:"13px",background:`linear-gradient(135deg,${C.accent},${C.accentDim})`,border:"none",borderRadius:10,color:C.bg,fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit",marginBottom:16}}>+ New Recipe</button>
+          <button onClick={()=>{setRecName("");setRecItems([]);setRecTags([]);setRecAiMsg("");setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setView("recipe-new");}} style={{width:"100%",padding:"13px",background:`linear-gradient(135deg,${C.accent},${C.accentDim})`,border:"none",borderRadius:10,color:C.bg,fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit",marginBottom:16}}>+ New Recipe</button>
           {recipeBook.length===0?(
-            <div style={{textAlign:"center",padding:"40px",color:C.muted,lineHeight:1.8,fontSize:15}}><div style={{fontSize:40,marginBottom:12}}>📚</div>No saved recipes.<br/>Create one above.</div>
-          ):recipeBook.map(rec=>{
-            const rt=sumE(rec.items);
-            return(
-              <div key={rec.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:"15px 16px",marginBottom:10}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-                  <div style={{fontSize:15,fontWeight:700}}>{rec.name}</div>
-                  <div style={{display:"flex",gap:6}}>
-                    <button onClick={()=>startEdit(rec)} style={{background:"none",border:`1px solid ${C.border}`,color:C.muted,borderRadius:7,padding:"5px 12px",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>Edit</button>
-                    <button onClick={()=>pRB(recipeBook.filter(r=>r.id!==rec.id))} style={{background:"none",border:"none",color:C.border,cursor:"pointer",fontSize:18,padding:4,lineHeight:1}}>✕</button>
-                  </div>
+            <div style={{textAlign:"center",padding:"40px",color:C.muted,lineHeight:1.8}}><div style={{fontSize:40,marginBottom:10}}>📚</div>No saved recipes.</div>
+          ):(
+            // Group by meal tags
+            Object.entries(recipesByMeal).filter(([,recs])=>recs.length>0).map(([mealName,recs])=>(
+              <div key={mealName} style={{marginBottom:20}}>
+                <div style={{fontSize:11,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
+                  <span>{MEAL_ICONS[mealName]||"📋"}</span><span>{mealName}</span>
                 </div>
-                <div style={{fontSize:11,color:C.muted,marginBottom:8}}>{rec.items.length} ingredients</div>
-                <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
-                  <span style={{fontSize:13,color:C.accent,fontFamily:"monospace",fontWeight:700}}>{Math.round(rt.calories)} kcal</span>
-                  <span style={{fontSize:11,color:C.muted}}>P:{Math.round(rt.protein)}g</span>
-                  <span style={{fontSize:11,color:C.muted}}>C:{Math.round(rt.carbs)}g</span>
-                  <span style={{fontSize:11,color:C.muted}}>F:{Math.round(rt.fat)}g</span>
-                </div>
-                <button onClick={()=>startUse(rec)} style={{width:"100%",padding:"11px",background:C.green,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🍳 Use This Recipe</button>
+                {recs.map(rec=>{
+                  const rt=sumE(rec.items);
+                  const isEditing=editRecId===rec.id;
+                  const ed=editRecData[rec.id]||{name:rec.name,items:rec.items,mealTags:rec.mealTags||[]};
+                  return(
+                    <div key={rec.id} style={{background:C.card,border:`1px solid ${isEditing?C.accent:C.border}`,borderRadius:14,marginBottom:10,overflow:"hidden"}}>
+                      {/* Card header — tap to expand/edit */}
+                      <div onClick={()=>{if(!isEditing){setEditRecId(rec.id);setEditRecData(p=>({...p,[rec.id]:{name:rec.name,items:[...rec.items],mealTags:[...(rec.mealTags||[])]}}));}}} style={{padding:"14px 15px",cursor:"pointer"}}>
+                        {isEditing?(
+                          <input value={ed.name} onChange={e=>setEditRecData(p=>({...p,[rec.id]:{...p[rec.id],name:e.target.value}}))} onClick={e=>e.stopPropagation()} style={{...IS,fontSize:15,fontWeight:700,marginBottom:8}} placeholder="Recipe name"/>
+                        ):(
+                          <div style={{fontSize:15,fontWeight:700,marginBottom:4}}>{rec.name}</div>
+                        )}
+                        <div style={{fontSize:11,color:C.muted,marginBottom:6}}>{rec.items.length} ingredients</div>
+                        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                          <span style={{fontSize:13,color:C.accent,fontFamily:"monospace",fontWeight:700}}>{Math.round(rt.calories)} kcal</span>
+                          <span style={{fontSize:11,color:C.muted}}>P:{Math.round(rt.protein)}g C:{Math.round(rt.carbs)}g F:{Math.round(rt.fat)}g</span>
+                        </div>
+                      </div>
+                      {isEditing&&(
+                        <div style={{borderTop:`1px solid ${C.border}`,padding:"12px 15px",background:C.bg}}>
+                          <div style={{marginBottom:10}}>
+                            <Lbl>Suitable for</Lbl>
+                            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                              {MEAL_TYPES.map(m=>{
+                                const sel=ed.mealTags.includes(m);
+                                return <button key={m} onClick={()=>setEditRecData(p=>({...p,[rec.id]:{...p[rec.id],mealTags:sel?ed.mealTags.filter(x=>x!==m):[...ed.mealTags,m]}}))} style={{padding:"5px 10px",borderRadius:20,fontSize:11,cursor:"pointer",fontFamily:"inherit",border:`1px solid ${sel?C.accent:C.border}`,background:sel?C.accent:"none",color:sel?C.bg:C.muted,fontWeight:sel?700:400}}>{MEAL_ICONS[m]} {m}</button>;
+                              })}
+                            </div>
+                          </div>
+                          <div style={{display:"flex",gap:8}}>
+                            <button onClick={()=>saveInlineEdit(rec.id)} style={{flex:2,padding:"10px",background:C.green,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Save Changes</button>
+                            <button onClick={()=>setEditRecId(null)} style={{flex:1,padding:"10px",background:"none",border:`1px solid ${C.border}`,borderRadius:9,color:C.muted,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+                            <button onClick={()=>setConfirmModal({msg:`Delete recipe "${rec.name}"?`,onConfirm:()=>{pRB(recipeBook.filter(r=>r.id!==rec.id));setEditRecId(null);}})} style={{padding:"10px 12px",background:"none",border:`1px solid ${C.red}`,borderRadius:9,color:C.red,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
+                          </div>
+                        </div>
+                      )}
+                      {!isEditing&&<div style={{padding:"0 15px 14px"}}><button onClick={()=>startUse(rec)} style={{width:"100%",padding:"10px",background:C.green,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🍳 Use This Recipe</button></div>}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            ))
+          )}
         </div>
       )}
 
-      {/* ── RECIPE EDIT ── */}
-      {view==="recipe-edit"&&(
+      {/* NEW RECIPE */}
+      {view==="recipe-new"&&(
         <div style={{padding:"16px 18px"}}>
-          <div style={{marginBottom:14}}><Lbl>Recipe Name</Lbl><input value={recName} onChange={e=>setRecName(e.target.value)} placeholder="e.g. Egg Veggies Omelette" style={IS}/></div>
-
-          {/* Mode toggle */}
-          <div style={{display:"flex",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:3,marginBottom:16,gap:3}}>
+          <div style={{marginBottom:12}}><Lbl>Recipe Name</Lbl><input value={recName} onChange={e=>setRecName(e.target.value)} placeholder="e.g. Egg Veggies Omelette" style={IS}/></div>
+          <div style={{marginBottom:14}}>
+            <Lbl>Suitable for Meals</Lbl>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {MEAL_TYPES.map(m=>{const sel=recTags.includes(m);return <button key={m} onClick={()=>setRecTags(p=>sel?p.filter(x=>x!==m):[...p,m])} style={{padding:"6px 12px",borderRadius:20,fontSize:11,cursor:"pointer",fontFamily:"inherit",border:`1px solid ${sel?C.accent:C.border}`,background:sel?C.accent:"none",color:sel?C.bg:C.muted,fontWeight:sel?700:400}}>{MEAL_ICONS[m]} {m}</button>;})}
+            </div>
+          </div>
+          <div style={{display:"flex",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:3,marginBottom:14,gap:2}}>
             {[{label:"✏️ Add Manually",v:false},{label:"📋 Import from Claude",v:true}].map(({label,v})=>(
-              <button key={String(v)} onClick={()=>{setRecImportMode(v);setRecAiMsg("");setRecImpStatus("");}}
-                style={{flex:1,padding:"9px 5px",borderRadius:7,border:"none",cursor:"pointer",
-                  background:recImportMode===v?C.accent:"none",color:recImportMode===v?C.bg:C.muted,
-                  fontSize:12,fontFamily:"inherit",fontWeight:recImportMode===v?700:400}}>{label}</button>
+              <button key={String(v)} onClick={()=>{setRecImportMode(v);setRecAiMsg("");setRecImpStatus("");}} style={{flex:1,padding:"8px 5px",borderRadius:7,border:"none",cursor:"pointer",background:recImportMode===v?C.accent:"none",color:recImportMode===v?C.bg:C.muted,fontSize:11,fontFamily:"inherit",fontWeight:recImportMode===v?700:400}}>{label}</button>
             ))}
           </div>
-
-          {/* ── IMPORT FROM CLAUDE PANEL ── */}
           {recImportMode&&(
-            <div>
-              <div style={{fontSize:11,color:C.muted,background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",marginBottom:10,lineHeight:1.7}}>
-                💡 <strong style={{color:C.text}}>How to use:</strong> Open Claude chat → ask something like <span style={{color:C.accent}}>"Give me nutrition breakdown for my egg omelette recipe: 2 eggs, 50g onion, 30g capsicum, 5ml oil"</span> → copy the reply → paste below
-              </div>
-              <div style={{marginBottom:10}}>
-                <Lbl>Paste Claude's nutrition text</Lbl>
-                <textarea value={recImportTxt} onChange={e=>{setRecImportTxt(e.target.value);setRecImpStatus("");setRecParsed([]);}}
-                  placeholder={"Paste Claude's response here...\n\nExample:\n2 eggs: 143 kcal, 13g protein, 1g carbs, 10g fat\n50g onion: 20 kcal, 0.5g protein, 5g carbs, 0g fat\n30g capsicum: 8 kcal, 0.3g protein, 2g carbs, 0g fat"}
-                  rows={7} style={{...IS,resize:"vertical",lineHeight:1.6,fontSize:13}}/>
-              </div>
-              <Btn onClick={doRecipeParse} disabled={recImpLoading||!recImportTxt.trim()}
-                color={`linear-gradient(135deg,${C.accent},${C.accentDim})`} style={{marginBottom:8}}>
-                {recImpLoading?"⏳ Parsing…":"🔍 Parse Ingredients"}
-              </Btn>
-              {recImpStatus&&(
-                <div style={{fontSize:12,marginBottom:12,textAlign:"center",padding:"8px 12px",borderRadius:8,
-                  color:recImpStatus.startsWith("✓")?C.green:recImpStatus.startsWith("⚠")?C.red:C.muted,
-                  background:recImpStatus.startsWith("✓")?"rgba(82,196,122,0.08)":recImpStatus.startsWith("⚠")?"rgba(224,82,82,0.08)":"none",
-                  border:recImpStatus.startsWith("✓")?`1px solid ${C.green}`:recImpStatus.startsWith("⚠")?`1px solid ${C.red}`:"none"}}>
-                  {recImpStatus}
-                </div>
-              )}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,color:C.muted,background:C.bg,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 10px",marginBottom:8,lineHeight:1.6}}>💡 Ask Claude for nutrition breakdown → copy → paste below</div>
+              <textarea value={recImportTxt} onChange={e=>{setRecImportTxt(e.target.value);setRecImpStatus("");setRecParsed([]);}} rows={5} placeholder={"Paste Claude's response…"} style={{...IS,resize:"vertical",lineHeight:1.6,marginBottom:8}}/>
+              <Btn onClick={doRecipeParse} disabled={recImpLoading||!recImportTxt.trim()} color={`linear-gradient(135deg,${C.accent},${C.accentDim})`} style={{marginBottom:6}}>{recImpLoading?"⏳ Parsing…":"🔍 Parse Ingredients"}</Btn>
+              {recImpStatus&&<div style={{fontSize:11,marginBottom:10,textAlign:"center",color:recImpStatus.startsWith("✓")?C.green:recImpStatus.startsWith("⚠")?C.red:C.muted}}>{recImpStatus}</div>}
               {recParsed.length>0&&(
                 <div style={{marginBottom:12}}>
-                  <Lbl>Select ingredients to add</Lbl>
                   {recParsed.map((item,idx)=>(
-                    <div key={item._id} onClick={()=>setRecParsed(p=>p.map((x,i)=>i===idx?{...x,selected:!x.selected}:x))}
-                      style={{background:item.selected?C.card:C.bg,border:`1px solid ${item.selected?C.accent:C.border}`,
-                        borderRadius:10,padding:"11px 13px",marginBottom:8,cursor:"pointer",
-                        display:"flex",alignItems:"center",gap:12,transition:"all 0.15s"}}>
-                      <div style={{width:18,height:18,borderRadius:5,flexShrink:0,
-                        border:`2px solid ${item.selected?C.accent:C.border}`,
-                        background:item.selected?C.accent:"none",
-                        display:"flex",alignItems:"center",justifyContent:"center",
-                        fontSize:11,color:C.bg,fontWeight:700}}>{item.selected?"✓":""}</div>
-                      <div style={{flex:1}}>
-                        <div style={{fontSize:13,fontWeight:600}}>{item.food}</div>
-                        <div style={{fontSize:11,color:C.muted,marginTop:2}}>
-                          {item.quantity}{item.unit||"g"} · <span style={{color:C.accent,fontFamily:"monospace"}}>{item.calories} kcal</span> · P:{item.protein}g C:{item.carbs}g F:{item.fat}g
-                        </div>
-                      </div>
+                    <div key={item._id} onClick={()=>setRecParsed(p=>p.map((x,i)=>i===idx?{...x,selected:!x.selected}:x))} style={{background:item.selected?C.card:C.bg,border:`1px solid ${item.selected?C.accent:C.border}`,borderRadius:9,padding:"9px 12px",marginBottom:7,cursor:"pointer",display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{width:16,height:16,borderRadius:4,flexShrink:0,border:`2px solid ${item.selected?C.accent:C.border}`,background:item.selected?C.accent:"none",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.bg,fontWeight:700}}>{item.selected?"✓":""}</div>
+                      <div style={{flex:1}}><div style={{fontSize:12,fontWeight:600}}>{item.food}</div><div style={{fontSize:10,color:C.muted}}>{item.quantity}{item.unit||"g"} · {item.calories} kcal</div></div>
                     </div>
                   ))}
-                  <Btn onClick={addRecipeParsed} disabled={!recParsed.some(i=>i.selected)} color={C.green} style={{marginTop:4}}>
-                    ➕ Add {recParsed.filter(i=>i.selected).length} Ingredient{recParsed.filter(i=>i.selected).length!==1?"s":""} to Recipe
-                  </Btn>
+                  <Btn onClick={addRecipeParsed} disabled={!recParsed.some(i=>i.selected)} color={C.green}>➕ Add {recParsed.filter(i=>i.selected).length} Ingredient{recParsed.filter(i=>i.selected).length!==1?"s":""}</Btn>
                 </div>
               )}
             </div>
           )}
-
-          {/* ── MANUAL INGREDIENTS ── */}
           {recItems.length>0&&(
-            <div style={{marginBottom:4}}>
-              {recItems.length>0&&<Lbl>Ingredients ({recItems.length})</Lbl>}
+            <div style={{marginBottom:12}}>
+              <Lbl>Ingredients ({recItems.length})</Lbl>
               {recItems.map((item,idx)=>(
-                <div key={item._id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:13,marginBottom:10}}>
-                  <div style={{display:"flex",gap:6,marginBottom:8}}>
+                <div key={item._id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:12,marginBottom:10}}>
+                  <div style={{display:"flex",gap:6,marginBottom:7}}>
                     <input value={item.food} onChange={e=>updRI(idx,"food",e.target.value)} placeholder="Food name" style={{...IS,flex:3}}/>
                     <input value={item.quantity} onChange={e=>updRI(idx,"quantity",e.target.value)} type="number" placeholder="Qty" style={{...IS,flex:1}}/>
                     <select value={item.unit} onChange={e=>updRI(idx,"unit",e.target.value)} style={{...IS,flex:1}}>{["g","ml","oz","cup","tbsp","tsp","piece","serving"].map(u=><option key={u}>{u}</option>)}</select>
                   </div>
-                  <div style={{display:"flex",gap:6,marginBottom:8}}>
-                    <button onClick={()=>aiRI(idx)} disabled={recLoad||!item.food.trim()||!item.quantity} style={{flex:2,padding:"8px",background:`linear-gradient(135deg,${C.accent},${C.accentDim})`,border:"none",borderRadius:7,color:C.bg,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(!item.food.trim()||!item.quantity)?0.5:1}}>✨ AI Fill</button>
-                    <button onClick={()=>setRecItems(p=>p.filter((_,i)=>i!==idx))} style={{flex:1,padding:"8px",background:"none",border:`1px solid ${C.border}`,borderRadius:7,color:C.muted,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>Remove</button>
+                  <div style={{display:"flex",gap:6,marginBottom:7}}>
+                    <button onClick={()=>aiRI(idx)} disabled={recLoad||!item.food.trim()||!item.quantity} style={{flex:2,padding:"7px",background:`linear-gradient(135deg,${C.accent},${C.accentDim})`,border:"none",borderRadius:7,color:C.bg,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(!item.food.trim()||!item.quantity)?0.5:1}}>✨ AI Fill</button>
+                    <button onClick={()=>setRecItems(p=>p.filter((_,i)=>i!==idx))} style={{flex:1,padding:"7px",background:"none",border:`1px solid ${C.border}`,borderRadius:7,color:C.muted,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>Remove</button>
                   </div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:6}}>
-                    {MACRO_FIELDS.map(({key,label,unit:u})=>(<div key={key}><div style={{fontSize:8,color:C.muted,marginBottom:2}}>{label}({u})</div><input value={item[key]===undefined||item[key]===""?"":item[key]} onChange={e=>updRI(idx,key,e.target.value)} type="number" placeholder="0" style={{...IS,padding:"6px 8px",fontSize:12,fontFamily:"monospace",color:Number(item[key])>0?C.accent:C.text}}/></div>))}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5,marginBottom:5}}>
+                    {MACRO_FIELDS.map(({key,label,unit:u})=>(<div key={key}><div style={{fontSize:7,color:C.muted,marginBottom:2}}>{label}({u})</div><input value={item[key]===undefined||item[key]===""?"":item[key]} onChange={e=>updRI(idx,key,e.target.value)} type="number" placeholder="0" style={{...IS,padding:"5px 7px",fontSize:11,fontFamily:"monospace",color:Number(item[key])>0?C.accent:C.text}}/></div>))}
                   </div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6}}>
-                    {MICRO_FIELDS.map(({key,label,unit:u})=>(<div key={key}><div style={{fontSize:8,color:C.muted,marginBottom:2}}>{label}({u})</div><input value={item[key]===undefined||item[key]===""?"":item[key]} onChange={e=>updRI(idx,key,e.target.value)} type="number" placeholder="0" style={{...IS,padding:"6px 8px",fontSize:12,fontFamily:"monospace",color:Number(item[key])>0?C.green:C.text}}/></div>))}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:5}}>
+                    {MICRO_FIELDS.map(({key,label,unit:u})=>(<div key={key}><div style={{fontSize:7,color:C.muted,marginBottom:2}}>{label}({u})</div><input value={item[key]===undefined||item[key]===""?"":item[key]} onChange={e=>updRI(idx,key,e.target.value)} type="number" placeholder="0" style={{...IS,padding:"5px 7px",fontSize:11,fontFamily:"monospace",color:Number(item[key])>0?C.green:C.text}}/></div>))}
                   </div>
                 </div>
               ))}
             </div>
           )}
-
-          {recAiMsg&&<div style={{fontSize:12,color:recAiMsg.startsWith("✓")?C.green:C.muted,marginBottom:8,textAlign:"center"}}>{recAiMsg}</div>}
-          <button onClick={addRI} style={{width:"100%",padding:"12px",background:"none",border:`1px dashed ${C.accent}`,borderRadius:10,color:C.accent,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:12}}>+ Add Ingredient Manually</button>
-          <Btn onClick={saveRecipe} disabled={!recName.trim()||!recItems.length} color={C.green}>{editRec?"Update Recipe":"Save Recipe"}</Btn>
+          {recAiMsg&&<div style={{fontSize:11,color:recAiMsg.startsWith("✓")?C.green:recAiMsg.startsWith("⚠")?C.red:C.muted,marginBottom:8,textAlign:"center"}}>{recAiMsg}</div>}
+          <button onClick={addRI} style={{width:"100%",padding:"11px",background:"none",border:`1px dashed ${C.accent}`,borderRadius:10,color:C.accent,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:12}}>+ Add Ingredient Manually</button>
+          <Btn onClick={saveNewRecipe} disabled={!recName.trim()||!recItems.length} color={C.green}>Save Recipe</Btn>
         </div>
       )}
 
-      {/* ── RECIPE USE ── */}
+      {/* RECIPE USE */}
       {view==="recipe-use"&&useRec&&(
         <div style={{padding:"16px 18px"}}>
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
@@ -1175,19 +989,19 @@ function App() {
             {useRec.items.map(item=>{
               const k=item._id??item.food,oQ=parseFloat(item.quantity)||1,nQ=parseFloat(useQtys[k])||oQ,ratio=nQ/oQ;
               return(
-                <div key={k} style={{borderBottom:`1px solid ${C.border}`,paddingBottom:12,marginBottom:12}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
-                    <div style={{flex:1,fontSize:14,fontWeight:500}}>{item.food}</div>
-                    <input value={useQtys[k]||""} onChange={e=>setUseQtys(p=>({...p,[k]:e.target.value}))} type="number" style={{...IS,width:72,flex:"none",fontFamily:"monospace",padding:"7px 9px"}}/>
-                    <span style={{fontSize:12,color:C.muted}}>{item.unit||"g"}</span>
+                <div key={k} style={{borderBottom:`1px solid ${C.border}`,paddingBottom:10,marginBottom:10}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                    <div style={{flex:1,fontSize:13,fontWeight:500}}>{item.food}</div>
+                    <input value={useQtys[k]||""} onChange={e=>setUseQtys(p=>({...p,[k]:e.target.value}))} type="number" style={{...IS,width:70,flex:"none",padding:"6px 8px"}}/>
+                    <span style={{fontSize:11,color:C.muted}}>{item.unit||"g"}</span>
                   </div>
-                  <div style={{fontSize:11,color:C.muted}}><span style={{fontFamily:"monospace",color:C.accent}}>{Math.round((item.calories||0)*ratio)}</span> kcal · P:{Math.round((item.protein||0)*ratio)}g · C:{Math.round((item.carbs||0)*ratio)}g · F:{Math.round((item.fat||0)*ratio)}g</div>
+                  <div style={{fontSize:11,color:C.muted}}><span style={{color:C.accent,fontFamily:"monospace"}}>{Math.round((Number(item.calories)||0)*ratio)}</span> kcal · P:{Math.round((Number(item.protein)||0)*ratio)}g · C:{Math.round((Number(item.carbs)||0)*ratio)}g · F:{Math.round((Number(item.fat)||0)*ratio)}g</div>
                 </div>
               );
             })}
           </div>
           <div style={{marginBottom:14}}>
-            <Lbl>Log to Meal</Lbl>
+            <Lbl>Log to Meal {useRec.mealTags&&useRec.mealTags.length>0&&<span style={{color:C.accent}}>(tagged meals pre-selected)</span>}</Lbl>
             <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
               {MEAL_TYPES.map(m=><button key={m} onClick={()=>setUseMeal(m)} style={{padding:"7px 13px",borderRadius:20,fontSize:12,cursor:"pointer",fontFamily:"inherit",border:`1px solid ${useMeal===m?C.accent:C.border}`,background:useMeal===m?C.accent:"none",color:useMeal===m?C.bg:C.muted,fontWeight:useMeal===m?700:400}}>{MEAL_ICONS[m]} {m}</button>)}
             </div>
@@ -1196,7 +1010,7 @@ function App() {
         </div>
       )}
 
-      {/* ── REPORTS ── */}
+      {/* REPORTS */}
       {tab==="reports"&&view==="main"&&(
         <div style={{padding:"16px 18px"}}>
           <div style={{display:"flex",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:3,marginBottom:14,gap:3}}>
@@ -1205,146 +1019,103 @@ function App() {
             ))}
           </div>
           {repData.length===0?(
-            <div style={{textAlign:"center",padding:"40px",color:C.muted,fontSize:14}}>No data yet for this period.</div>
+            <div style={{textAlign:"center",padding:"40px",color:C.muted}}>No data yet for this period.</div>
           ):(
             <>
+              {/* Avg summary */}
               {(()=>{
                 const avg=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,repData.reduce((s,d)=>s+(d.totals[f.key]||0),0)/repData.length]));
                 return(
                   <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
-                    <div style={{fontSize:11,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:10}}>{repPeriod==="daily"?"Last 14 Days Avg":repPeriod==="weekly"?"Weekly Avg (per day)":"Monthly Avg (per day)"}</div>
+                    <div style={{fontSize:10,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:10}}>{repPeriod==="daily"?"Last 14 Days Avg":repPeriod==="weekly"?"Weekly Avg/day":"Monthly Avg/day"}</div>
                     <div style={{display:"flex",gap:5,marginBottom:8}}>
-                      {[{label:"Calories",value:avg.calories,unit:"kcal",color:C.accent},{label:"Protein",value:avg.protein,unit:"g",color:C.blue},{label:"Carbs",value:avg.carbs,unit:"g",color:C.orange},{label:"Fat",value:avg.fat,unit:"g",color:C.accentDim}].map(b=><Badge key={b.label} {...b}/>)}
+                      {[{label:"Calories",value:avg.calories,goal:goals.calories,unit:"kcal",color:C.accent},{label:"Protein",value:avg.protein,goal:goals.protein,unit:"g",color:C.blue},{label:"Carbs",value:avg.carbs,goal:goals.carbs,unit:"g",color:C.orange},{label:"Fat",value:avg.fat,goal:goals.fat,unit:"g",color:C.accentDim}].map(b=><Badge key={b.label} {...b}/>)}
                     </div>
                     <div style={{display:"flex",gap:5}}>
-                      {[{label:"Fiber",value:avg.fiber,unit:"g",color:C.green},{label:"Sodium",value:avg.sodium,unit:"mg",color:C.purple},{label:"Calcium",value:avg.calcium,unit:"mg",color:C.purple},{label:"Iron",value:avg.iron,unit:"mg",color:C.purple}].map(b=><Badge key={b.label} {...b}/>)}
+                      {[{label:"Fiber",value:avg.fiber,goal:goals.fiber,unit:"g",color:C.green},{label:"Sodium",value:avg.sodium,goal:goals.sodium,unit:"mg",color:C.purple},{label:"Calcium",value:avg.calcium,goal:goals.calcium,unit:"mg",color:C.purple},{label:"Iron",value:avg.iron,goal:goals.iron,unit:"mg",color:C.purple}].map(b=><Badge key={b.label} {...b}/>)}
                     </div>
                   </div>
                 );
               })()}
-              <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:10}}>
-                <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Calories{repPeriod!=="daily"?" (avg/day)":""}</div>
-                <BarChart data={repData.map(d=>({label:d.label,value:d.totals.calories}))} goal={goals.calories} color={C.accent}/>
-              </div>
 
-              {/* Achievement vs Goal — all nutrients */}
-              <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:10}}>
+              {/* Achievement vs Goal */}
+              <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
                 <div style={{fontSize:13,fontWeight:600,marginBottom:4}}>Achievement vs Goal</div>
-                <div style={{fontSize:11,color:C.muted,marginBottom:14}}>
-                  {repPeriod==="daily"?"Each day's intake vs your daily goal":repPeriod==="weekly"?"Weekly avg per day vs goal":"Monthly avg per day vs goal"}
-                </div>
+                <div style={{fontSize:11,color:C.muted,marginBottom:14}}>{repPeriod==="daily"?"Each day's avg vs goal":repPeriod==="weekly"?"Weekly avg/day vs goal":"Monthly avg/day vs goal"}</div>
+                {ALL_FIELDS.map(({key,label,unit:u,color})=>{
+                  const g=goals[key];if(!g)return null;
+                  const avg=repData.reduce((s,d)=>s+(d.totals[key]||0),0)/(repData.length||1);
+                  const pct=Math.min(Math.round((avg/g)*100),200);
+                  const over=avg>g;
+                  const barColor=over?C.red:pct>=90?C.green:pct>=60?C.accent:C.muted;
+                  const diff=avg-g;
+                  return(
+                    <div key={key} style={{marginBottom:12}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                        <span style={{fontSize:11,color:C.text}}>{label}</span>
+                        <div style={{display:"flex",alignItems:"center",gap:6}}>
+                          <span style={{fontSize:10,color:C.muted,fontFamily:"monospace"}}>{avg<1?avg.toFixed(1):Math.round(avg)}/{g}{u}</span>
+                          <span style={{fontSize:10,fontFamily:"monospace",fontWeight:700,color:over?C.red:pct>=90?C.green:C.accent,background:over?"rgba(224,82,82,0.12)":pct>=90?"rgba(82,196,122,0.12)":"rgba(232,197,71,0.12)",padding:"1px 6px",borderRadius:5}}>{pct}%</span>
+                          <span style={{fontSize:9,color:over?C.red:C.green,fontFamily:"monospace"}}>{diff>0?"+":""}{diff<1&&diff>-1?diff.toFixed(1):Math.round(diff)}{u}</span>
+                        </div>
+                      </div>
+                      <div style={{height:5,background:C.border,borderRadius:3,overflow:"hidden"}}>
+                        <div style={{height:"100%",width:`${Math.min(pct,100)}%`,background:barColor,borderRadius:3,transition:"width 0.4s ease"}}/>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Meal Summary */}
+              <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
+                <div style={{fontSize:13,fontWeight:600,marginBottom:4}}>Meal Contribution</div>
+                <div style={{fontSize:11,color:C.muted,marginBottom:14}}>Each meal's nutrition as % of daily goal</div>
                 {(()=>{
-                  // All fields with goals
-                  const allGoalFields = [
-                    ...ALL_FIELDS.filter(f=>goals[f.key]>0)
-                  ];
-                  return allGoalFields.map(({key,label,unit:u,color})=>{
-                    const g = goals[key];
-                    if(!g) return null;
-                    const avg = repData.reduce((s,d)=>s+(d.totals[key]||0),0) / (repData.length||1);
-                    const pct = Math.min(Math.round((avg/g)*100), 200);
-                    const over = avg > g;
-                    const barColor = over ? C.red : (pct>=90 ? C.green : pct>=60 ? C.accent : C.muted);
-                    const diff = avg - g;
-                    return(
-                      <div key={key} style={{marginBottom:12}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                          <span style={{fontSize:11,color:C.text}}>{label}</span>
-                          <div style={{display:"flex",alignItems:"center",gap:8}}>
-                            <span style={{fontSize:10,color:C.muted,fontFamily:"monospace"}}>{avg<1?avg.toFixed(1):Math.round(avg)}/{g}{u}</span>
-                            <span style={{fontSize:10,fontFamily:"monospace",fontWeight:700,
-                              color:over?C.red:pct>=90?C.green:C.accent,
-                              background:over?"rgba(224,82,82,0.12)":pct>=90?"rgba(82,196,122,0.12)":"rgba(232,197,71,0.12)",
-                              padding:"1px 6px",borderRadius:5}}>
-                              {pct}%
-                            </span>
-                            <span style={{fontSize:9,color:over?C.red:C.green,fontFamily:"monospace"}}>
-                              {diff>0?"+":""}{diff<1&&diff>-1?diff.toFixed(1):Math.round(diff)}{u}
-                            </span>
-                          </div>
-                        </div>
-                        <div style={{height:5,background:C.border,borderRadius:3,overflow:"hidden"}}>
-                          <div style={{height:"100%",width:`${Math.min(pct,100)}%`,background:barColor,borderRadius:3,transition:"width 0.4s ease"}}/>
-                        </div>
+                  // For daily: use selected date or most recent date with data
+                  const sourceDate=repPeriod==="daily"?(entries[selDate]?selDate:(histDates[0]||selDate)):null;
+                  const mealData=MEAL_TYPES.map(m=>{
+                    let items=[];
+                    if(repPeriod==="daily"&&sourceDate){
+                      items=(entries[sourceDate]||[]).filter(e=>e.meal===m);
+                    } else {
+                      // avg across all dates in repData
+                      const dates=repPeriod==="weekly"
+                        ?Object.keys(entries).sort().slice(-7)
+                        :Object.keys(entries).sort().slice(-30);
+                      const byMeal=dates.flatMap(d=>(entries[d]||[]).filter(e=>e.meal===m));
+                      if(dates.length>0){
+                        const t=sumE(byMeal);
+                        const n=dates.filter(d=>(entries[d]||[]).some(e=>e.meal===m)).length||1;
+                        ALL_FIELDS.forEach(f=>t[f.key]=t[f.key]/n);
+                        return{meal:m,totals:t};
+                      }
+                    }
+                    return{meal:m,totals:sumE(items)};
+                  }).filter(m=>m.totals.calories>0);
+                  if(!mealData.length)return <div style={{color:C.muted,fontSize:12}}>No meal data for this period.</div>;
+                  return mealData.map(({meal,totals})=>(
+                    <div key={meal} style={{marginBottom:14}}>
+                      <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
+                        <span>{MEAL_ICONS[meal]}</span>
+                        <span style={{fontSize:12,fontWeight:600}}>{meal}</span>
+                        <span style={{fontSize:11,color:C.accent,fontFamily:"monospace",marginLeft:"auto"}}>{Math.round(totals.calories)} kcal ({Math.round((totals.calories/goals.calories)*100)}%)</span>
                       </div>
-                    );
-                  });
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+                        {[{key:"protein",label:"Protein",color:C.blue},{key:"carbs",label:"Carbs",color:C.orange},{key:"fat",label:"Fat",color:C.accentDim},{key:"fiber",label:"Fiber",color:C.green},{key:"sodium",label:"Sodium",color:C.purple},{key:"calcium",label:"Calcium",color:C.purple}].map(({key,label,color})=>{
+                          const pct=goals[key]?Math.round((totals[key]/goals[key])*100):0;
+                          return(
+                            <div key={key} style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 9px"}}>
+                              <div style={{fontSize:9,color:C.muted,marginBottom:2}}>{label}</div>
+                              <div style={{fontSize:12,fontWeight:700,fontFamily:"monospace",color}}>{pct}%</div>
+                              <div style={{fontSize:9,color:C.muted}}>{totals[key]<1?totals[key].toFixed(1):Math.round(totals[key])}{ALL_FIELDS.find(f=>f.key===key)?.unit||"g"}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ));
                 })()}
-              </div>
-
-              {/* Per-nutrient bar charts */}
-              {[
-                {key:"protein",     label:"Protein (g)",        color:C.blue,      goal:goals.protein},
-                {key:"carbs",       label:"Carbs (g)",           color:C.orange,    goal:goals.carbs},
-                {key:"fat",         label:"Fat (g)",             color:C.accentDim, goal:goals.fat},
-                {key:"fiber",       label:"Fiber (g)",           color:C.green,     goal:goals.fiber},
-                {key:"sugar",       label:"Sugar (g)",           color:"#e07ab0",   goal:goals.sugar},
-                {key:"saturatedFat",label:"Saturated Fat (g)",   color:"#c4704a",   goal:goals.saturatedFat},
-                {key:"cholesterol", label:"Cholesterol (mg)",    color:"#d4a04a",   goal:goals.cholesterol},
-                {key:"sodium",      label:"Sodium (mg)",         color:C.purple,    goal:goals.sodium},
-                {key:"potassium",   label:"Potassium (mg)",      color:C.purple,    goal:goals.potassium},
-              ].map(({key,label,color,goal})=>(
-                <div key={key} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:10}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                    <div style={{fontSize:12,fontWeight:600}}>{label}</div>
-                    {goal&&<div style={{fontSize:10,color:C.muted}}>Goal: {goal}</div>}
-                  </div>
-                  <BarChart data={repData.map(d=>({label:d.label,value:d.totals[key]}))} goal={goal} color={color}/>
-                </div>
-              ))}
-
-              <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:10}}>
-                <div style={{fontSize:13,fontWeight:600,marginBottom:12}}>Micronutrients — Avg vs Goal</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                  {MICRO_FIELDS.map(({key,label,unit:u})=>{
-                    const avg=repData.reduce((s,d)=>s+(d.totals[key]||0),0)/repData.length;
-                    const g=goals[key];
-                    const pct=g?Math.min(Math.round((avg/g)*100),200):null;
-                    const over=g&&avg>g;
-                    return(
-                      <div key={key} style={{background:C.bg,border:`1px solid ${over?C.red:pct>=90?C.green:C.border}`,borderRadius:9,padding:"10px 12px"}}>
-                        <div style={{fontSize:10,color:C.muted,marginBottom:3}}>{label}</div>
-                        <div style={{fontSize:15,fontWeight:700,fontFamily:"monospace",color:over?C.red:pct>=90?C.green:C.purple}}>
-                          {avg<1?avg.toFixed(1):Math.round(avg)}<span style={{fontSize:9,color:C.muted}}>{u}</span>
-                        </div>
-                        {g&&<div style={{marginTop:4}}>
-                          <div style={{height:3,background:C.border,borderRadius:2,overflow:"hidden"}}>
-                            <div style={{height:"100%",width:`${Math.min(pct,100)}%`,background:over?C.red:pct>=90?C.green:C.accent,borderRadius:2}}/>
-                          </div>
-                          <div style={{fontSize:9,color:over?C.red:pct>=90?C.green:C.muted,marginTop:2,textAlign:"right"}}>{pct}% of {g}{u} goal</div>
-                        </div>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16}}>
-                <div style={{fontSize:13,fontWeight:600,marginBottom:12}}>Detailed Breakdown</div>
-                <div style={{overflowX:"auto"}}>
-                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
-                    <thead><tr>{["Period","Kcal","%","Prot","%","Carb","%","Fat","%"].map(h=><th key={h} style={{textAlign:"left",padding:"4px 5px",color:C.muted,fontWeight:600,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
-                    <tbody>
-                      {repData.map((d,i)=>{
-                        const pctOf=(val,goal)=>goal?Math.round((val/goal)*100):"-";
-                        const clr=(val,goal)=>!goal?C.text:val>goal?C.red:val/goal>=0.9?C.green:C.accent;
-                        return(
-                          <tr key={i} style={{borderBottom:`1px solid ${C.border}`}}>
-                            <td style={{padding:"5px",color:C.muted,whiteSpace:"nowrap"}}>{d.label}</td>
-                            <td style={{padding:"5px",fontFamily:"monospace",color:C.accent}}>{Math.round(d.totals.calories)}</td>
-                            <td style={{padding:"5px",fontFamily:"monospace",fontSize:10,color:clr(d.totals.calories,goals.calories)}}>{pctOf(d.totals.calories,goals.calories)}%</td>
-                            <td style={{padding:"5px",fontFamily:"monospace"}}>{Math.round(d.totals.protein)}</td>
-                            <td style={{padding:"5px",fontFamily:"monospace",fontSize:10,color:clr(d.totals.protein,goals.protein)}}>{pctOf(d.totals.protein,goals.protein)}%</td>
-                            <td style={{padding:"5px",fontFamily:"monospace"}}>{Math.round(d.totals.carbs)}</td>
-                            <td style={{padding:"5px",fontFamily:"monospace",fontSize:10,color:clr(d.totals.carbs,goals.carbs)}}>{pctOf(d.totals.carbs,goals.carbs)}%</td>
-                            <td style={{padding:"5px",fontFamily:"monospace"}}>{Math.round(d.totals.fat)}</td>
-                            <td style={{padding:"5px",fontFamily:"monospace",fontSize:10,color:clr(d.totals.fat,goals.fat)}}>{pctOf(d.totals.fat,goals.fat)}%</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
               </div>
             </>
           )}
@@ -1354,79 +1125,35 @@ function App() {
       {/* BOTTOM NAV */}
       <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:C.bg,borderTop:`1px solid ${C.border}`,display:"flex",zIndex:20,paddingBottom:"env(safe-area-inset-bottom,0)"}}>
         {TABS.map(({id,icon,label})=>(
-          <button key={id} onClick={()=>{setTab(id);setView("main");}} style={{flex:1,padding:"11px 0 13px",background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+          <button key={id} onClick={()=>{setTab(id);setView("main");setEditRecId(null);}} style={{flex:1,padding:"11px 0 13px",background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
             <span style={{fontSize:20}}>{icon}</span>
             <span style={{fontSize:10,letterSpacing:"0.06em",textTransform:"uppercase",color:tab===id?C.accent:C.muted,fontWeight:tab===id?700:400,fontFamily:"inherit"}}>{label}</span>
           </button>
         ))}
       </div>
-
-      {/* FAB */}
       {tab==="diary"&&view==="main"&&(
-        <button onClick={()=>setView("add")} style={{position:"fixed",bottom:80,right:18,width:56,height:56,borderRadius:"50%",background:`linear-gradient(135deg,${C.accent},${C.accentDim})`,border:"none",color:C.bg,fontSize:26,cursor:"pointer",boxShadow:`0 4px 20px rgba(232,197,71,0.4)`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>+</button>
+        <button onClick={()=>setView("add")} style={{position:"fixed",bottom:80,right:18,width:56,height:56,borderRadius:"50%",background:`linear-gradient(135deg,${C.accent},${C.accentDim})`,border:"none",color:C.bg,fontSize:26,cursor:"pointer",boxShadow:"0 4px 20px rgba(232,197,71,0.4)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>+</button>
       )}
     </div>
   );
 }
-
-ReactDOM.render(React.createElement(App), document.getElementById("root"));
+ReactDOM.render(React.createElement(App),document.getElementById("root"));
 </script>
-
 <button id="install-banner" style="display:none">
-  <img src="icon-192.png" alt="Food Journal icon"/>
-  <div class="txt">
-    <strong>Install Food Journal</strong>
-    <span>Add to home screen for app experience</span>
-  </div>
+  <img src="icon-192.png" alt="Food Journal"/>
+  <div class="txt"><strong>Install Food Journal</strong><span>Add to home screen</span></div>
   <span class="arrow">📲</span>
   <button id="install-dismiss">✕</button>
 </button>
-
 <script>
-let deferredPrompt = null;
-const banner = document.getElementById('install-banner');
-const dismiss = document.getElementById('install-dismiss');
-
-// Capture the install prompt
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  // Show our custom banner after 2 seconds
-  setTimeout(() => banner.classList.add('show'), 2000);
-});
-
-// Tapping the banner triggers install
-banner.addEventListener('click', async (e) => {
-  if (e.target === dismiss || dismiss.contains(e.target)) {
-    banner.classList.remove('show');
-    return;
-  }
-  if (!deferredPrompt) return;
-  banner.classList.remove('show');
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  deferredPrompt = null;
-});
-
-dismiss.addEventListener('click', (e) => {
-  e.stopPropagation();
-  banner.classList.remove('show');
-});
-
-// Hide banner if already installed
-window.addEventListener('appinstalled', () => {
-  banner.classList.remove('show');
-  deferredPrompt = null;
-});
-
-// Register service worker
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js')
-      .then(reg => console.log('SW registered:', reg.scope))
-      .catch(err => console.log('SW failed:', err));
-  });
-}
+let dp=null;
+const bn=document.getElementById('install-banner');
+const dm=document.getElementById('install-dismiss');
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;setTimeout(()=>bn.classList.add('show'),2000);});
+bn.addEventListener('click',async e=>{if(e.target===dm||dm.contains(e.target)){bn.classList.remove('show');return;}if(!dp)return;bn.classList.remove('show');dp.prompt();await dp.userChoice;dp=null;});
+dm.addEventListener('click',e=>{e.stopPropagation();bn.classList.remove('show');});
+window.addEventListener('appinstalled',()=>{bn.classList.remove('show');dp=null;});
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
 </script>
 </body>
 </html>
