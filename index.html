@@ -61,8 +61,28 @@ const DEFAULT_PROFILE = {name:"",currentWeight:"",targetWeight:"",height:"",calo
 const C = {bg:"#0f0e0c",card:"#1a1917",border:"#2a2825",accent:"#e8c547",accentDim:"#b89c2f",text:"#f0ece0",muted:"#7a7060",red:"#e05252",green:"#52c47a",blue:"#5299e0",orange:"#e08a52",purple:"#a07ee0"};
 const MEAL_TYPES = ["Breakfast","Mid-Morning","Lunch","Evening","Dinner"];
 const MEAL_ICONS = {Breakfast:"☀️","Mid-Morning":"🫐",Lunch:"🥗",Evening:"🍎",Dinner:"🌙"};
-const MACRO_FIELDS = [{key:"calories",label:"Calories",unit:"kcal",color:C.accent},{key:"protein",label:"Protein",unit:"g",color:C.blue},{key:"carbs",label:"Carbs",unit:"g",color:C.orange},{key:"fat",label:"Fat",unit:"g",color:C.accentDim},{key:"fiber",label:"Fiber",unit:"g",color:C.green}];
-const MICRO_FIELDS = [{key:"sodium",label:"Sodium",unit:"mg"},{key:"potassium",label:"Potassium",unit:"mg"},{key:"calcium",label:"Calcium",unit:"mg"},{key:"iron",label:"Iron",unit:"mg"},{key:"vitC",label:"Vit C",unit:"mg"},{key:"vitD",label:"Vit D",unit:"μg"},{key:"vitB12",label:"Vit B12",unit:"μg"},{key:"zinc",label:"Zinc",unit:"mg"}];
+const MACRO_FIELDS = [
+  {key:"calories",    label:"Calories",         unit:"kcal", color:C.accent},
+  {key:"protein",     label:"Protein",           unit:"g",    color:C.blue},
+  {key:"carbs",       label:"Carbs",             unit:"g",    color:C.orange},
+  {key:"fat",         label:"Fat",               unit:"g",    color:C.accentDim},
+  {key:"fiber",       label:"Fiber",             unit:"g",    color:C.green},
+  {key:"sugar",       label:"Sugar",             unit:"g",    color:"#e07ab0"},
+  {key:"saturatedFat",label:"Saturated Fat",     unit:"g",    color:"#c4704a"},
+  {key:"polyFat",     label:"Polyunsat. Fat",    unit:"g",    color:"#7ab0e0"},
+  {key:"monoFat",     label:"Monounsat. Fat",    unit:"g",    color:"#a0c07a"},
+  {key:"cholesterol", label:"Cholesterol",       unit:"mg",   color:"#d4a04a"},
+];
+const MICRO_FIELDS = [
+  {key:"sodium",   label:"Sodium",   unit:"mg"},
+  {key:"potassium",label:"Potassium",unit:"mg"},
+  {key:"calcium",  label:"Calcium",  unit:"mg"},
+  {key:"iron",     label:"Iron",     unit:"mg"},
+  {key:"vitC",     label:"Vit C",    unit:"mg"},
+  {key:"vitD",     label:"Vit D",    unit:"μg"},
+  {key:"vitB12",   label:"Vit B12",  unit:"μg"},
+  {key:"zinc",     label:"Zinc",     unit:"mg"},
+];
 const ALL_FIELDS = [...MACRO_FIELDS,...MICRO_FIELDS];
 const TABS = [{id:"diary",icon:"📖",label:"Diary"},{id:"recipes",icon:"📚",label:"Recipes"},{id:"reports",icon:"📊",label:"Reports"},{id:"profile",icon:"👤",label:"Profile"}];
 
@@ -202,6 +222,7 @@ function App() {
 
   // Add food
   const [addMeal, setAddMeal] = useState("Breakfast");
+  const [logMode, setLogMode] = useState("recipe"); // recipe | manual | paste
   const [foodName,setFoodName]= useState("");
   const [qty,     setQty]     = useState("");
   const [unit,    setUnit]    = useState("g");
@@ -331,7 +352,7 @@ function App() {
           max_tokens: 500,
           messages: [{
             role: "user",
-            content: `Give nutrition for ${it.quantity} ${it.unit} of ${it.food}. Reply with ONLY this JSON, no other text:\n{"calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sodium":0,"potassium":0,"calcium":0,"iron":0,"vitC":0,"vitD":0,"vitB12":0,"zinc":0}\nReplace the 0s with the actual numeric values.`
+            content: `Give nutrition for ${it.quantity} ${it.unit} of ${it.food}. Reply with ONLY this JSON, no other text:\n{"calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"saturatedFat":0,"polyFat":0,"monoFat":0,"cholesterol":0,"sodium":0,"potassium":0,"calcium":0,"iron":0,"vitC":0,"vitD":0,"vitB12":0,"zinc":0}\nReplace the 0s with the actual numeric values.`
           }]
         })
       });
@@ -419,6 +440,29 @@ function App() {
 
   // ── Profile ────────────────────────────────────────────────────────────
   function saveProfile(){pP(profEdit);}
+
+  // Quick log recipe from diary add screen
+  const [quickRecipe,    setQuickRecipe]    = useState(null);
+  const [quickQtys,      setQuickQtys]      = useState({});
+
+  function startQuickLog(rec){
+    setQuickRecipe(rec);
+    setQuickQtys(Object.fromEntries(rec.items.map(x=>[x._id??x.food, x.quantity])));
+  }
+
+  function logQuickRecipe(){
+    if(!quickRecipe) return;
+    const now=new Date().toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"});
+    const rid=`r_${Date.now()}`;
+    const newEs=quickRecipe.items.map(x=>{
+      const k=x._id??x.food, oQ=parseFloat(x.quantity)||1, nQ=parseFloat(quickQtys[k])||oQ, ratio=nQ/oQ;
+      return{id:Date.now()+Math.random(),meal:addMeal,food:x.food,quantity:`${nQ} ${x.unit||"g"}`,
+        time:now,recipeId:rid,recipeName:quickRecipe.name,
+        ...Object.fromEntries(ALL_FIELDS.map(f=>[f.key,Math.round((Number(x[f.key])||0)*ratio*10)/10]))};
+    });
+    pE({...entries,[selDate]:[...(entries[selDate]||[]),...newEs]});
+    setQuickRecipe(null); setView("main");
+  }
   function saveApiKey(){
     const k=apiKeyInput.trim();
     localStorage.setItem(SK.apiKey,k);
@@ -573,10 +617,21 @@ function App() {
             <div style={{textAlign:"center",padding:"40px 20px",color:C.muted,fontSize:15,lineHeight:1.8}}><div style={{fontSize:40,marginBottom:12}}>🍽️</div>No meals logged yet.<br/>Tap + to add food.</div>
           ):mealGroups.map(({meal,recipes})=>{
             const mCal=recipes.reduce((s,r)=>s+r.items.reduce((ss,e)=>ss+e.calories,0),0);
+            const mProt=recipes.reduce((s,r)=>s+r.items.reduce((ss,e)=>ss+(Number(e.protein)||0),0),0);
+            const mCarb=recipes.reduce((s,r)=>s+r.items.reduce((ss,e)=>ss+(Number(e.carbs)||0),0),0);
+            const mFat=recipes.reduce((s,r)=>s+r.items.reduce((ss,e)=>ss+(Number(e.fat)||0),0),0);
             return(
               <div key={meal} style={{marginBottom:18}}>
-                <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8,fontSize:11,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase"}}>
-                  <span>{MEAL_ICONS[meal]}</span><span>{meal}</span><span style={{color:C.border}}>—</span><span style={{fontFamily:"monospace"}}>{Math.round(mCal)} kcal</span>
+                <div style={{marginBottom:8}}>
+                  <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3,fontSize:11,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase"}}>
+                    <span>{MEAL_ICONS[meal]}</span><span>{meal}</span><span style={{color:C.border}}>—</span>
+                    <span style={{fontFamily:"monospace",color:C.accent}}>{Math.round(mCal)} kcal</span>
+                  </div>
+                  <div style={{display:"flex",gap:10,paddingLeft:4}}>
+                    <span style={{fontSize:10,color:C.blue,fontFamily:"monospace"}}>P:{Math.round(mProt)}g</span>
+                    <span style={{fontSize:10,color:C.orange,fontFamily:"monospace"}}>C:{Math.round(mCarb)}g</span>
+                    <span style={{fontSize:10,color:C.accentDim,fontFamily:"monospace"}}>F:{Math.round(mFat)}g</span>
+                  </div>
                 </div>
                 {recipes.map(recipe=>{
                   const rt=sumE(recipe.items),isExp=!!expR[recipe.recipeId],isMulti=recipe.items.length>1;
@@ -622,18 +677,114 @@ function App() {
       {/* ── ADD FOOD ── */}
       {tab==="diary"&&view==="add"&&(
         <div style={{padding:"16px 18px"}}>
-          <div style={{display:"flex",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:3,marginBottom:16,gap:3}}>
-            {[{label:"✏️ Manual / AI",v:false},{label:"📋 Paste from Claude",v:true}].map(({label,v})=>(
-              <button key={String(v)} onClick={()=>{setImportMode(v);setAiMsg("");setImpStatus("");}} style={{flex:1,padding:"9px 5px",borderRadius:7,border:"none",cursor:"pointer",background:importMode===v?C.accent:"none",color:importMode===v?C.bg:C.muted,fontSize:12,fontFamily:"inherit",fontWeight:importMode===v?700:400}}>{label}</button>
+          {/* 3-tab mode toggle */}
+          <div style={{display:"flex",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:3,marginBottom:16,gap:2}}>
+            {[{label:"📚 Recipe",v:"recipe"},{label:"✏️ Manual",v:"manual"},{label:"📋 Claude",v:"paste"}].map(({label,v})=>(
+              <button key={v} onClick={()=>{setLogMode(v);setAiMsg("");setImpStatus("");setQuickRecipe(null);}}
+                style={{flex:1,padding:"9px 4px",borderRadius:7,border:"none",cursor:"pointer",
+                  background:logMode===v?C.accent:"none",color:logMode===v?C.bg:C.muted,
+                  fontSize:11,fontFamily:"inherit",fontWeight:logMode===v?700:400,whiteSpace:"nowrap"}}>{label}</button>
             ))}
           </div>
+
+          {/* Meal selector — shown on all tabs */}
           <div style={{marginBottom:14}}>
             <Lbl>Meal</Lbl>
             <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
               {MEAL_TYPES.map(m=><button key={m} onClick={()=>setAddMeal(m)} style={{padding:"7px 14px",borderRadius:20,fontSize:12,cursor:"pointer",fontFamily:"inherit",border:`1px solid ${addMeal===m?C.accent:C.border}`,background:addMeal===m?C.accent:"none",color:addMeal===m?C.bg:C.muted,fontWeight:addMeal===m?700:400}}>{MEAL_ICONS[m]} {m}</button>)}
             </div>
           </div>
-          {!importMode&&(
+
+          {/* ── FROM RECIPE TAB ── */}
+          {logMode==="recipe"&&(
+            <div>
+              {recipeBook.length===0?(
+                <div style={{textAlign:"center",padding:"40px 20px",color:C.muted,lineHeight:1.8}}>
+                  <div style={{fontSize:36,marginBottom:10}}>📚</div>
+                  No saved recipes yet.<br/>
+                  <span style={{color:C.accent,cursor:"pointer"}} onClick={()=>{setTab("recipes");setView("main");}}>Go to Recipes tab to create one</span>
+                </div>
+              ):!quickRecipe?(
+                // Recipe list
+                <div>
+                  <Lbl>Select a Recipe</Lbl>
+                  {recipeBook.map(rec=>{
+                    const rt=sumE(rec.items);
+                    return(
+                      <div key={rec.id} onClick={()=>startQuickLog(rec)}
+                        style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:10,cursor:"pointer",
+                          display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:14,fontWeight:600,marginBottom:3}}>{rec.name}</div>
+                          <div style={{fontSize:11,color:C.muted,marginBottom:4}}>{rec.items.length} ingredients</div>
+                          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                            <span style={{fontSize:12,color:C.accent,fontFamily:"monospace",fontWeight:700}}>{Math.round(rt.calories)} kcal</span>
+                            <span style={{fontSize:11,color:C.blue,fontFamily:"monospace"}}>P:{Math.round(rt.protein)}g</span>
+                            <span style={{fontSize:11,color:C.orange,fontFamily:"monospace"}}>C:{Math.round(rt.carbs)}g</span>
+                            <span style={{fontSize:11,color:C.accentDim,fontFamily:"monospace"}}>F:{Math.round(rt.fat)}g</span>
+                          </div>
+                        </div>
+                        <span style={{fontSize:22,color:C.accent,marginLeft:10}}>›</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ):(
+                // Quick log with qty adjust
+                <div>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+                    <button onClick={()=>setQuickRecipe(null)} style={{background:"none",border:`1px solid ${C.border}`,color:C.muted,borderRadius:7,padding:"5px 10px",cursor:"pointer",fontSize:12,fontFamily:"inherit"}}>← Back</button>
+                    <div style={{fontSize:14,fontWeight:700,color:C.text}}>{quickRecipe.name}</div>
+                  </div>
+                  <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:15,marginBottom:14}}>
+                    <div style={{fontSize:11,color:C.muted,marginBottom:12}}>Adjust quantities — nutrition scales automatically</div>
+                    {quickRecipe.items.map(item=>{
+                      const k=item._id??item.food, oQ=parseFloat(item.quantity)||1, nQ=parseFloat(quickQtys[k])||oQ, ratio=nQ/oQ;
+                      return(
+                        <div key={k} style={{borderBottom:`1px solid ${C.border}`,paddingBottom:10,marginBottom:10}}>
+                          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                            <div style={{flex:1,fontSize:13,fontWeight:500}}>{item.food}</div>
+                            <input value={quickQtys[k]||""} onChange={e=>setQuickQtys(p=>({...p,[k]:e.target.value}))}
+                              type="number" style={{...IS,width:70,flex:"none",fontFamily:"monospace",padding:"6px 8px"}}/>
+                            <span style={{fontSize:11,color:C.muted,flexShrink:0}}>{item.unit||"g"}</span>
+                          </div>
+                          <div style={{fontSize:11,color:C.muted}}>
+                            <span style={{color:C.accent,fontFamily:"monospace"}}>{Math.round((Number(item.calories)||0)*ratio)}</span> kcal ·
+                            P:{Math.round((Number(item.protein)||0)*ratio)}g ·
+                            C:{Math.round((Number(item.carbs)||0)*ratio)}g ·
+                            F:{Math.round((Number(item.fat)||0)*ratio)}g
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {/* Recipe total */}
+                    {(()=>{
+                      const tot={cal:0,p:0,c:0,f:0};
+                      quickRecipe.items.forEach(item=>{
+                        const k=item._id??item.food,oQ=parseFloat(item.quantity)||1,nQ=parseFloat(quickQtys[k])||oQ,ratio=nQ/oQ;
+                        tot.cal+=Math.round((Number(item.calories)||0)*ratio);
+                        tot.p+=Math.round((Number(item.protein)||0)*ratio);
+                        tot.c+=Math.round((Number(item.carbs)||0)*ratio);
+                        tot.f+=Math.round((Number(item.fat)||0)*ratio);
+                      });
+                      return(
+                        <div style={{paddingTop:8,display:"flex",gap:10,flexWrap:"wrap"}}>
+                          <span style={{fontSize:13,color:C.accent,fontFamily:"monospace",fontWeight:700}}>Total: {tot.cal} kcal</span>
+                          <span style={{fontSize:12,color:C.blue,fontFamily:"monospace"}}>P:{tot.p}g</span>
+                          <span style={{fontSize:12,color:C.orange,fontFamily:"monospace"}}>C:{tot.c}g</span>
+                          <span style={{fontSize:12,color:C.accentDim,fontFamily:"monospace"}}>F:{tot.f}g</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <Btn onClick={logQuickRecipe} color={C.green}>Log {quickRecipe.name} to {addMeal}</Btn>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── MANUAL / AI TAB ── */}
+          {logMode==="manual"&&(
             <div>
               <div style={{marginBottom:10}}><Lbl>Food Name</Lbl><input value={foodName} onChange={e=>{setFoodName(e.target.value);setAiMsg("");}} placeholder="e.g. Grilled chicken…" style={IS}/></div>
               <div style={{display:"flex",gap:8,marginBottom:12}}>
@@ -649,7 +800,7 @@ function App() {
                     method:"POST",
                     headers:{"Content-Type":"application/json","x-api-key":apiKey.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
                     body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:500,
-                      messages:[{role:"user",content:`Give nutrition for ${qty} ${unit} of ${foodName}. Reply with ONLY this JSON, no other text:\n{"calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sodium":0,"potassium":0,"calcium":0,"iron":0,"vitC":0,"vitD":0,"vitB12":0,"zinc":0}\nReplace the 0s with actual numeric values.`}]
+                      messages:[{role:"user",content:`Give nutrition for ${qty} ${unit} of ${foodName}. Reply with ONLY this JSON, no other text:\n{"calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"saturatedFat":0,"polyFat":0,"monoFat":0,"cholesterol":0,"sodium":0,"potassium":0,"calcium":0,"iron":0,"vitC":0,"vitD":0,"vitB12":0,"zinc":0}\nReplace the 0s with actual numeric values.`}]
                     })
                   });
                   const data=await res.json();
@@ -677,7 +828,7 @@ function App() {
               <Btn onClick={addEntry} disabled={!foodName.trim()||!nut.calories}>Add to {addMeal}</Btn>
             </div>
           )}
-          {importMode&&(
+          {logMode==="paste"&&(
             <div>
               <div style={{marginBottom:10}}><Lbl>Recipe / Meal Name</Lbl><input value={impName} onChange={e=>setImpName(e.target.value)} placeholder="e.g. Lunch Bowl…" style={IS}/></div>
               <div style={{marginBottom:12}}>
