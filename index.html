@@ -1036,13 +1036,13 @@ function App(){
                     <input ref={ingQtyRef} value={ingData.quantity}
                       onChange={e=>setIngData(p=>({...p,quantity:e.target.value}))}
                       onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();ingUnitRef.current&&ingUnitRef.current.focus();}}}
-                      type="number" placeholder="100" style={IS}/>
+                      inputMode="decimal" placeholder="100" style={IS}/>
                   </div>
                   <div style={{flex:1}}>
                     <Lbl>Unit</Lbl>
                     <select ref={ingUnitRef} value={ingData.unit}
-                      onChange={e=>setIngData(p=>({...p,unit:e.target.value}))}
-                      onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();doIngAiFill();}}}
+                      onChange={e=>{setIngData(p=>({...p,unit:e.target.value}));}}
+                      onBlur={()=>{if(ingData.food.trim()&&ingData.quantity){doIngAiFill();}}}
                       style={IS}>
                       {["g","ml","oz","cup","tbsp","tsp","piece","serving"].map(u=><option key={u}>{u}</option>)}
                     </select>
