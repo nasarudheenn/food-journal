@@ -1,9 +1,9 @@
-const CACHE = 'food-journal-v2';
+const CACHE = 'food-journal-v3';
 const ASSETS = [
-  '/index.html',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
+  'index.html',
+  'manifest.json',
+  'icon-192.png',
+  'icon-512.png',
   'https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js'
@@ -28,7 +28,6 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   if (e.request.url.includes('api.anthropic.com')) return;
-
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
@@ -38,7 +37,7 @@ self.addEventListener('fetch', e => {
           caches.open(CACHE).then(c => c.put(e.request, clone));
         }
         return res;
-      }).catch(() => caches.match('/index.html'));
+      }).catch(() => caches.match('index.html'));
     })
   );
 });

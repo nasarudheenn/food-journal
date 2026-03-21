@@ -10,10 +10,10 @@
 <meta name="apple-mobile-web-app-title" content="Food Journal"/>
 <meta name="application-name" content="Food Journal"/>
 <title>Food Journal</title>
-<link rel="manifest" href="/manifest.json"/>
-<link rel="apple-touch-icon" href="/icon-192.png"/>
-<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
-<link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon-192.png"/>
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"/>
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"/>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{height:100%;background:#0f0e0c;color:#f0ece0;font-family:Georgia,'Times New Roman',serif;overscroll-behavior:none;}
@@ -880,7 +880,7 @@ ReactDOM.render(React.createElement(App), document.getElementById("root"));
 </script>
 
 <button id="install-banner" style="display:none">
-  <img src="/icon-192.png" alt="Food Journal icon"/>
+  <img src="icon-192.png" alt="Food Journal icon"/>
   <div class="txt">
     <strong>Install Food Journal</strong>
     <span>Add to home screen for app experience</span>
@@ -929,7 +929,7 @@ window.addEventListener('appinstalled', () => {
 // Register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register('sw.js')
       .then(reg => console.log('SW registered:', reg.scope))
       .catch(err => console.log('SW failed:', err));
   });
