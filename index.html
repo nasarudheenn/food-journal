@@ -240,6 +240,12 @@ function App(){
   const [recImpLoading,setRecImpLoading]=useState(false);
   const [recImpStatus,setRecImpStatus]=useState("");
   const [recParsed,setRecParsed]=useState([]);
+  // Ingredient popup modal
+  const [ingModal,setIngModal]=useState(false);
+  const [ingData,setIngData]=useState({food:"",quantity:"",unit:"g",...Object.fromEntries(ALL_FIELDS.map(f=>[f.key,""]))});
+  const [ingAiMsg,setIngAiMsg]=useState("");
+  const [ingLoading,setIngLoading]=useState(false);
+  const ingNameRef=React.useRef(null);
   // Quick log from diary
   const [quickRecipe,setQuickRecipe]=useState(null);
   const [quickQtys,setQuickQtys]=useState({});
@@ -955,30 +961,65 @@ function App(){
           {recItems.length>0&&(
             <div style={{marginBottom:12}}>
               <Lbl>Ingredients ({recItems.length})</Lbl>
-              {recItems.map((item,idx)=>(
-                <div key={item._id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:12,marginBottom:10}}>
-                  <div style={{display:"flex",gap:6,marginBottom:7}}>
-                    <input value={item.food} onChange={e=>updRI(idx,"food",e.target.value)} placeholder="Food name" style={{...IS,flex:3}}/>
-                    <input value={item.quantity} onChange={e=>updRI(idx,"quantity",e.target.value)} type="number" placeholder="Qty" style={{...IS,flex:1}}/>
-                    <select value={item.unit} onChange={e=>updRI(idx,"unit",e.target.value)} style={{...IS,flex:1}}>{["g","ml","oz","cup","tbsp","tsp","piece","serving"].map(u=><option key={u}>{u}</option>)}</select>
+              {recItems.map((item,idx)=>{
+                const rt=sumE([item]);
+                return(
+                  <div key={item._id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"11px 13px",marginBottom:8,display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:13,fontWeight:600,marginBottom:2}}>{item.food}</div>
+                      <div style={{fontSize:11,color:C.muted}}>{item.quantity} {item.unit} · <span style={{color:C.accent,fontFamily:"monospace"}}>{Math.round(rt.calories)} kcal</span> · P:{Math.round(rt.protein)}g C:{Math.round(rt.carbs)}g F:{Math.round(rt.fat)}g</div>
+                    </div>
+                    <button onClick={()=>setRecItems(p=>p.filter((_,i)=>i!==idx))} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:7,color:C.muted,fontSize:12,cursor:"pointer",fontFamily:"inherit",padding:"4px 9px",flexShrink:0}}>✕</button>
                   </div>
-                  <div style={{display:"flex",gap:6,marginBottom:7}}>
-                    <button onClick={()=>aiRI(idx)} disabled={recLoad||!item.food.trim()||!item.quantity} style={{flex:2,padding:"7px",background:`linear-gradient(135deg,${C.accent},${C.accentDim})`,border:"none",borderRadius:7,color:C.bg,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(!item.food.trim()||!item.quantity)?0.5:1}}>✨ AI Fill</button>
-                    <button onClick={()=>setRecItems(p=>p.filter((_,i)=>i!==idx))} style={{flex:1,padding:"7px",background:"none",border:`1px solid ${C.border}`,borderRadius:7,color:C.muted,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>Remove</button>
-                  </div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5,marginBottom:5}}>
-                    {MACRO_FIELDS.map(({key,label,unit:u})=>(<div key={key}><div style={{fontSize:7,color:C.muted,marginBottom:2}}>{label}({u})</div><input value={item[key]===undefined||item[key]===""?"":item[key]} onChange={e=>updRI(idx,key,e.target.value)} type="number" placeholder="0" style={{...IS,padding:"5px 7px",fontSize:11,fontFamily:"monospace",color:Number(item[key])>0?C.accent:C.text}}/></div>))}
-                  </div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:5}}>
-                    {MICRO_FIELDS.map(({key,label,unit:u})=>(<div key={key}><div style={{fontSize:7,color:C.muted,marginBottom:2}}>{label}({u})</div><input value={item[key]===undefined||item[key]===""?"":item[key]} onChange={e=>updRI(idx,key,e.target.value)} type="number" placeholder="0" style={{...IS,padding:"5px 7px",fontSize:11,fontFamily:"monospace",color:Number(item[key])>0?C.green:C.text}}/></div>))}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
           {recAiMsg&&<div style={{fontSize:11,color:recAiMsg.startsWith("✓")?C.green:recAiMsg.startsWith("⚠")?C.red:C.muted,marginBottom:8,textAlign:"center"}}>{recAiMsg}</div>}
-          <button onClick={addRI} style={{width:"100%",padding:"11px",background:"none",border:`1px dashed ${C.accent}`,borderRadius:10,color:C.accent,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:12}}>+ Add Ingredient Manually</button>
-          <Btn onClick={saveNewRecipe} disabled={!recName.trim()||!recItems.length} color={C.green}>Save Recipe</Btn>
+          <button onClick={()=>{setIngData({food:"",quantity:"",unit:"g",...Object.fromEntries(ALL_FIELDS.map(f=>[f.key,""]))});setIngAiMsg("");setIngModal(true);setTimeout(()=>ingNameRef.current&&ingNameRef.current.focus(),100);}} style={{width:"100%",padding:"11px",background:"none",border:`1px dashed ${C.accent}`,borderRadius:10,color:C.accent,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:12}}>+ Add Ingredient Manually</button>
+          <Btn onClick={saveNewRecipe} disabled={!recName.trim()||!recItems.length} color={C.green}>{editRecId?"Update Recipe":"Save Recipe"}</Btn>
+
+          {/* Ingredient Modal */}
+          {ingModal&&(
+            <div className="modal-overlay" onClick={()=>setIngModal(false)}>
+              <div className="modal-box" onClick={e=>e.stopPropagation()}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                  <div style={{fontSize:16,fontWeight:700}}>Add Ingredient</div>
+                  <button onClick={()=>setIngModal(false)} style={{background:"none",border:"none",color:C.muted,fontSize:22,cursor:"pointer"}}>✕</button>
+                </div>
+                <div style={{marginBottom:10}}>
+                  <Lbl>Ingredient Name</Lbl>
+                  <input ref={ingNameRef} value={ingData.food} onChange={e=>setIngData(p=>({...p,food:e.target.value}))} placeholder="e.g. Egg, Chicken, Rice…" style={IS} autoFocus/>
+                </div>
+                <div style={{display:"flex",gap:8,marginBottom:12}}>
+                  <div style={{flex:2}}><Lbl>Quantity</Lbl><input value={ingData.quantity} onChange={e=>setIngData(p=>({...p,quantity:e.target.value}))} type="number" placeholder="100" style={IS}/></div>
+                  <div style={{flex:1}}><Lbl>Unit</Lbl><select value={ingData.unit} onChange={e=>setIngData(p=>({...p,unit:e.target.value}))} style={IS}>{["g","ml","oz","cup","tbsp","tsp","piece","serving"].map(u=><option key={u}>{u}</option>)}</select></div>
+                </div>
+                <Btn onClick={async()=>{
+                  if(!ingData.food.trim()||!ingData.quantity){setIngAiMsg("⚠ Enter name and quantity first.");return;}
+                  setIngLoading(true);
+                  await doAI(ingData.food,ingData.quantity,ingData.unit,r=>setIngData(p=>({...p,...r})),s=>{setIngAiMsg(s);setIngLoading(false);});
+                  setIngLoading(false);
+                }} disabled={ingLoading||!ingData.food.trim()||!ingData.quantity} color={`linear-gradient(135deg,${C.accent},${C.accentDim})`} style={{marginBottom:6}}>{ingLoading?"⏳ Looking up…":"✨ AI Fill Nutrition"}</Btn>
+                {ingAiMsg&&<div style={{fontSize:11,color:ingAiMsg.startsWith("✓")?C.green:C.red,marginBottom:10,textAlign:"center"}}>{ingAiMsg}</div>}
+                <div style={{background:C.bg,border:`1px solid ${C.border}`,borderRadius:10,padding:12,marginBottom:14}}>
+                  <div style={{fontSize:10,color:C.accent,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:8}}>Macronutrients</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:8}}>
+                    {MACRO_FIELDS.map(({key,label,unit:u})=>(<div key={key}><div style={{fontSize:8,color:C.muted,marginBottom:2}}>{label}({u})</div><input value={ingData[key]||""} onChange={e=>setIngData(p=>({...p,[key]:e.target.value}))} type="number" placeholder="0" style={{...IS,padding:"6px 8px",fontSize:12,fontFamily:"monospace",color:Number(ingData[key])>0?C.accent:C.text}}/></div>))}
+                  </div>
+                  <div style={{fontSize:10,color:C.purple,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:8}}>Micronutrients</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:5}}>
+                    {MICRO_FIELDS.map(({key,label,unit:u})=>(<div key={key}><div style={{fontSize:7,color:C.muted,marginBottom:2}}>{label}({u})</div><input value={ingData[key]||""} onChange={e=>setIngData(p=>({...p,[key]:e.target.value}))} type="number" placeholder="0" style={{...IS,padding:"5px 6px",fontSize:11,fontFamily:"monospace",color:Number(ingData[key])>0?C.green:C.text}}/></div>))}
+                  </div>
+                </div>
+                <Btn onClick={()=>{
+                  if(!ingData.food.trim())return;
+                  setRecItems(p=>[...p,{...ingData,_id:Date.now()}]);
+                  setIngModal(false);
+                }} disabled={!ingData.food.trim()} color={C.green}>Add to Recipe</Btn>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
