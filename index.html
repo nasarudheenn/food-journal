@@ -661,23 +661,33 @@ function App(){
               ):!quickRecipe?(
                 <div>
                   <Lbl>Select a Recipe</Lbl>
-                  {recipeBook.map(rec=>{
-                    const rt=sumE(rec.items);
-                    return(
-                      <div key={rec.id} onClick={()=>startQuickLog(rec)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                        <div style={{flex:1}}>
-                          <div style={{fontSize:14,fontWeight:600,marginBottom:3}}>{rec.name}</div>
-                          {rec.mealTags&&rec.mealTags.length>0&&<div style={{fontSize:10,color:C.accent,marginBottom:4}}>{rec.mealTags.map(t=>MEAL_ICONS[t]).join(" ")} {rec.mealTags.join(", ")}</div>}
-                          <div style={{display:"flex",gap:8}}>
-                            <span style={{fontSize:12,color:C.accent,fontFamily:"monospace",fontWeight:700}}>{Math.round(rt.calories)} kcal</span>
-                            <span style={{fontSize:11,color:C.blue,fontFamily:"monospace"}}>P:{Math.round(rt.protein)}g</span>
-                            <span style={{fontSize:11,color:C.orange,fontFamily:"monospace"}}>C:{Math.round(rt.carbs)}g</span>
-                          </div>
-                        </div>
-                        <span style={{fontSize:22,color:C.accent,marginLeft:10}}>›</span>
+                  {(()=>{
+                    const filtered=recipeBook.filter(r=>!r.mealTags||r.mealTags.length===0||r.mealTags.includes(addMeal));
+                    if(filtered.length===0)return(
+                      <div style={{textAlign:"center",padding:"30px 20px",color:C.muted,lineHeight:1.8,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}>
+                        <div style={{fontSize:24,marginBottom:8}}>{MEAL_ICONS[addMeal]}</div>
+                        No recipes tagged for <strong style={{color:C.accent}}>{addMeal}</strong>.<br/>
+                        <span style={{fontSize:11}}>Tag recipes in the Recipes tab, or select a different meal.</span>
                       </div>
                     );
-                  })}
+                    return filtered.map(rec=>{
+                      const rt=sumE(rec.items);
+                      return(
+                        <div key={rec.id} onClick={()=>startQuickLog(rec)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                          <div style={{flex:1}}>
+                            <div style={{fontSize:14,fontWeight:600,marginBottom:3}}>{rec.name}</div>
+                            {rec.mealTags&&rec.mealTags.length>0&&<div style={{fontSize:10,color:C.accent,marginBottom:4}}>{rec.mealTags.map(t=>MEAL_ICONS[t]).join(" ")} {rec.mealTags.join(", ")}</div>}
+                            <div style={{display:"flex",gap:8}}>
+                              <span style={{fontSize:12,color:C.accent,fontFamily:"monospace",fontWeight:700}}>{Math.round(rt.calories)} kcal</span>
+                              <span style={{fontSize:11,color:C.blue,fontFamily:"monospace"}}>P:{Math.round(rt.protein)}g</span>
+                              <span style={{fontSize:11,color:C.orange,fontFamily:"monospace"}}>C:{Math.round(rt.carbs)}g</span>
+                            </div>
+                          </div>
+                          <span style={{fontSize:22,color:C.accent,marginLeft:10}}>›</span>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               ):(
                 <div>
@@ -1008,10 +1018,8 @@ function App(){
             // For weekly/monthly: sum all data; for daily: avg
             const periodTotals=(()=>{
               if(repPeriod==="daily"){
-                const t=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,0]));
-                repData.forEach(d=>ALL_FIELDS.forEach(f=>{t[f.key]+=(d.totals[f.key]||0);}));
-                ALL_FIELDS.forEach(f=>{t[f.key]=t[f.key]/(repData.length||1);});
-                return t;
+                // Use today's actual entries
+                return sumE(entries[todayStr()]||[]);
               } else {
                 // Sum all entries in current week/month
                 const ad=Object.keys(entries).sort();
@@ -1026,8 +1034,7 @@ function App(){
             // Meal contribution totals for period
             const mealPeriodTotals=MEAL_TYPES.map(m=>{
               if(repPeriod==="daily"){
-                const sourceDate=entries[selDate]?selDate:(histDates[0]||selDate);
-                return{meal:m,totals:sumE((entries[sourceDate]||[]).filter(e=>e.meal===m))};
+                return{meal:m,totals:sumE((entries[todayStr()]||[]).filter(e=>e.meal===m))};
               } else {
                 const cutDays=repPeriod==="weekly"?7:daysInMonth;
                 const cutDate=new Date();cutDate.setDate(cutDate.getDate()-cutDays);
@@ -1037,13 +1044,14 @@ function App(){
               }
             }).filter(m=>m.totals.calories>0);
 
-            const periodLabel=repPeriod==="daily"?"Daily Avg (last 14 days)":repPeriod==="weekly"?"This Week Total":"This Month Total";
+            const periodLabel=repPeriod==="daily"?"Today's Intake":repPeriod==="weekly"?"This Week Total":"This Month Total";
+            const goalLabel=repPeriod==="daily"?"daily goal":repPeriod==="weekly"?"weekly goal (×7)":"monthly goal (×"+daysInMonth+" days)";
             return(
               <>
                 {/* Achievement vs Goal */}
                 <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
                   <div style={{fontSize:13,fontWeight:600,marginBottom:2}}>Achievement vs Goal</div>
-                  <div style={{fontSize:11,color:C.muted,marginBottom:14}}>{periodLabel} vs {repPeriod==="daily"?"daily":repPeriod==="weekly"?"weekly (×7)":"monthly (×"+daysInMonth+")"} goal</div>
+                  <div style={{fontSize:11,color:C.muted,marginBottom:14}}>{periodLabel} vs {goalLabel}</div>
                   {ALL_FIELDS.map(({key,label,unit:u,color})=>{
                     const g=periodGoals[key];if(!g)return null;
                     const val=periodTotals[key]||0;
