@@ -567,15 +567,28 @@ function App(){
                 </div>
               </div>
               <div style={{flex:1}}>
-                <div style={{fontSize:11,color:C.muted,marginBottom:8}}>{calOver?<span style={{color:C.red}}>+{Math.round(dayT.calories-goals.calories)} over goal</span>:<span>{Math.round(goals.calories-dayT.calories)} kcal remaining</span>}</div>
                 <MacroBar label="Protein" value={dayT.protein} goal={goals.protein} color={C.blue} showPct/>
                 <MacroBar label="Carbs" value={dayT.carbs} goal={goals.carbs} color={C.orange} showPct/>
                 <MacroBar label="Fat" value={dayT.fat} goal={goals.fat} color={C.accentDim} showPct/>
                 <MacroBar label="Fiber" value={dayT.fiber} goal={goals.fiber} color={C.green} showPct/>
               </div>
             </div>
-            <div style={{display:"flex",gap:5,marginTop:12}}>
-              {[{label:"Protein",value:dayT.protein,goal:goals.protein,unit:"g",color:C.blue},{label:"Carbs",value:dayT.carbs,goal:goals.carbs,unit:"g",color:C.orange},{label:"Fat",value:dayT.fat,goal:goals.fat,unit:"g",color:C.accentDim},{label:"Fiber",value:dayT.fiber,goal:goals.fiber,unit:"g",color:C.green}].map(b=><Badge key={b.label} {...b}/>)}
+
+            {/* Remaining row */}
+            <div style={{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginTop:14,marginBottom:5}}>Remaining</div>
+            <div style={{display:"flex",gap:5}}>
+              {[
+                {label:"Calories",value:Math.max(0,goals.calories-dayT.calories),unit:"kcal",color:calOver?C.red:C.accent,over:calOver},
+                {label:"Protein",value:Math.max(0,goals.protein-dayT.protein),unit:"g",color:dayT.protein>goals.protein?C.red:C.blue,over:dayT.protein>goals.protein},
+                {label:"Carbs",value:Math.max(0,goals.carbs-dayT.carbs),unit:"g",color:dayT.carbs>goals.carbs?C.red:C.orange,over:dayT.carbs>goals.carbs},
+                {label:"Fat",value:Math.max(0,goals.fat-dayT.fat),unit:"g",color:dayT.fat>goals.fat?C.red:C.accentDim,over:dayT.fat>goals.fat},
+                {label:"Fiber",value:Math.max(0,goals.fiber-dayT.fiber),unit:"g",color:dayT.fiber>goals.fiber?C.red:C.green,over:dayT.fiber>goals.fiber},
+              ].map(b=>(
+                <div key={b.label} style={{background:C.bg,border:`1px solid ${b.over?C.red:C.border}`,borderRadius:8,padding:"7px 5px",textAlign:"center",flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:700,color:b.color,fontFamily:"monospace",whiteSpace:"nowrap"}}>{b.value<1&&b.value>0?b.value.toFixed(1):Math.round(b.value)}<span style={{fontSize:8,color:C.muted}}>{b.unit}</span></div>
+                  <div style={{fontSize:8,color:C.muted,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.label}</div>
+                </div>
+              ))}
             </div>
           </div>
 
