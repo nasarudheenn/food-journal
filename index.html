@@ -221,6 +221,11 @@ function App() {
   const [recItems, setRecItems] =useState([]);
   const [recAiMsg, setRecAiMsg] =useState("");
   const [recLoad,  setRecLoad]  =useState(false);
+  const [recImportMode, setRecImportMode] =useState(false);
+  const [recImportTxt,  setRecImportTxt]  =useState("");
+  const [recImpLoading, setRecImpLoading] =useState(false);
+  const [recImpStatus,  setRecImpStatus]  =useState("");
+  const [recParsed,     setRecParsed]     =useState([]);
 
   // Reports
   const [repPeriod,setRepPeriod]=useState("daily");
@@ -299,13 +304,52 @@ function App() {
     await aiLookup(it.food,it.quantity,it.unit,r=>setRecItems(p=>p.map((x,i)=>i===idx?{...x,...r}:x)),setRecAiMsg,apiKey);
     setRecLoad(false);
   }
+
+  async function doRecipeParse(){
+    if(!recImportTxt.trim())return;
+    if(!apiKey||!apiKey.trim()){setRecImpStatus("⚠ No API key. Add it in the Profile tab.");return;}
+    setRecImpLoading(true);setRecImpStatus("Parsing…");setRecParsed([]);
+    try{
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
+        headers:{"Content-Type":"application/json","x-api-key":apiKey.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        body:JSON.stringify({
+          model:"claude-haiku-4-5-20251001",max_tokens:2000,
+          messages:[{role:"user",content:`Extract all food ingredients and nutrition from this text. Return ONLY a JSON array. Each item must have: food(string), quantity(number), unit(string, default "g"), calories, protein, carbs, fat, fiber, sodium, potassium, calcium, iron, vitC, vitD, vitB12, zinc (all numbers). Estimate any missing values.\nText:\n${recImportTxt}`}]
+        })});
+      const data=await res.json();
+      if(data.error){setRecImpStatus("⚠ API error: "+data.error.message);setRecImpLoading(false);return;}
+      const txt=data.content?.map(b=>b.text||"").join("")||"";
+      const p=JSON.parse(txt.replace(/```json|```/g,"").trim());
+      if(!Array.isArray(p)||!p.length)throw 0;
+      setRecParsed(p.map((x,i)=>({...x,selected:true,_id:Date.now()+i})));
+      setRecImpStatus(`✓ Found ${p.length} ingredient${p.length>1?"s":""} — review & add`);
+    }catch{setRecImpStatus("⚠ Couldn't parse. Try cleaner text.");}
+    setRecImpLoading(false);
+  }
+
+  function addRecipeParsed(){
+    const toAdd=recParsed.filter(i=>i.selected);if(!toAdd.length)return;
+    const newItems=toAdd.map(x=>({
+      _id:Date.now()+Math.random(),
+      food:x.food, quantity:String(x.quantity||""), unit:x.unit||"g",
+      ...Object.fromEntries(ALL_FIELDS.map(f=>[f.key,String(x[f.key]||"0")]))
+    }));
+    setRecItems(p=>[...p,...newItems]);
+    setRecImportTxt("");setRecParsed([]);setRecImpStatus("");setRecImportMode(false);
+  }
   function saveRecipe(){
     if(!recName.trim()||!recItems.length)return;
     const rec={id:editRec?.id||`rb_${Date.now()}`,name:recName.trim(),items:recItems};
     pRB(editRec?recipeBook.map(r=>r.id===editRec.id?rec:r):[...recipeBook,rec]);
-    setEditRec(null);setRecName("");setRecItems([]);setRecAiMsg("");setView("main");
+    setEditRec(null);setRecName("");setRecItems([]);setRecAiMsg("");
+    setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setRecImpStatus("");
+    setView("main");
   }
-  function startEdit(r){setEditRec(r);setRecName(r.name);setRecItems(r.items.map((x,i)=>({...x,_id:x._id??i})));setRecAiMsg("");setView("recipe-edit");}
+  function startEdit(r){
+    setEditRec(r);setRecName(r.name);setRecItems(r.items.map((x,i)=>({...x,_id:x._id??i})));
+    setRecAiMsg("");setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setRecImpStatus("");
+    setView("recipe-edit");
+  }
   function startUse(r){setUseRec(r);setUseQtys(Object.fromEntries(r.items.map(x=>[x._id??x.food,x.quantity])));setUseMeal("Lunch");setView("recipe-use");}
   function logRecipe(){
     if(!useRec)return;
@@ -728,29 +772,99 @@ function App() {
       {/* ── RECIPE EDIT ── */}
       {view==="recipe-edit"&&(
         <div style={{padding:"16px 18px"}}>
-          <div style={{marginBottom:12}}><Lbl>Recipe Name</Lbl><input value={recName} onChange={e=>setRecName(e.target.value)} placeholder="e.g. Fish & Veggie Bowl" style={IS}/></div>
-          <Lbl>Ingredients</Lbl>
-          {recItems.map((item,idx)=>(
-            <div key={item._id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:13,marginBottom:10}}>
-              <div style={{display:"flex",gap:6,marginBottom:8}}>
-                <input value={item.food} onChange={e=>updRI(idx,"food",e.target.value)} placeholder="Food name" style={{...IS,flex:3}}/>
-                <input value={item.quantity} onChange={e=>updRI(idx,"quantity",e.target.value)} type="number" placeholder="Qty" style={{...IS,flex:1}}/>
-                <select value={item.unit} onChange={e=>updRI(idx,"unit",e.target.value)} style={{...IS,flex:1}}>{["g","ml","oz","cup","tbsp","tsp","piece","serving"].map(u=><option key={u}>{u}</option>)}</select>
+          <div style={{marginBottom:14}}><Lbl>Recipe Name</Lbl><input value={recName} onChange={e=>setRecName(e.target.value)} placeholder="e.g. Egg Veggies Omelette" style={IS}/></div>
+
+          {/* Mode toggle */}
+          <div style={{display:"flex",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:3,marginBottom:16,gap:3}}>
+            {[{label:"✏️ Add Manually",v:false},{label:"📋 Import from Claude",v:true}].map(({label,v})=>(
+              <button key={String(v)} onClick={()=>{setRecImportMode(v);setRecAiMsg("");setRecImpStatus("");}}
+                style={{flex:1,padding:"9px 5px",borderRadius:7,border:"none",cursor:"pointer",
+                  background:recImportMode===v?C.accent:"none",color:recImportMode===v?C.bg:C.muted,
+                  fontSize:12,fontFamily:"inherit",fontWeight:recImportMode===v?700:400}}>{label}</button>
+            ))}
+          </div>
+
+          {/* ── IMPORT FROM CLAUDE PANEL ── */}
+          {recImportMode&&(
+            <div>
+              <div style={{fontSize:11,color:C.muted,background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 12px",marginBottom:10,lineHeight:1.7}}>
+                💡 <strong style={{color:C.text}}>How to use:</strong> Open Claude chat → ask something like <span style={{color:C.accent}}>"Give me nutrition breakdown for my egg omelette recipe: 2 eggs, 50g onion, 30g capsicum, 5ml oil"</span> → copy the reply → paste below
               </div>
-              <div style={{display:"flex",gap:6,marginBottom:8}}>
-                <button onClick={()=>aiRI(idx)} disabled={recLoad||!item.food.trim()||!item.quantity} style={{flex:2,padding:"8px",background:`linear-gradient(135deg,${C.accent},${C.accentDim})`,border:"none",borderRadius:7,color:C.bg,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(!item.food.trim()||!item.quantity)?0.5:1}}>✨ AI Fill</button>
-                <button onClick={()=>setRecItems(p=>p.filter((_,i)=>i!==idx))} style={{flex:1,padding:"8px",background:"none",border:`1px solid ${C.border}`,borderRadius:7,color:C.muted,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>Remove</button>
+              <div style={{marginBottom:10}}>
+                <Lbl>Paste Claude's nutrition text</Lbl>
+                <textarea value={recImportTxt} onChange={e=>{setRecImportTxt(e.target.value);setRecImpStatus("");setRecParsed([]);}}
+                  placeholder={"Paste Claude's response here...\n\nExample:\n2 eggs: 143 kcal, 13g protein, 1g carbs, 10g fat\n50g onion: 20 kcal, 0.5g protein, 5g carbs, 0g fat\n30g capsicum: 8 kcal, 0.3g protein, 2g carbs, 0g fat"}
+                  rows={7} style={{...IS,resize:"vertical",lineHeight:1.6,fontSize:13}}/>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:6}}>
-                {MACRO_FIELDS.map(({key,label,unit:u})=>(<div key={key}><div style={{fontSize:8,color:C.muted,marginBottom:2}}>{label}({u})</div><input value={item[key]||""} onChange={e=>updRI(idx,key,e.target.value)} type="number" placeholder="0" style={{...IS,padding:"6px 8px",fontSize:12,fontFamily:"monospace"}}/></div>))}
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6}}>
-                {MICRO_FIELDS.map(({key,label,unit:u})=>(<div key={key}><div style={{fontSize:8,color:C.muted,marginBottom:2}}>{label}({u})</div><input value={item[key]||""} onChange={e=>updRI(idx,key,e.target.value)} type="number" placeholder="0" style={{...IS,padding:"6px 8px",fontSize:12,fontFamily:"monospace"}}/></div>))}
-              </div>
+              <Btn onClick={doRecipeParse} disabled={recImpLoading||!recImportTxt.trim()}
+                color={`linear-gradient(135deg,${C.accent},${C.accentDim})`} style={{marginBottom:8}}>
+                {recImpLoading?"⏳ Parsing…":"🔍 Parse Ingredients"}
+              </Btn>
+              {recImpStatus&&(
+                <div style={{fontSize:12,marginBottom:12,textAlign:"center",padding:"8px 12px",borderRadius:8,
+                  color:recImpStatus.startsWith("✓")?C.green:recImpStatus.startsWith("⚠")?C.red:C.muted,
+                  background:recImpStatus.startsWith("✓")?"rgba(82,196,122,0.08)":recImpStatus.startsWith("⚠")?"rgba(224,82,82,0.08)":"none",
+                  border:recImpStatus.startsWith("✓")?`1px solid ${C.green}`:recImpStatus.startsWith("⚠")?`1px solid ${C.red}`:"none"}}>
+                  {recImpStatus}
+                </div>
+              )}
+              {recParsed.length>0&&(
+                <div style={{marginBottom:12}}>
+                  <Lbl>Select ingredients to add</Lbl>
+                  {recParsed.map((item,idx)=>(
+                    <div key={item._id} onClick={()=>setRecParsed(p=>p.map((x,i)=>i===idx?{...x,selected:!x.selected}:x))}
+                      style={{background:item.selected?C.card:C.bg,border:`1px solid ${item.selected?C.accent:C.border}`,
+                        borderRadius:10,padding:"11px 13px",marginBottom:8,cursor:"pointer",
+                        display:"flex",alignItems:"center",gap:12,transition:"all 0.15s"}}>
+                      <div style={{width:18,height:18,borderRadius:5,flexShrink:0,
+                        border:`2px solid ${item.selected?C.accent:C.border}`,
+                        background:item.selected?C.accent:"none",
+                        display:"flex",alignItems:"center",justifyContent:"center",
+                        fontSize:11,color:C.bg,fontWeight:700}}>{item.selected?"✓":""}</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:13,fontWeight:600}}>{item.food}</div>
+                        <div style={{fontSize:11,color:C.muted,marginTop:2}}>
+                          {item.quantity}{item.unit||"g"} · <span style={{color:C.accent,fontFamily:"monospace"}}>{item.calories} kcal</span> · P:{item.protein}g C:{item.carbs}g F:{item.fat}g
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <Btn onClick={addRecipeParsed} disabled={!recParsed.some(i=>i.selected)} color={C.green} style={{marginTop:4}}>
+                    ➕ Add {recParsed.filter(i=>i.selected).length} Ingredient{recParsed.filter(i=>i.selected).length!==1?"s":""} to Recipe
+                  </Btn>
+                </div>
+              )}
             </div>
-          ))}
+          )}
+
+          {/* ── MANUAL INGREDIENTS ── */}
+          {recItems.length>0&&(
+            <div style={{marginBottom:4}}>
+              {recItems.length>0&&<Lbl>Ingredients ({recItems.length})</Lbl>}
+              {recItems.map((item,idx)=>(
+                <div key={item._id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:13,marginBottom:10}}>
+                  <div style={{display:"flex",gap:6,marginBottom:8}}>
+                    <input value={item.food} onChange={e=>updRI(idx,"food",e.target.value)} placeholder="Food name" style={{...IS,flex:3}}/>
+                    <input value={item.quantity} onChange={e=>updRI(idx,"quantity",e.target.value)} type="number" placeholder="Qty" style={{...IS,flex:1}}/>
+                    <select value={item.unit} onChange={e=>updRI(idx,"unit",e.target.value)} style={{...IS,flex:1}}>{["g","ml","oz","cup","tbsp","tsp","piece","serving"].map(u=><option key={u}>{u}</option>)}</select>
+                  </div>
+                  <div style={{display:"flex",gap:6,marginBottom:8}}>
+                    <button onClick={()=>aiRI(idx)} disabled={recLoad||!item.food.trim()||!item.quantity} style={{flex:2,padding:"8px",background:`linear-gradient(135deg,${C.accent},${C.accentDim})`,border:"none",borderRadius:7,color:C.bg,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(!item.food.trim()||!item.quantity)?0.5:1}}>✨ AI Fill</button>
+                    <button onClick={()=>setRecItems(p=>p.filter((_,i)=>i!==idx))} style={{flex:1,padding:"8px",background:"none",border:`1px solid ${C.border}`,borderRadius:7,color:C.muted,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>Remove</button>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:6}}>
+                    {MACRO_FIELDS.map(({key,label,unit:u})=>(<div key={key}><div style={{fontSize:8,color:C.muted,marginBottom:2}}>{label}({u})</div><input value={item[key]||""} onChange={e=>updRI(idx,key,e.target.value)} type="number" placeholder="0" style={{...IS,padding:"6px 8px",fontSize:12,fontFamily:"monospace"}}/></div>))}
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:6}}>
+                    {MICRO_FIELDS.map(({key,label,unit:u})=>(<div key={key}><div style={{fontSize:8,color:C.muted,marginBottom:2}}>{label}({u})</div><input value={item[key]||""} onChange={e=>updRI(idx,key,e.target.value)} type="number" placeholder="0" style={{...IS,padding:"6px 8px",fontSize:12,fontFamily:"monospace"}}/></div>))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {recAiMsg&&<div style={{fontSize:12,color:recAiMsg.startsWith("✓")?C.green:C.muted,marginBottom:8,textAlign:"center"}}>{recAiMsg}</div>}
-          <button onClick={addRI} style={{width:"100%",padding:"12px",background:"none",border:`1px dashed ${C.accent}`,borderRadius:10,color:C.accent,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:12}}>+ Add Ingredient</button>
+          <button onClick={addRI} style={{width:"100%",padding:"12px",background:"none",border:`1px dashed ${C.accent}`,borderRadius:10,color:C.accent,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:12}}>+ Add Ingredient Manually</button>
           <Btn onClick={saveRecipe} disabled={!recName.trim()||!recItems.length} color={C.green}>{editRec?"Update Recipe":"Save Recipe"}</Btn>
         </div>
       )}
