@@ -310,18 +310,51 @@ function App() {
   function updRI(idx,f,v){
     setRecItems(p=>p.map((x,i)=>i===idx?{...x,[f]:v}:x));
   }
+
   async function aiRI(idx){
     const it=recItems[idx];
     if(!it.food.trim()||!it.quantity){ setRecAiMsg("⚠ Enter food name and quantity first."); return; }
+    if(!apiKey||!apiKey.trim()){ setRecAiMsg("⚠ No API key. Add it in Profile tab."); return; }
     setRecLoad(true);
-    setRecAiMsg("Looking up "+it.food+"…");
-    await aiLookup(it.food, it.quantity, it.unit,
-      r => {
-        setRecItems(p => p.map((x,i) => i===idx ? {...x, ...r} : x));
-      },
-      s => { setRecAiMsg(s); setRecLoad(false); },
-      apiKey
-    );
+    setRecAiMsg("⏳ Looking up " + it.food + "…");
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey.trim(),
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true"
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 500,
+          messages: [{
+            role: "user",
+            content: `Give nutrition for ${it.quantity} ${it.unit} of ${it.food}. Reply with ONLY this JSON, no other text:\n{"calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sodium":0,"potassium":0,"calcium":0,"iron":0,"vitC":0,"vitD":0,"vitB12":0,"zinc":0}\nReplace the 0s with the actual numeric values.`
+          }]
+        })
+      });
+      const data = await res.json();
+      if(data.error){
+        setRecAiMsg("⚠ API: " + data.error.message);
+        setRecLoad(false);
+        return;
+      }
+      const raw = data.content?.map(b=>b.text||"").join("") || "";
+      setRecAiMsg("Raw: " + raw.slice(0,80)); // debug — show raw response
+      const jsonStr = raw.replace(/```json|```/g,"").trim();
+      const p = JSON.parse(jsonStr);
+      const updated = {};
+      ALL_FIELDS.forEach(f => {
+        const v = p[f.key];
+        updated[f.key] = (v !== undefined && v !== null) ? String(Math.round(Number(v)*10)/10) : "0";
+      });
+      setRecItems(prev => prev.map((x,i) => i===idx ? {...x, ...updated} : x));
+      setRecAiMsg("✓ Filled — adjust if needed");
+    } catch(e) {
+      setRecAiMsg("⚠ Error: " + (e.message || "unknown"));
+    }
     setRecLoad(false);
   }
 
@@ -607,7 +640,29 @@ function App() {
                 <div style={{flex:2}}><Lbl>Amount</Lbl><input value={qty} onChange={e=>setQty(e.target.value)} type="number" placeholder="150" style={IS}/></div>
                 <div style={{flex:1}}><Lbl>Unit</Lbl><select value={unit} onChange={e=>setUnit(e.target.value)} style={IS}>{["g","ml","oz","cup","tbsp","tsp","piece","serving"].map(u=><option key={u}>{u}</option>)}</select></div>
               </div>
-              <Btn onClick={()=>{setLoading(true);aiLookup(foodName,qty,unit,n=>{setNut(n);},s=>{setAiMsg(s);setLoading(false);},apiKey);}} disabled={loading||!foodName.trim()||!qty} color={`linear-gradient(135deg,${C.accent},${C.accentDim})`} style={{marginBottom:8}}>{loading?"⏳ Looking up…":"✨ Auto-fill Nutrition with AI"}</Btn>
+              <Btn onClick={async ()=>{
+                if(!apiKey||!apiKey.trim()){setAiMsg("⚠ No API key. Add it in Profile tab.");return;}
+                if(!foodName.trim()||!qty){setAiMsg("⚠ Enter food name and amount first.");return;}
+                setLoading(true); setAiMsg("⏳ Looking up "+foodName+"…");
+                try{
+                  const res=await fetch("https://api.anthropic.com/v1/messages",{
+                    method:"POST",
+                    headers:{"Content-Type":"application/json","x-api-key":apiKey.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+                    body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:500,
+                      messages:[{role:"user",content:`Give nutrition for ${qty} ${unit} of ${foodName}. Reply with ONLY this JSON, no other text:\n{"calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sodium":0,"potassium":0,"calcium":0,"iron":0,"vitC":0,"vitD":0,"vitB12":0,"zinc":0}\nReplace the 0s with actual numeric values.`}]
+                    })
+                  });
+                  const data=await res.json();
+                  if(data.error){setAiMsg("⚠ API: "+data.error.message);setLoading(false);return;}
+                  const raw=data.content?.map(b=>b.text||"").join("")||"";
+                  const p=JSON.parse(raw.replace(/```json|```/g,"").trim());
+                  const r={};
+                  ALL_FIELDS.forEach(f=>{const v=p[f.key];r[f.key]=(v!==undefined&&v!==null)?String(Math.round(Number(v)*10)/10):"0";});
+                  setNut(r);
+                  setAiMsg("✓ Filled — adjust if needed");
+                }catch(e){setAiMsg("⚠ Error: "+(e.message||"unknown"));}
+                setLoading(false);
+              }} disabled={loading||!foodName.trim()||!qty} color={`linear-gradient(135deg,${C.accent},${C.accentDim})`} style={{marginBottom:8}}>{loading?"⏳ Looking up…":"✨ Auto-fill Nutrition with AI"}</Btn>
               {aiMsg&&<div style={{fontSize:12,color:aiMsg.startsWith("✓")?C.green:C.muted,marginBottom:10,textAlign:"center"}}>{aiMsg}</div>}
               <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:14,marginBottom:14}}>
                 <div style={{fontSize:11,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10}}>Macronutrients</div>
