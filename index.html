@@ -872,7 +872,7 @@ ${tab==="recipes"&&view==="main"&&html`
           </div>
           ${(()=>{
             const filtered=(recipeFilter==="All"?recipeBook:recipeBook.filter(r=>r.mealTags?.includes(recipeFilter)))
-              .filter(r=>!recipeSearch||r.name.toLowerCase().includes(recipeSearch.toLowerCase()));
+              .filter(r=>!recipeSearch||r.name.toLowerCase().startsWith(recipeSearch.toLowerCase()));
             if(!filtered.length)return html`<div style=${{textAlign:"center",padding:"30px",color:C.muted,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}><div style=${{fontSize:24,marginBottom:8}}>🔍</div>No recipes found.</div>`;
             return filtered.map(rec=>{const rt=sumE(rec.items);return html`<div key=${rec.id} style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,marginBottom:10,overflow:"hidden"}}>
               <div onClick=${()=>{setRecName(rec.name);setRecItems(rec.items.map((x,i)=>({...x,_id:x._id??i})));setRecTags(rec.mealTags||[]);setEditRecId(rec.id);setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setView("recipe-new");}} style=${{padding:"14px 15px",cursor:"pointer"}}>
