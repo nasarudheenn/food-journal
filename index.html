@@ -599,32 +599,28 @@ function App(){
 
   // Handle Android back button/gesture using History API
   useEffect(()=>{
-    // Push a state so back button/gesture has something to pop
-    if(view!=="main"){
-      history.pushState({view},"",'');
-    }
-    const onPopState=e=>{
+    // Always push a state on mount so back has something to intercept
+    history.pushState({fj:true},"",'');
+    const onPopState=()=>{
+      // Always push state back immediately to keep intercepting
+      history.pushState({fj:true},"",'');
       if(view!=="main"){
+        // Navigate back within app
         setView("main");
         setQuickRecipe(null);
-        // Push state again so next back also gets intercepted
-        history.pushState({view:"main"},"",'');
       } else {
-        // On main view - show confirm before closing
+        // On main view - confirm exit
         const leave=window.confirm("Exit Food Journal?");
-        if(!leave){
-          history.pushState({view:"main"},"",'');
+        if(leave){
+          // Remove listener and go back to actually close
+          window.removeEventListener("popstate",onPopState);
+          history.back();
         }
       }
     };
     window.addEventListener("popstate",onPopState);
     return()=>window.removeEventListener("popstate",onPopState);
   },[view]);
-
-  // Push initial state on mount
-  useEffect(()=>{
-    history.pushState({view:"main"},"",'');
-  },[]);
 
   // Swipe left from right edge to go back (in-app navigation only)
   useEffect(()=>{
@@ -943,7 +939,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v27.2 · Mar 22, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v27.3 · Mar 22, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
