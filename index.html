@@ -598,53 +598,44 @@ function App(){
   };
 
   const [showExitConfirm,setShowExitConfirm]=useState(false);
-  const exitConfirmed=useRef(false);
   const viewRef=useRef(view);
   const ingModalRef=useRef(ingModal);
+  const tabRef=useRef(tab);
   useEffect(()=>{viewRef.current=view;},[view]);
   useEffect(()=>{ingModalRef.current=ingModal;},[ingModal]);
+  useEffect(()=>{tabRef.current=tab;},[tab]);
 
-  // Single effect on mount only - uses refs to always have latest values
+  // Full-screen right-edge swipe to go back / show exit
   useEffect(()=>{
-    // Push 2 states as buffer
-    history.pushState({fj:1},"",'');
-    history.pushState({fj:2},"",'');
-
-    const onPopState=()=>{
-      if(exitConfirmed.current)return;
-      // Immediately push back to keep intercepting next time
-      history.pushState({fj:2},"",'');
-      if(ingModalRef.current){
-        setIngModal(false);
-      } else if(viewRef.current!=="main"){
-        setView("main");
-        setQuickRecipe(null);
-      } else {
-        setShowExitConfirm(true);
-      }
+    let startX=0,startY=0,startTime=0;
+    const onTouchStart=e=>{
+      startX=e.touches[0].clientX;
+      startY=e.touches[0].clientY;
+      startTime=Date.now();
     };
-
-    window.addEventListener("popstate",onPopState);
-    return()=>window.removeEventListener("popstate",onPopState);
-  },[]); // Empty deps - runs once on mount only
-
-  // Swipe left from right edge
-  useEffect(()=>{
-    let startX=0,startY=0;
-    const onTouchStart=e=>{startX=e.touches[0].clientX;startY=e.touches[0].clientY;};
     const onTouchEnd=e=>{
       const screenW=window.innerWidth;
       const dx=startX-e.changedTouches[0].clientX;
       const dy=Math.abs(e.changedTouches[0].clientY-startY);
-      if(startX>screenW-60&&dx>80&&dy<60){
-        if(ingModalRef.current){setIngModal(false);}
-        else if(viewRef.current!=="main"){setView("main");setQuickRecipe(null);}
-        else{setShowExitConfirm(true);}
+      const dt=Date.now()-startTime;
+      // Right edge swipe left: start within 60px of right, move 70px+ left, not too vertical, fast enough
+      if(startX>screenW-60&&dx>70&&dy<80&&dt<500){
+        if(ingModalRef.current){
+          setIngModal(false);
+        } else if(viewRef.current!=="main"){
+          setView("main");
+          setQuickRecipe(null);
+        } else {
+          setShowExitConfirm(true);
+        }
       }
     };
     document.addEventListener("touchstart",onTouchStart,{passive:true});
     document.addEventListener("touchend",onTouchEnd,{passive:true});
-    return()=>{document.removeEventListener("touchstart",onTouchStart);document.removeEventListener("touchend",onTouchEnd);};
+    return()=>{
+      document.removeEventListener("touchstart",onTouchStart);
+      document.removeEventListener("touchend",onTouchEnd);
+    };
   },[]);
 
   // ── RENDER ────────────────────────────────────────────────────────────────
@@ -664,10 +655,11 @@ function App(){
           <div style=${{display:"flex",gap:10}}>
             <button onClick=${()=>setShowExitConfirm(false)} style=${{flex:1,padding:"13px",background:"none",border:`1px solid ${C.border}`,borderRadius:10,color:C.text,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Stay</button>
             <button onClick=${()=>{
-              exitConfirmed.current=true;
               setShowExitConfirm(false);
-              // Small delay then go back far enough to let OS close the app
-              setTimeout(()=>history.go(-3),50);
+              // Use Android back via navigator if available, else try window.close
+              if(navigator.app&&navigator.app.exitApp){navigator.app.exitApp();}
+              else if(navigator.device&&navigator.device.exitApp){navigator.device.exitApp();}
+              else{window.close();}
             }} style=${{flex:1,padding:"13px",background:C.red,border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Exit</button>
           </div>
         </div>
@@ -964,7 +956,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v27.7 · Mar 22, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v27.8 · Mar 22, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
