@@ -4,57 +4,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Food Journal</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id="app"></div>
-    <script src="https://unpkg.com/preact@10.5.13/dist/preact.umd.js"></script>
+    <div id="app">
+        <header>
+            <h1>My Food Journal</h1>
+        </header>
+        <main>
+            <section id="entry-form">
+                <textarea id="food-entry" placeholder="What's on your plate?"></textarea>
+                <button id="save-button">Save Entry</button>
+            </section>
+            <section id="journal-entries">
+                <h2>Entries</h2>
+                <ul id="entries-list"></ul>
+            </section>
+        </main>
+        <footer>
+            <p>Food Journal App</p>
+        </footer>
+    </div>
+    <div id="exit-confirmation" class="modal">
+        <div class="modal-content">
+            <p>Are you sure you want to exit?</p>
+            <button id="confirm-exit">Yes</button>
+            <button id="cancel-exit">No</button>
+        </div>
+    </div>
+    <script src="app.js"></script>
     <script>
-        const { h, render, Component } = preact;
-        class FoodJournal extends Component {
-            constructor() {
-                super();
-                this.state = {
-                    entries: [],
-                    swipeDetected: false
-                };
-            }
+        let entries = [];
 
-            addEntry(entry) {
-                this.setState({ entries: [...this.state.entries, entry] });
+        document.getElementById('save-button').onclick = function() {
+            const entry = document.getElementById('food-entry').value;
+            if(entry) {
+                entries.push(entry);
+                updateEntriesList();
+                document.getElementById('food-entry').value = '';
             }
+        };
 
-            detectSwipe() {
-                // logic for swipe gesture detection
-                this.setState({ swipeDetected: true });
-            }
-
-            confirmExit() {
-                const confirmed = confirm('Are you sure you want to exit?');
-                if (confirmed) {
-                    // logic to exit
-                }
-            }
-
-            componentDidMount() {
-                // Add swipe detection listeners
-                window.addEventListener('swipe', this.detectSwipe.bind(this));
-                window.addEventListener('beforeunload', this.confirmExit.bind(this));
-            }
-
-            render() {
-                return (
-                    <div>
-                        <h1>My Food Journal</h1>
-                        {/* Render journal entries */}
-                        <div>{this.state.entries.map(entry => <p>{entry}</p>)}</div>
-                        <button onClick={() => this.addEntry('New Entry')}>Add Entry</button>
-                        {this.state.swipeDetected && <p>Swipe detected!</p>}
-                    </div>
-                );
-            }
+        function updateEntriesList() {
+            const list = document.getElementById('entries-list');
+            list.innerHTML = '';
+            entries.forEach((entry, index) => {
+                const li = document.createElement('li');
+                li.textContent = entry;
+                list.appendChild(li);
+            });
         }
-        render(<FoodJournal />, document.getElementById('app'));
+
+        // Back swipe gesture
+        let touchStartX = 0;
+
+        document.addEventListener('touchstart', function(event) {
+            touchStartX = event.touches[0].clientX;
+        });
+
+        document.addEventListener('touchend', function(event) {
+            const touchEndX = event.changedTouches[0].clientX;
+            if (touchStartX - touchEndX > 100) {
+                // Trigger exit confirmation modal
+                document.getElementById('exit-confirmation').style.display = 'block';
+            }
+        });
+
+        // Exit confirmation modal
+        document.getElementById('confirm-exit').onclick = function() {
+            window.close();
+        };
+
+        document.getElementById('cancel-exit').onclick = function() {
+            document.getElementById('exit-confirmation').style.display = 'none';
+        };
     </script>
 </body>
 </html>
