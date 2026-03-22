@@ -332,6 +332,13 @@ function App(){
   }
 
   function clearSuggestions(){setTimeout(()=>setSuggestions([]),200);}
+
+  async function doIngAiFill(){
+    if(!ingData.food.trim()||!ingData.quantity){setIngAiMsg("⚠ Enter name and quantity first.");return;}
+    setIngLoading(true);
+    await doAI(ingData.food,ingData.quantity,ingData.unit,r=>setIngData(p=>({...p,...r})),s=>{setIngAiMsg(s);setIngLoading(false);});
+    setIngLoading(false);
+  }
     if(!ingData.food.trim()||!ingData.quantity){setIngAiMsg("⚠ Enter name and quantity first.");return;}
     setIngLoading(true);
     await doAI(ingData.food,ingData.quantity,ingData.unit,r=>setIngData(p=>({...p,...r})),s=>{setIngAiMsg(s);setIngLoading(false);});
