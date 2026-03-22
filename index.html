@@ -47,6 +47,16 @@ const store={
   set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 };
 
+// ── Fetch API key from private gist on startup ────────────────────────────────
+const GIST_URL="https://gist.githubusercontent.com/nasarudheenn/36f66934e828a52c0330cc87af935c28/raw/config.json";
+(async()=>{
+  try{
+    const res=await fetch(GIST_URL+"?t="+Date.now()); // cache bust
+    const data=await res.json();
+    if(data.apiKey){localStorage.setItem(SK.apiKey,data.apiKey);}
+  }catch(e){console.log("Gist fetch failed, using stored key");}
+})();
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 const DEFAULT_PROFILE={name:"Nasarudheen N",currentWeight:"81",targetWeight:"70",height:"175",calorieGoal:1800,protein:130,carbs:180,fat:55,fiber:25,sugar:50,saturatedFat:20,polyFat:10,monoFat:15,cholesterol:300,sodium:2300,potassium:3500,calcium:1000,iron:18,vitC:90,vitD:20,vitB12:2.4,zinc:11};
 const C={bg:"#0f0e0c",card:"#1a1917",border:"#3a3835",accent:"#e8c547",accentDim:"#b89c2f",text:"#f0ece0",muted:"#7a7060",red:"#e05252",green:"#52c47a",blue:"#5299e0",orange:"#e08a52",purple:"#a07ee0"};
@@ -904,7 +914,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v26.3 · Mar 22, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v26.4 · Mar 22, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
