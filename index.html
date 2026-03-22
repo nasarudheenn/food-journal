@@ -50,27 +50,27 @@ const store={
 // ── Fetch API key from private gist on startup ────────────────────────────────
 const GIST_URL="https://gist.githubusercontent.com/nasarudheenn/36f66934e828a52c0330cc87af935c28/raw/config.json";
 async function fetchApiKey(){
-  // Try multiple fetch methods
-  const attempts=[
-    ()=>fetch(GIST_URL+"?t="+Date.now(),{cache:"no-store"}),
-    ()=>fetch(GIST_URL+"?t="+Date.now(),{cache:"no-store",mode:"cors"}),
-    ()=>fetch(GIST_URL,{cache:"no-cache"}),
+  const urls=[
+    GIST_URL+"?t="+Date.now(),
+    "https://gist.github.com/nasarudheenn/36f66934e828a52c0330cc87af935c28/raw/config.json?t="+Date.now(),
   ];
-  for(const attempt of attempts){
+  for(const url of urls){
     try{
-      const res=await attempt();
+      const res=await fetch(url,{cache:"no-store",mode:"cors",credentials:"omit"});
       if(!res.ok)continue;
-      const data=await res.json();
+      const text=await res.text();
+      const data=JSON.parse(text);
       if(data.apiKey&&data.apiKey.length>10){
         localStorage.setItem("fd-apikey-v1",data.apiKey);
-        console.log("API key loaded from gist");
-        return;
+        return true;
       }
     }catch(e){continue;}
   }
-  console.log("Gist fetch failed, using stored key:",localStorage.getItem("fd-apikey-v1")?"found":"not found");
+  return false;
 }
+// Try immediately and also after 3 seconds
 fetchApiKey();
+setTimeout(fetchApiKey,3000);
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const DEFAULT_PROFILE={name:"Nasarudheen N",currentWeight:"81",targetWeight:"70",height:"175",calorieGoal:1800,protein:130,carbs:180,fat:55,fiber:25,sugar:50,saturatedFat:20,polyFat:10,monoFat:15,cholesterol:300,sodium:2300,potassium:3500,calcium:1000,iron:18,vitC:90,vitD:20,vitB12:2.4,zinc:11};
@@ -125,7 +125,7 @@ function getMealByTimeFromTags(tags){
 // ── AI helpers ────────────────────────────────────────────────────────────────
 async function callAI(messages,maxTokens=600){
   const key=localStorage.getItem(SK.apiKey)||"";
-  if(!key){throw new Error("No API key");}
+  if(!key){throw new Error("No API key — go to Profile → API Key to add it");}
   const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
     headers:{"Content-Type":"application/json","x-api-key":key.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
     body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:maxTokens,messages})});
@@ -952,7 +952,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v28.1 · Mar 22, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v28.2 · Mar 22, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
