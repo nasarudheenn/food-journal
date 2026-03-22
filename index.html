@@ -106,7 +106,18 @@ async function aiSuggest(q){
   const arr=JSON.parse(txt.replace(/```json|```/g,"").trim());
   if(!Array.isArray(arr))return[];
   const ql=q.toLowerCase();
-  return arr.filter(s=>s.toLowerCase().split(/\s+/).some(w=>w.startsWith(ql))).slice(0,5);
+  const withPriority=[];
+  arr.forEach(s=>{
+    const words=s.toLowerCase().split(/\s+/);
+    for(let i=0;i<words.length;i++){
+      if(words[i].startsWith(ql)){
+        withPriority.push({s,priority:i,nextLetter:words[i].slice(ql.length)||''});
+        break;
+      }
+    }
+  });
+  withPriority.sort((a,b)=>a.priority!==b.priority?a.priority-b.priority:a.nextLetter.localeCompare(b.nextLetter));
+  return withPriority.slice(0,5).map(x=>x.s);
 }
 async function aiParse(text){
   const txt=await callAI([{role:"user",content:`Extract food items from this text. Return ONLY a JSON array. Each item: {food,quantity,unit,calories,protein,carbs,fat,saturatedFat,polyFat,monoFat,cholesterol,fiber,sugar,sodium,potassium,calcium,iron,vitC,vitD,vitB12,zinc} (all numbers).\nText:\n${text}`}],2000);
@@ -859,7 +870,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v25.8 · Mar 22, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v25.9 · Mar 22, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
@@ -873,10 +884,28 @@ ${tab==="recipes"&&view==="main"&&html`
             ${["All",...MEAL_TYPES].map(m=>html`<button key=${m} onClick=${()=>setRecipeFilter(m)} style=${{flex:"0 0 auto",padding:"6px 12px",borderRadius:18,fontSize:11,cursor:"pointer",fontFamily:"inherit",border:`1px solid ${recipeFilter===m?C.accent:C.border}`,background:recipeFilter===m?C.accent:"none",color:recipeFilter===m?C.bg:C.muted,fontWeight:recipeFilter===m?700:400,whiteSpace:"nowrap"}}>${m==="All"?"🍽️ All":MEAL_ICONS[m]+" "+m}</button>`)}
           </div>
           ${(()=>{
-            const filtered=(recipeFilter==="All"?recipeBook:recipeBook.filter(r=>r.mealTags?.includes(recipeFilter)))
-              .filter(r=>!recipeSearch||r.name.toLowerCase().split(/\s+/).some(w=>w.startsWith(recipeSearch.toLowerCase())));
-            if(!filtered.length)return html`<div style=${{textAlign:"center",padding:"30px",color:C.muted,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}><div style=${{fontSize:24,marginBottom:8}}>🔍</div>No recipes found.</div>`;
-            return filtered.map(rec=>{const rt=sumE(rec.items);return html`<div key=${rec.id} style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,marginBottom:10,overflow:"hidden"}}>
+            const base=(recipeFilter==="All"?recipeBook:recipeBook.filter(r=>r.mealTags?.includes(recipeFilter)));
+            if(!recipeSearch.trim()){
+              // No search - show all sorted alphabetically
+              return [...base].sort((a,b)=>a.name.localeCompare(b.name));
+            }
+            const ql=recipeSearch.toLowerCase();
+            // Find which word position matches and sort by priority then next letter
+            const withPriority=[];
+            base.forEach(r=>{
+              const words=r.name.toLowerCase().split(/\s+/);
+              for(let i=0;i<words.length;i++){
+                if(words[i].startsWith(ql)){
+                  const nextLetter=words[i].slice(ql.length)||'';
+                  withPriority.push({rec:r,priority:i,nextLetter});
+                  break;
+                }
+              }
+            });
+            if(!withPriority.length)return html`<div style=${{textAlign:"center",padding:"30px",color:C.muted,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}><div style=${{fontSize:24,marginBottom:8}}>🔍</div>No recipes found.</div>`;
+            // Sort: first by word position (priority), then by next letter alphabetically
+            withPriority.sort((a,b)=>a.priority!==b.priority?a.priority-b.priority:a.nextLetter.localeCompare(b.nextLetter));
+            return withPriority.map(({rec})=>{const rt=sumE(rec.items);return html`<div key=${rec.id} style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,marginBottom:10,overflow:"hidden"}}>
               <div onClick=${()=>{setRecName(rec.name);setRecItems(rec.items.map((x,i)=>({...x,_id:x._id??i})));setRecTags(rec.mealTags||[]);setEditRecId(rec.id);setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setView("recipe-new");}} style=${{padding:"14px 15px",cursor:"pointer"}}>
                 <div style=${{fontSize:15,fontWeight:700,marginBottom:4}}>${rec.name}</div>
                 ${rec.mealTags?.length&&html`<div style=${{fontSize:10,color:C.accent,marginBottom:4}}>${rec.mealTags.map(t=>MEAL_ICONS[t]).join(" ")} ${rec.mealTags.join(", ")}</div>`}
