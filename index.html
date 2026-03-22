@@ -599,35 +599,34 @@ function App(){
 
   const [showExitConfirm,setShowExitConfirm]=useState(false);
   const exitConfirmed=useRef(false);
+  const viewRef=useRef(view);
+  const ingModalRef=useRef(ingModal);
+  useEffect(()=>{viewRef.current=view;},[view]);
+  useEffect(()=>{ingModalRef.current=ingModal;},[ingModal]);
 
-  // Push initial state on mount
+  // Single effect on mount only - uses refs to always have latest values
   useEffect(()=>{
+    // Push 2 states as buffer
     history.pushState({fj:1},"",'');
-    history.pushState({fj:2},"",''); // push 2 states so we have buffer
-  },[]);
+    history.pushState({fj:2},"",'');
 
-  // Handle back button
-  useEffect(()=>{
     const onPopState=()=>{
-      if(exitConfirmed.current){
-        // User confirmed exit - let it close naturally
-        return;
-      }
-      // Always push state back to keep intercepting
+      if(exitConfirmed.current)return;
+      // Immediately push back to keep intercepting next time
       history.pushState({fj:2},"",'');
-
-      if(ingModal){
+      if(ingModalRef.current){
         setIngModal(false);
-      } else if(view!=="main"){
+      } else if(viewRef.current!=="main"){
         setView("main");
         setQuickRecipe(null);
       } else {
         setShowExitConfirm(true);
       }
     };
+
     window.addEventListener("popstate",onPopState);
     return()=>window.removeEventListener("popstate",onPopState);
-  },[view,ingModal]);
+  },[]); // Empty deps - runs once on mount only
 
   // Swipe left from right edge
   useEffect(()=>{
@@ -638,15 +637,15 @@ function App(){
       const dx=startX-e.changedTouches[0].clientX;
       const dy=Math.abs(e.changedTouches[0].clientY-startY);
       if(startX>screenW-60&&dx>80&&dy<60){
-        if(ingModal){setIngModal(false);}
-        else if(view!=="main"){setView("main");setQuickRecipe(null);}
+        if(ingModalRef.current){setIngModal(false);}
+        else if(viewRef.current!=="main"){setView("main");setQuickRecipe(null);}
         else{setShowExitConfirm(true);}
       }
     };
     document.addEventListener("touchstart",onTouchStart,{passive:true});
     document.addEventListener("touchend",onTouchEnd,{passive:true});
     return()=>{document.removeEventListener("touchstart",onTouchStart);document.removeEventListener("touchend",onTouchEnd);};
-  },[view,ingModal]);
+  },[]);
 
   // ── RENDER ────────────────────────────────────────────────────────────────
   const UNITS=["g","ml","piece","tsp","tbsp","cup","serving"];
@@ -667,8 +666,8 @@ function App(){
             <button onClick=${()=>{
               exitConfirmed.current=true;
               setShowExitConfirm(false);
-              // Go back twice to pass through both pushed states and let OS close
-              history.go(-2);
+              // Small delay then go back far enough to let OS close the app
+              setTimeout(()=>history.go(-3),50);
             }} style=${{flex:1,padding:"13px",background:C.red,border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Exit</button>
           </div>
         </div>
@@ -965,7 +964,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v27.6 · Mar 22, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v27.7 · Mar 22, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
