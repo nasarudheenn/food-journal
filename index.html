@@ -37,7 +37,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script type="text/babel">
 const {useState,useEffect,useRef}=React;
-const SK={entries:"fd-entries-v2",profile:"fd-profile-v2",weights:"fd-weights-v2",recipes:"fd-recipebook-v2",apiKey:"fd-apikey-v1",autoBackup:"fd-autobackup-v1",lastBackup:"fd-lastbackup-v1"};
+const SK={entries:"fd-entries-v2",profile:"fd-profile-v2",weights:"fd-weights-v2",recipes:"fd-recipebook-v2",apiKey:"fd-apikey-v1"};
 const store={
   get:k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}},
   set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
@@ -192,42 +192,12 @@ function ConfirmModal({msg,onConfirm,onCancel}){
 }
 
 function SuggestDropdown({suggestions,loading,onSelect}){
-  if(loading)return <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",marginTop:2,fontSize:12,color:C.muted}}>🔍 Searching…</div>;
-  if(!suggestions||suggestions.length===0)return null;
-  return(
-    <div style={{background:C.card,border:`1px solid ${C.accent}`,borderRadius:8,marginTop:2,overflow:"hidden",boxShadow:"0 4px 16px rgba(0,0,0,0.4)"}}>
-      {suggestions.map((s,i)=>(
-        <div key={i} onMouseDown={e=>{e.preventDefault();onSelect(s);}}
-          style={{padding:"10px 14px",borderBottom:i<suggestions.length-1?`1px solid ${C.border}`:"none",cursor:"pointer",fontSize:13,color:C.text,display:"flex",alignItems:"center",gap:8}}
-          onTouchEnd={e=>{e.preventDefault();onSelect(s);}}>
-          <span style={{color:C.accent,fontSize:11}}>🍽</span>{s}
-        </div>
-      ))}
-    </div>
+  if(loading)return React.createElement('div',{style:{padding:'10px',color:C.muted,fontSize:12}},'🔍 Searching…');
+  if(!suggestions||!suggestions.length)return null;
+  return React.createElement('div',{style:{position:'absolute',width:'100%',background:C.card,border:'1px solid '+C.accent,borderRadius:8,marginTop:2,zIndex:50,overflow:'hidden',boxShadow:'0 4px 12px rgba(0,0,0,0.4)'}},
+    suggestions.map((s,i)=>React.createElement('div',{key:i,onMouseDown:e=>{e.preventDefault();onSelect(s);},onTouchEnd:e=>{e.preventDefault();onSelect(s);},style:{padding:'10px 14px',borderBottom:i<suggestions.length-1?'1px solid '+C.border:'none',cursor:'pointer',fontSize:13}},s))
   );
 }
-
-function RecipeCard(rec,setRecName,setRecItems,setRecTags,setRecAiMsg,setRecImportMode,setRecImportTxt,setRecParsed,setEditRecId,setView,startUse,setConfirmModal,pRB,recipeBook){
-  const rt=sumE(rec.items);
-  return(
-    <div key={rec.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,marginBottom:10,overflow:"hidden"}}>
-      <div onClick={()=>{setRecName(rec.name);setRecItems(rec.items.map((x,i)=>({...x,_id:x._id??i})));setRecTags(rec.mealTags||[]);setRecAiMsg("");setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setEditRecId(rec.id);setView("recipe-new");}} style={{padding:"14px 15px",cursor:"pointer"}}>
-        <div style={{fontSize:15,fontWeight:700,marginBottom:4}}>{rec.name}</div>
-        {rec.mealTags&&rec.mealTags.length>0&&<div style={{fontSize:10,color:C.accent,marginBottom:4}}>{rec.mealTags.map(t=>MEAL_ICONS[t]).join(" ")} {rec.mealTags.join(", ")}</div>}
-        <div style={{fontSize:11,color:C.muted,marginBottom:6}}>{rec.items.length} ingredients · tap to edit</div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          <span style={{fontSize:13,color:C.accent,fontFamily:"monospace",fontWeight:700}}>{Math.round(rt.calories)} kcal</span>
-          <span style={{fontSize:11,color:C.muted}}>P:{Math.round(rt.protein)}g C:{Math.round(rt.carbs)}g F:{Math.round(rt.fat)}g</span>
-        </div>
-      </div>
-      <div style={{padding:"0 15px 14px",display:"flex",gap:8}}>
-        <button onClick={e=>{e.stopPropagation();startUse(rec);}} style={{flex:1,padding:"10px",background:C.green,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🍳 Use This Recipe</button>
-        <button onClick={e=>{e.stopPropagation();setConfirmModal({msg:`Delete "${rec.name}"?`,onConfirm:()=>pRB(recipeBook.filter(r=>r.id!==rec.id))});}} style={{padding:"10px 12px",background:"none",border:`1px solid ${C.red}`,borderRadius:9,color:C.red,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
-      </div>
-    </div>
-  );
-}
-
 function App(){
   const [entries,setEntries]=useState(()=>store.get(SK.entries)||{});
   const [profile,setProfile]=useState(()=>{const p=store.get(SK.profile);return p?{...DEFAULT_PROFILE,...p}:DEFAULT_PROFILE;});
@@ -303,42 +273,22 @@ function App(){
     setTimeout(()=>ingNameRef.current&&ingNameRef.current.focus(),150);
   }
 
-  async function fetchSuggestions(query,fieldId){
-    if(!query||query.length<2){setSuggestions([]);return;}
-    const key=apiKey||HARDCODED_KEY;
-    setSuggestLoading(true);setSuggestFor(fieldId);
+  async function fetchSuggestions(q,fid){
+    if(!q||q.length<2){setSuggestions([]);return;}
+    const k=apiKey||HARDCODED_KEY;
+    setSuggestLoading(true);setSuggestFor(fid);
     try{
-      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
-        headers:{"Content-Type":"application/json","x-api-key":key.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-        body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:200,
-          messages:[{role:"user",content:`List 6 common foods/ingredients that match "${query}". Return ONLY a JSON array of strings, no explanation. Example: ["Egg","Egg white","Egg yolk","Egg noodles","Egg salad","Eggplant"]`}]})});
-      const data=await res.json();
-      if(data.error){setSuggestions([]);setSuggestLoading(false);return;}
-      const txt=data.content?.map(b=>b.text||"").join("")||"";
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":k.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:150,messages:[{role:"user",content:'List 6 foods/ingredients matching "'+q+'". Return ONLY a JSON array of strings, nothing else.'}]})});
+      const d=await res.json();if(d.error){setSuggestions([]);setSuggestLoading(false);return;}
+      const txt=d.content?.map(b=>b.text||"").join("")||"";
       const arr=JSON.parse(txt.replace(/```json|```/g,"").trim());
       if(Array.isArray(arr))setSuggestions(arr.slice(0,6));
     }catch{setSuggestions([]);}
     setSuggestLoading(false);
   }
-
-  function handleFoodNameChange(val,fieldId,setter){
-    setter(val);
-    clearTimeout(suggestTimer.current);
-    if(val.length>=2){
-      suggestTimer.current=setTimeout(()=>fetchSuggestions(val,fieldId),400);
-    } else {
-      setSuggestions([]);setSuggestFor("");
-    }
-  }
-
-  function clearSuggestions(){setTimeout(()=>setSuggestions([]),200);}
-
+  function handleFoodName(val,fid,setter){setter(val);clearTimeout(suggestTimer.current);if(val.length>=2)suggestTimer.current=setTimeout(()=>fetchSuggestions(val,fid),500);else{setSuggestions([]);setSuggestFor("");}}
+  function clearSug(){setTimeout(()=>setSuggestions([]),200);}
   async function doIngAiFill(){
-    if(!ingData.food.trim()||!ingData.quantity){setIngAiMsg("⚠ Enter name and quantity first.");return;}
-    setIngLoading(true);
-    await doAI(ingData.food,ingData.quantity,ingData.unit,r=>setIngData(p=>({...p,...r})),s=>{setIngAiMsg(s);setIngLoading(false);});
-    setIngLoading(false);
-  }
     if(!ingData.food.trim()||!ingData.quantity){setIngAiMsg("⚠ Enter name and quantity first.");return;}
     setIngLoading(true);
     await doAI(ingData.food,ingData.quantity,ingData.unit,r=>setIngData(p=>({...p,...r})),s=>{setIngAiMsg(s);setIngLoading(false);});
@@ -359,41 +309,13 @@ function App(){
   const [quickQtys,setQuickQtys]=useState({});
   // Reports
   const [repPeriod,setRepPeriod]=useState("daily");
-  // Recipe search
   const [recipeSearch,setRecipeSearch]=useState("");
-  // Recipe filter
-  const [recipeFilter,setRecipeFilter]=useState("All");
-  // Food suggestions
   const [suggestions,setSuggestions]=useState([]);
   const [suggestFor,setSuggestFor]=useState("");
   const [suggestLoading,setSuggestLoading]=useState(false);
   const suggestTimer=React.useRef(null);
   // Backup
   const [backupMsg,setBackupMsg]=useState("");
-  const [autoBackup,setAutoBackup]=useState(()=>localStorage.getItem(SK.autoBackup)==="true");
-
-  // Auto-backup on app open (once per day)
-  React.useEffect(()=>{
-    if(!autoBackup) return;
-    const lastBackup=localStorage.getItem(SK.lastBackup)||"";
-    const today=todayStr();
-    if(lastBackup===today) return; // already backed up today
-    // Wait 3 seconds after app opens then auto-backup
-    const t=setTimeout(()=>{
-      try{
-        const data={version:1,exportedAt:new Date().toISOString(),entries:store.get(SK.entries)||{},profile:store.get(SK.profile)||{},weights:store.get(SK.weights)||[],recipeBook:store.get(SK.recipes)||[]};
-        const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement("a");
-        a.href=url;a.download=`food-journal-backup-${today}.json`;
-        document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-        localStorage.setItem(SK.lastBackup,today);
-        setBackupMsg("✓ Auto-backup saved to Downloads!");
-        setTimeout(()=>setBackupMsg(""),4000);
-      }catch(e){console.error("Auto-backup failed",e);}
-    },3000);
-    return()=>clearTimeout(t);
-  },[autoBackup]);
 
   const goals={
     calories:Number(profile.calorieGoal)||1800,protein:Number(profile.protein)||130,
@@ -443,7 +365,7 @@ function App(){
   function addParsed(){
     const toAdd=parsed.filter(i=>i.selected);if(!toAdd.length)return;
     const now=new Date().toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"});
-    const rid=`r_${Date.now()}`,rn=impName.trim();
+    const rid=`r_${Date.now()}`,rn=impName.trim()||"Imported Meal";
     const newEs=toAdd.map(x=>({id:Date.now()+Math.random(),meal:addMeal,food:x.food,
       quantity:`${x.quantity} ${x.unit||"g"}`,time:now,recipeId:rid,recipeName:rn,
       ...Object.fromEntries(ALL_FIELDS.map(f=>[f.key,Number(x[f.key])||0]))}));
@@ -456,7 +378,6 @@ function App(){
 
   async function doParse(){
     if(!importTxt.trim())return;
-    if(!impName.trim()){setImpStatus("⚠ Please enter a meal name first.");return;}
     setImpLoading(true);setImpStatus("Parsing…");setParsed([]);
     try{
       const key=apiKey||HARDCODED_KEY;
@@ -657,13 +578,6 @@ function App(){
       {nutModal&&<NutModal item={nutModal} onClose={()=>setNutModal(null)}/>}
       {confirmModal&&<ConfirmModal msg={confirmModal.msg} onConfirm={()=>{confirmModal.onConfirm();setConfirmModal(null);}} onCancel={()=>setConfirmModal(null)}/>}
 
-      {/* Auto-backup toast */}
-      {backupMsg&&tab!=="profile"&&(
-        <div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:200,background:backupMsg.startsWith("✓")?"rgba(82,196,122,0.95)":"rgba(224,82,82,0.95)",color:"#fff",borderRadius:20,padding:"10px 20px",fontSize:12,fontWeight:600,fontFamily:"Georgia,serif",boxShadow:"0 4px 16px rgba(0,0,0,0.3)",maxWidth:360,textAlign:"center",whiteSpace:"nowrap"}}>
-          {backupMsg}
-        </div>
-      )}
-
       {/* HEADER */}
       <div style={{padding:"max(env(safe-area-inset-top),18px) 18px 10px",borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,background:C.bg,zIndex:10}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -830,7 +744,7 @@ function App(){
                 <div>
                   <Lbl>Select a Recipe</Lbl>
                   {(()=>{
-                    const filtered=recipeBook.filter(r=>!r.mealTags||r.mealTags.length===0||r.mealTags.includes(addMeal));
+                    const filtered=recipeBook.filter(r=>!r.mealTags||r.mealTags.length===0||r.mealTags.includes(addMeal)).filter(r=>!recipeSearch.trim()||r.name.toLowerCase().includes(recipeSearch.toLowerCase()));
                     if(filtered.length===0)return(
                       <div style={{textAlign:"center",padding:"30px 20px",color:C.muted,lineHeight:1.8,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}>
                         <div style={{fontSize:24,marginBottom:8}}>{MEAL_ICONS[addMeal]}</div>
@@ -888,21 +802,10 @@ function App(){
           {/* MANUAL */}
           {logMode==="manual"&&(
             <div>
-              <div style={{marginBottom:10}}>
-                <Lbl>Food Name</Lbl>
-                <div style={{position:"relative"}}>
-                  <input value={foodName} onChange={e=>{handleFoodNameChange(e.target.value,"manual",v=>{setFoodName(v);setAiMsg("");});}} onBlur={clearSuggestions} placeholder="e.g. Grilled chicken…" style={IS}/>
-                  {suggestFor==="manual"&&<SuggestDropdown suggestions={suggestions} loading={suggestLoading} onSelect={v=>{setFoodName(v);setSuggestions([]);setSuggestFor("");}}/>}
-                </div>
-              </div>
-              <div style={{marginBottom:8}}><Lbl>Amount</Lbl><input value={qty} onChange={e=>setQty(e.target.value)} inputMode="decimal" placeholder="150" style={IS}/></div>
-              <div style={{marginBottom:12}}>
-                <Lbl>Unit</Lbl>
-                <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                  {["g","ml","piece","tsp","tbsp","cup","serving"].map(u=>(
-                    <button key={u} onClick={()=>setUnit(u)} style={{padding:"7px 13px",borderRadius:18,border:`1px solid ${unit===u?C.accent:C.border}`,background:unit===u?C.accent:"none",color:unit===u?C.bg:C.muted,fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:unit===u?700:400}}>{u}</button>
-                  ))}
-                </div>
+              <div style={{marginBottom:10}}><Lbl>Food Name</Lbl><div style={{position:"relative"}}><input value={foodName} onChange={e=>{handleFoodName(e.target.value,"man",v=>{setFoodName(v);setAiMsg("");});}} onBlur={clearSug} placeholder="e.g. Grilled chicken…" style={IS}/>{suggestFor==="man"&&<SuggestDropdown suggestions={suggestions} loading={suggestLoading} onSelect={v=>{setFoodName(v);setSuggestions([]);}}/>}</div></div>
+              <div style={{display:"flex",gap:8,marginBottom:12}}>
+                <div style={{flex:2}}><Lbl>Amount</Lbl><input value={qty} onChange={e=>setQty(e.target.value)} type="number" placeholder="150" style={IS}/></div>
+                <div style={{flex:1}}><Lbl>Unit</Lbl><select value={unit} onChange={e=>setUnit(e.target.value)} style={IS}>{["g","ml","oz","cup","tbsp","tsp","piece","serving"].map(u=><option key={u}>{u}</option>)}</select></div>
               </div>
               <Btn onClick={async()=>{setLoading(true);await doAI(foodName,qty,unit,n=>{setNut(n);},s=>{setAiMsg(s);setLoading(false);});}} disabled={loading||!foodName.trim()||!qty} color={`linear-gradient(135deg,${C.accent},${C.accentDim})`} style={{marginBottom:8}}>{loading?"⏳ Looking up…":"✨ Auto-fill Nutrition with AI"}</Btn>
               {aiMsg&&<div style={{fontSize:11,color:aiMsg.startsWith("✓")?C.green:C.muted,marginBottom:10,textAlign:"center"}}>{aiMsg}</div>}
@@ -923,11 +826,7 @@ function App(){
           {/* PASTE FROM CLAUDE */}
           {logMode==="paste"&&(
             <div>
-              <div style={{marginBottom:10}}>
-                <Lbl>Meal Name <span style={{color:C.red}}>*</span></Lbl>
-                <input value={impName} onChange={e=>setImpName(e.target.value)} placeholder="e.g. Breakfast Bowl, My Omelette…" style={{...IS,border:`1px solid ${!impName.trim()&&impStatus?C.red:C.border}`}}/>
-                {!impName.trim()&&impStatus&&<div style={{fontSize:10,color:C.red,marginTop:3}}>Please enter a meal name</div>}
-              </div>
+              <div style={{marginBottom:10}}><Lbl>Recipe / Meal Name</Lbl><input value={impName} onChange={e=>setImpName(e.target.value)} placeholder="e.g. Lunch Bowl…" style={IS}/></div>
               <div style={{marginBottom:12}}>
                 <Lbl>Paste Claude's Nutrition Text</Lbl>
                 <div style={{fontSize:11,color:C.muted,background:C.bg,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 12px",marginBottom:8,lineHeight:1.6}}>💡 Ask Claude for nutrition → copy reply → paste below</div>
@@ -1039,50 +938,15 @@ function App(){
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style={{fontSize:14,fontWeight:700,marginBottom:6}}>Data Backup</div>
             <div style={{fontSize:12,color:C.muted,marginBottom:14,lineHeight:1.6}}>Export to keep data safe — restore anytime if you reinstall or switch phones.</div>
-
-            {/* Auto-backup toggle */}
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:C.bg,border:`1px solid ${autoBackup?C.green:C.border}`,borderRadius:10,padding:"12px 14px",marginBottom:12}}>
-              <div>
-                <div style={{fontSize:13,fontWeight:600,color:autoBackup?C.green:C.text}}>🔄 Daily Auto-Backup</div>
-                <div style={{fontSize:11,color:C.muted,marginTop:2}}>
-                  {autoBackup
-                    ? `On — saves to Downloads on first open each day`
-                    : "Off — tap to enable automatic daily backups"}
-                </div>
-                {autoBackup&&(()=>{
-                  const lb=localStorage.getItem(SK.lastBackup);
-                  return lb?<div style={{fontSize:10,color:C.green,marginTop:2}}>Last backup: {lb}</div>:null;
-                })()}
-              </div>
-              <button onClick={()=>{
-                const newVal=!autoBackup;
-                setAutoBackup(newVal);
-                localStorage.setItem(SK.autoBackup,String(newVal));
-                if(!newVal){setBackupMsg("Auto-backup disabled.");setTimeout(()=>setBackupMsg(""),2000);}
-                else{setBackupMsg("✓ Auto-backup enabled! Will backup daily on app open.");setTimeout(()=>setBackupMsg(""),3000);}
-              }} style={{
-                width:50,height:28,borderRadius:14,border:"none",cursor:"pointer",
-                background:autoBackup?C.green:C.border,
-                position:"relative",transition:"background 0.2s",flexShrink:0
-              }}>
-                <div style={{
-                  width:22,height:22,borderRadius:"50%",background:"#fff",
-                  position:"absolute",top:3,transition:"left 0.2s",
-                  left:autoBackup?25:3
-                }}/>
-              </button>
-            </div>
-
             {backupMsg&&<div style={{fontSize:12,color:backupMsg.startsWith("✓")?C.green:C.red,marginBottom:12,padding:"10px",background:backupMsg.startsWith("✓")?"rgba(82,196,122,0.1)":"rgba(224,82,82,0.1)",borderRadius:8}}>{backupMsg}</div>}
             <div style={{display:"flex",gap:10}}>
-              <button onClick={exportData} style={{flex:1,padding:"12px 10px",background:`linear-gradient(135deg,${C.blue},#3a79c0)`,border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><span>⬇️</span> Export Now</button>
+              <button onClick={exportData} style={{flex:1,padding:"12px 10px",background:`linear-gradient(135deg,${C.blue},#3a79c0)`,border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><span>⬇️</span> Export</button>
               <label style={{flex:1,padding:"12px 10px",background:`linear-gradient(135deg,${C.orange},#b06830)`,border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><span>⬆️</span> Restore<input type="file" accept=".json" onChange={importDataFile} style={{display:"none"}}/></label>
             </div>
           </div>
           <Btn onClick={saveProfile} color={C.green}>Save Profile &amp; Goals</Btn>
-          <div style={{textAlign:"center",marginTop:20,marginBottom:8}}>
-            <div style={{fontSize:11,color:C.muted}}>Food Journal</div>
-            <div style={{fontSize:11,color:C.muted,marginTop:2}}>Version 23.0 · Last updated Mar 22, 2026</div>
+          <div style={{textAlign:"center",marginTop:18,paddingBottom:8}}>
+            <div style={{fontSize:11,color:C.muted}}>Food Journal · Version 24.0 · Mar 22, 2026</div>
           </div>
         </div>
       )}
@@ -1090,51 +954,43 @@ function App(){
       {/* RECIPES LIST */}
       {tab==="recipes"&&view==="main"&&(
         <div style={{padding:"16px 18px"}}>
-          <button onClick={()=>{setRecName("");setRecItems([]);setRecTags([]);setRecAiMsg("");setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setEditRecId(null);setView("recipe-new");}} style={{width:"100%",padding:"13px",background:`linear-gradient(135deg,${C.accent},${C.accentDim})`,border:"none",borderRadius:10,color:C.bg,fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit",marginBottom:12}}>+ New Recipe</button>
-
-          {/* Search bar */}
-          <div style={{position:"relative",marginBottom:10}}>
-            <input value={recipeSearch} onChange={e=>setRecipeSearch(e.target.value)}
-              placeholder="🔍 Search recipes…" style={{...IS,paddingLeft:14}}/>
-            {recipeSearch&&<button onClick={()=>setRecipeSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:C.muted,fontSize:16,cursor:"pointer"}}>✕</button>}
+          <button onClick={()=>{setRecName("");setRecItems([]);setRecTags([]);setRecAiMsg("");setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setView("recipe-new");}} style={{width:"100%",padding:"13px",background:`linear-gradient(135deg,${C.accent},${C.accentDim})`,border:"none",borderRadius:10,color:C.bg,fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit",marginBottom:16}}>+ New Recipe</button>
+          <div style={{position:"relative",marginBottom:12}}>
+            <input value={recipeSearch} onChange={e=>setRecipeSearch(e.target.value)} placeholder="🔍 Search recipes…" style={{...IS,paddingLeft:14}}/>
+            {recipeSearch&&<button onClick={()=>setRecipeSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:C.muted,fontSize:16,cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
           </div>
-          <div style={{display:"flex",gap:5,overflowX:"auto",paddingBottom:4,marginBottom:14}}>
-            {["All",...MEAL_TYPES].map(m=>{
-              const isSel=recipeFilter===m;
-              return(
-                <button key={m} onClick={()=>setRecipeFilter(m)} style={{flex:"0 0 auto",padding:"6px 14px",borderRadius:18,fontSize:11,cursor:"pointer",fontFamily:"inherit",border:`1px solid ${isSel?C.accent:C.border}`,background:isSel?C.accent:"none",color:isSel?C.bg:C.muted,fontWeight:isSel?700:400,whiteSpace:"nowrap"}}>
-                  {m==="All"?"🍽️ All":MEAL_ICONS[m]+" "+m}
-                </button>
-              );
-            })}
-          </div>
-
           {recipeBook.length===0?(
             <div style={{textAlign:"center",padding:"40px",color:C.muted,lineHeight:1.8}}><div style={{fontSize:40,marginBottom:10}}>📚</div>No saved recipes.</div>
-          ):(()=>{
-            const filtered=(recipeFilter==="All"
-              ?recipeBook
-              :recipeBook.filter(r=>r.mealTags&&r.mealTags.includes(recipeFilter)))
-              .filter(r=>!recipeSearch.trim()||r.name.toLowerCase().includes(recipeSearch.toLowerCase()));
-            if(filtered.length===0)return(
-              <div style={{textAlign:"center",padding:"30px",color:C.muted,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}>
-                <div style={{fontSize:24,marginBottom:8}}>🔍</div>
-                No recipes found{recipeSearch?` for "${recipeSearch}"`:` for ${recipeFilter}`}.
-              </div>
-            );
-            // Show flat list when searching, grouped when browsing All
-            if(recipeFilter==="All"&&!recipeSearch.trim()){
-              return Object.entries(recipesByMeal).filter(([,recs])=>recs.length>0).map(([mealName,recs])=>(
-                <div key={mealName} style={{marginBottom:20}}>
-                  <div style={{fontSize:11,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
-                    <span>{MEAL_ICONS[mealName]||"📋"}</span><span>{mealName}</span>
-                  </div>
-                  {recs.map(rec=>RecipeCard(rec,setRecName,setRecItems,setRecTags,setRecAiMsg,setRecImportMode,setRecImportTxt,setRecParsed,setEditRecId,setView,startUse,setConfirmModal,pRB,recipeBook))}
+          ):(
+            // Group by meal tags
+            Object.entries(recipesByMeal).filter(([,recs])=>recs.length>0).map(([mealName,recs])=>(
+              <div key={mealName} style={{marginBottom:20}}>
+                <div style={{fontSize:11,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
+                  <span>{MEAL_ICONS[mealName]||"📋"}</span><span>{mealName}</span>
                 </div>
-              ));
-            }
-            return filtered.map(rec=>RecipeCard(rec,setRecName,setRecItems,setRecTags,setRecAiMsg,setRecImportMode,setRecImportTxt,setRecParsed,setEditRecId,setView,startUse,setConfirmModal,pRB,recipeBook));
-          })()}
+                {recs.map(rec=>{
+                  const rt=sumE(rec.items);
+                  return(
+                    <div key={rec.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,marginBottom:10,overflow:"hidden"}}>
+                      <div onClick={()=>{setRecName(rec.name);setRecItems(rec.items.map((x,i)=>({...x,_id:x._id??i})));setRecTags(rec.mealTags||[]);setRecAiMsg("");setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setEditRecId(rec.id);setView("recipe-new");}} style={{padding:"14px 15px",cursor:"pointer"}}>
+                        <div style={{fontSize:15,fontWeight:700,marginBottom:4}}>{rec.name}</div>
+                        {rec.mealTags&&rec.mealTags.length>0&&<div style={{fontSize:10,color:C.accent,marginBottom:4}}>{rec.mealTags.map(t=>MEAL_ICONS[t]).join(" ")} {rec.mealTags.join(", ")}</div>}
+                        <div style={{fontSize:11,color:C.muted,marginBottom:6}}>{rec.items.length} ingredients · tap to edit</div>
+                        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                          <span style={{fontSize:13,color:C.accent,fontFamily:"monospace",fontWeight:700}}>{Math.round(rt.calories)} kcal</span>
+                          <span style={{fontSize:11,color:C.muted}}>P:{Math.round(rt.protein)}g C:{Math.round(rt.carbs)}g F:{Math.round(rt.fat)}g</span>
+                        </div>
+                      </div>
+                      <div style={{padding:"0 15px 14px",display:"flex",gap:8}}>
+                        <button onClick={e=>{e.stopPropagation();startUse(rec);}} style={{flex:1,padding:"10px",background:C.green,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🍳 Use This Recipe</button>
+                        <button onClick={e=>{e.stopPropagation();setConfirmModal({msg:`Delete "${rec.name}"?`,onConfirm:()=>pRB(recipeBook.filter(r=>r.id!==rec.id))});}} style={{padding:"10px 12px",background:"none",border:`1px solid ${C.red}`,borderRadius:9,color:C.red,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))
+          )}
         </div>
       )}
 
@@ -1203,14 +1059,8 @@ function App(){
                 </div>
                 <div style={{marginBottom:12}}>
                   <Lbl>Ingredient Name</Lbl>
-                  <div style={{position:"relative"}}>
-                    <input ref={ingNameRef} value={ingData.food}
-                      onChange={e=>{handleFoodNameChange(e.target.value,"ingmodal",v=>setIngData(p=>({...p,food:v})));}}
-                      onBlur={clearSuggestions}
-                      placeholder="e.g. Egg, Chicken, Rice…" style={IS}
-                      autoComplete="off" autoFocus/>
-                    {suggestFor==="ingmodal"&&<SuggestDropdown suggestions={suggestions} loading={suggestLoading} onSelect={v=>{setIngData(p=>({...p,food:v}));setSuggestions([]);setSuggestFor("");}}/>}
-                  </div>
+                  <input ref={ingNameRef} value={ingData.food} onChange={e=>{handleFoodName(e.target.value,"ing",v=>setIngData(p=>({...p,food:v})));}} onBlur={clearSug} placeholder="e.g. Egg, Chicken, Rice…" style={IS} autoComplete="off" autoFocus/>
+                    {suggestFor==="ing"&&<SuggestDropdown suggestions={suggestions} loading={suggestLoading} onSelect={v=>{setIngData(p=>({...p,food:v}));setSuggestions([]);}}/>}
                 </div>
                 <div style={{display:"flex",gap:6,marginBottom:10}}>
                   <div style={{flex:1}}>

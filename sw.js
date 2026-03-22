@@ -1,4 +1,4 @@
-const CACHE = 'food-journal-v4';
+const CACHE = 'food-journal-v5';
 const ASSETS = [
   'index.html',
   'manifest.json',
