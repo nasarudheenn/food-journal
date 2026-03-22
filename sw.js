@@ -1,12 +1,46 @@
-const CACHE='food-journal-v6';
-const ASSETS=['index.html','manifest.json','icon-192.png','icon-512.png'];
-self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()));});
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
-self.addEventListener('fetch',e=>{
-  if(e.request.method!=='GET')return;
-  if(e.request.url.includes('api.anthropic.com')||e.request.url.includes('cdn.jsdelivr.net'))return;
-  e.respondWith(caches.match(e.request).then(cached=>{
-    if(cached)return cached;
-    return fetch(e.request).then(res=>{if(res&&res.status===200){const clone=res.clone();caches.open(CACHE).then(c=>c.put(e.request,clone));}return res;}).catch(()=>caches.match('index.html'));
-  }));
+const CACHE = 'food-journal-v7'; // <--- INCREMENT THIS ON EVERY GITHUB PUSH
+const ASSETS = [
+  'index.html',
+  'manifest.json',
+  'icon-192.png',
+  'icon-512.png'
+];
+
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => c.addAll(ASSETS))
+      .then(() => self.skipWaiting()) // Forces the new service worker to activate immediately
+  );
+});
+
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys => {
+      return Promise.all(
+        keys.filter(k => k !== CACHE).map(k => caches.delete(k))
+      );
+    }).then(() => self.clients.claim()) // Immediately take control of the page
+  );
+});
+
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
+  
+  // External APIs should always be fresh
+  if (e.request.url.includes('api.anthropic.com') || e.request.url.includes('cdn.jsdelivr.net')) return;
+
+  e.respondWith(
+    caches.match(e.request).then(cached => {
+      const networked = fetch(e.request).then(res => {
+        if (res && res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return res;
+      }).catch(() => caches.match('index.html'));
+
+      return cached || networked;
+    })
+  );
 });
