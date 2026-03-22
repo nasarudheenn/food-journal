@@ -597,15 +597,16 @@ function App(){
     },500);
   };
 
-  // Swipe right to go back
+  // Swipe left from right edge to go back
   useEffect(()=>{
     let startX=0,startY=0;
+    const W=window.innerWidth;
     const onTouchStart=e=>{startX=e.touches[0].clientX;startY=e.touches[0].clientY;};
     const onTouchEnd=e=>{
-      const dx=e.changedTouches[0].clientX-startX;
+      const dx=startX-e.changedTouches[0].clientX;
       const dy=Math.abs(e.changedTouches[0].clientY-startY);
-      // Swipe right: start from left 60px, move 80px+ horizontally, not too vertical
-      if(startX<60&&dx>80&&dy<60){
+      // Swipe left: start from right edge (last 60px), move 80px+ left, not too vertical
+      if(startX>W-60&&dx>80&&dy<60){
         if(view!=="main"){setView("main");setQuickRecipe(null);}
       }
     };
@@ -613,6 +614,13 @@ function App(){
     document.addEventListener("touchend",onTouchEnd,{passive:true});
     return()=>{document.removeEventListener("touchstart",onTouchStart);document.removeEventListener("touchend",onTouchEnd);};
   },[view]);
+
+  // Confirm before closing/leaving app
+  useEffect(()=>{
+    const onBeforeUnload=e=>{e.preventDefault();e.returnValue="";return "";};
+    window.addEventListener("beforeunload",onBeforeUnload);
+    return()=>window.removeEventListener("beforeunload",onBeforeUnload);
+  },[]);
 
   // ── RENDER ────────────────────────────────────────────────────────────────
   const UNITS=["g","ml","piece","tsp","tbsp","cup","serving"];
@@ -914,7 +922,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v27.0 · Mar 22, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v27.1 · Mar 22, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
