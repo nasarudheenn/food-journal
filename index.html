@@ -597,16 +597,44 @@ function App(){
     },500);
   };
 
-  // Swipe left from right edge to go back
+  // Handle Android back button/gesture using History API
+  useEffect(()=>{
+    // Push a state so back button/gesture has something to pop
+    if(view!=="main"){
+      history.pushState({view},"",'');
+    }
+    const onPopState=e=>{
+      if(view!=="main"){
+        setView("main");
+        setQuickRecipe(null);
+        // Push state again so next back also gets intercepted
+        history.pushState({view:"main"},"",'');
+      } else {
+        // On main view - show confirm before closing
+        const leave=window.confirm("Exit Food Journal?");
+        if(!leave){
+          history.pushState({view:"main"},"",'');
+        }
+      }
+    };
+    window.addEventListener("popstate",onPopState);
+    return()=>window.removeEventListener("popstate",onPopState);
+  },[view]);
+
+  // Push initial state on mount
+  useEffect(()=>{
+    history.pushState({view:"main"},"",'');
+  },[]);
+
+  // Swipe left from right edge to go back (in-app navigation only)
   useEffect(()=>{
     let startX=0,startY=0;
-    const W=window.innerWidth;
     const onTouchStart=e=>{startX=e.touches[0].clientX;startY=e.touches[0].clientY;};
     const onTouchEnd=e=>{
+      const screenW=window.innerWidth;
       const dx=startX-e.changedTouches[0].clientX;
       const dy=Math.abs(e.changedTouches[0].clientY-startY);
-      // Swipe left: start from right edge (last 60px), move 80px+ left, not too vertical
-      if(startX>W-60&&dx>80&&dy<60){
+      if(startX>screenW-60&&dx>80&&dy<60){
         if(view!=="main"){setView("main");setQuickRecipe(null);}
       }
     };
@@ -614,13 +642,6 @@ function App(){
     document.addEventListener("touchend",onTouchEnd,{passive:true});
     return()=>{document.removeEventListener("touchstart",onTouchStart);document.removeEventListener("touchend",onTouchEnd);};
   },[view]);
-
-  // Confirm before closing/leaving app
-  useEffect(()=>{
-    const onBeforeUnload=e=>{e.preventDefault();e.returnValue="";return "";};
-    window.addEventListener("beforeunload",onBeforeUnload);
-    return()=>window.removeEventListener("beforeunload",onBeforeUnload);
-  },[]);
 
   // ── RENDER ────────────────────────────────────────────────────────────────
   const UNITS=["g","ml","piece","tsp","tbsp","cup","serving"];
@@ -922,7 +943,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v27.1 · Mar 22, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v27.2 · Mar 22, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
