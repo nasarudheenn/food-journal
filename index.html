@@ -85,8 +85,8 @@ const sumE=list=>{const o=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,0]));list.
 const n2s=v=>v===undefined||v===null||v===""?"0":String(Math.round(Number(v)*10)/10);
 function getMealByTime(){
   const h=new Date().getHours(),m=new Date().getMinutes(),t=h*60+m;
-  if(t<660)return"Breakfast";       // before 11:00
-  if(t<720)return"Mid-Morning";     // 11:00-11:59
+  if(t<600)return"Breakfast";       // before 10:00
+  if(t<720)return"Mid-Morning";     // 10:00-11:59
   if(t<900)return"Lunch";           // 12:00-14:59
   if(t<1020)return"Evening";        // 15:00-16:59
   return"Dinner";                    // 17:00+
@@ -587,6 +587,23 @@ function App(){
     },500);
   };
 
+  // Swipe right to go back
+  useEffect(()=>{
+    let startX=0,startY=0;
+    const onTouchStart=e=>{startX=e.touches[0].clientX;startY=e.touches[0].clientY;};
+    const onTouchEnd=e=>{
+      const dx=e.changedTouches[0].clientX-startX;
+      const dy=Math.abs(e.changedTouches[0].clientY-startY);
+      // Swipe right: start from left 60px, move 80px+ horizontally, not too vertical
+      if(startX<60&&dx>80&&dy<60){
+        if(view!=="main"){setView("main");setQuickRecipe(null);}
+      }
+    };
+    document.addEventListener("touchstart",onTouchStart,{passive:true});
+    document.addEventListener("touchend",onTouchEnd,{passive:true});
+    return()=>{document.removeEventListener("touchstart",onTouchStart);document.removeEventListener("touchend",onTouchEnd);};
+  },[view]);
+
   // ── RENDER ────────────────────────────────────────────────────────────────
   const UNITS=["g","ml","piece","tsp","tbsp","cup","serving"];
 
@@ -887,7 +904,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v26.2 · Mar 22, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v26.3 · Mar 22, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
