@@ -36,7 +36,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
 <script src="https://cdn.jsdelivr.net/npm/preact@10/hooks/dist/hooks.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/htm@3/dist/htm.umd.js"></script>
 <script>
-// --- SERVICE WORKER REGISTRATION (Auto-Update v30) ---
+// --- SERVICE WORKER REGISTRATION (v30) ---
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js').then(reg => {
@@ -53,57 +53,58 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// --- APP LOGIC ---
 const {h, render} = preact;
 const {useState, useEffect, useRef, useCallback} = preactHooks;
 const html = htm.bind(h);
 
+// ── Storage ──
 const SK={entries:"fd-entries-v2",profile:"fd-profile-v2",weights:"fd-weights-v2",recipes:"fd-recipebook-v2",apiKey:"fd-apikey-v1",autoBackup:"fd-autobackup-v1",lastBackup:"fd-lastbackup-v1"};
 const store={
   get:k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}},
   set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 };
 
+// ── Constants & Helpers ──
 const DEFAULT_PROFILE={name:"Nasarudheen N",currentWeight:"81",targetWeight:"70",height:"175",calorieGoal:1800,protein:130,carbs:180,fat:55,fiber:25,sugar:50,saturatedFat:20,polyFat:10,monoFat:15,cholesterol:300,sodium:2300,potassium:3500,calcium:1000,iron:18,vitC:90,vitD:20,vitB12:2.4,zinc:11};
 const C={bg:"#0f0e0c",card:"#1a1917",border:"#3a3835",accent:"#e8c547",accentDim:"#b89c2f",text:"#f0ece0",muted:"#7a7060",red:"#e05252",green:"#52c47a",blue:"#5299e0",orange:"#e08a52",purple:"#a07ee0"};
-const ALL_FIELDS=[
-  {key:"calories",label:"Calories",unit:"kcal",color:C.accent},
-  {key:"protein",label:"Protein",unit:"g",color:C.blue},
-  {key:"carbs",label:"Carbs",unit:"g",color:C.orange},
-  {key:"fat",label:"Fat (Total)",unit:"g",color:C.accentDim},
-  {key:"fiber",label:"Fiber",unit:"g",color:C.green}
-];
+const ALL_FIELDS=[{key:"calories",label:"Calories",unit:"kcal",color:C.accent},{key:"protein",label:"Protein",unit:"g",color:C.blue},{key:"carbs",label:"Carbs",unit:"g",color:C.orange},{key:"fat",label:"Fat (Total)",unit:"g",color:C.accentDim},{key:"fiber",label:"Fiber",unit:"g",color:C.green}];
+const todayStr=()=>new Date().toISOString().split("T")[0];
 
-// Simplified App Component to demonstrate rendering
+// ── Main App Component ──
 function App() {
-  const [view, setView] = useState("diary");
+  const [entries, setEntries] = useState(() => store.get(SK.entries) || {});
+  const [profile, setProfile] = useState(() => store.get(SK.profile) || DEFAULT_PROFILE);
+  const [tab, setTab] = useState("diary");
+
+  // Basic rendering logic to ensure page is not blank
   return html`
-    <div style=${{padding: '20px', textAlign: 'center'}}>
-      <h1>Food Journal</h1>
-      <p style=${{color: C.muted}}>Version 30 Loaded</p>
-      <div style=${{marginTop: '20px', padding: '15px', background: C.card, borderRadius: '12px', border: `1px solid ${C.border}`}}>
-        Welcome back, Nasarudheen!
-      </div>
+    <div style=${{height: '100%', display: 'flex', flexDirection: 'column'}}>
+      <header style=${{padding: '20px', borderBottom: `1px solid ${C.border}`, textAlign: 'center'}}>
+          <h1 style=${{fontSize: '20px', color: C.accent}}>Food Journal v30</h1>
+      </header>
+
+      <main style=${{flex: 1, padding: '20px', overflowY: 'auto'}}>
+          <div style=${{background: C.card, padding: '15px', borderRadius: '12px', marginBottom: '20px'}}>
+              <h2 style=${{fontSize: '16px', marginBottom: '5px'}}>Welcome, ${profile.name}</h2>
+              <p style=${{color: C.muted, fontSize: '13px'}}>Ready to track your protein today?</p>
+          </div>
+          
+          <div style=${{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+              <span>${todayStr()}</span>
+              <button style=${{background: C.green, color: C.bg, border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold'}}>+ Log Food</button>
+          </div>
+      </main>
+
+      <nav style=${{height: '70px', background: C.card, borderTop: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-around', alignItems: 'center'}}>
+          <div onClick=${()=>setTab("diary")} style=${{color: tab==="diary"?C.accent:C.muted}}>📖 Diary</div>
+          <div onClick=${()=>setTab("recipes")} style=${{color: tab==="recipes"?C.accent:C.muted}}>📚 Recipes</div>
+          <div onClick=${()=>setTab("reports")} style=${{color: tab==="reports"?C.accent:C.muted}}>📊 Reports</div>
+      </nav>
     </div>
   `;
 }
 
 render(html`<${App}/>`, document.getElementById('app'));
-</script>
-
-<button id="install-banner" style="display:none">
-  <img src="icon-192.png" alt="Food Journal"/>
-  <div class="txt"><strong>Install Food Journal</strong><span>Add to home screen</span></div>
-  <span class="arrow">📲</span>
-  <button id="install-dismiss">✕</button>
-</button>
-<script>
-let dp=null;
-const bn=document.getElementById('install-banner');
-const dm=document.getElementById('install-dismiss');
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;setTimeout(()=>bn.classList.add('show'),2000);});
-bn.addEventListener('click',async e=>{if(e.target===dm||dm.contains(e.target)){bn.classList.remove('show');return;}if(!dp)return;bn.classList.remove('show');dp.prompt();await dp.userChoice;dp=null;});
-dm.addEventListener('click', e => { e.stopPropagation(); bn.classList.remove('show'); });
 </script>
 </body>
 </html>
