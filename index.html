@@ -247,7 +247,7 @@ function IngredientModal({show,editData,onSave,onClose,apiKey}){
       <div style=${{marginBottom:10}}>
         <${Lbl}>Ingredient Name<//>
         <div style=${{position:"relative"}}>
-          <input ref=${nameRef} value=${data.food} onChange=${e=>onNameChange(e.target.value)}
+          <input ref=${nameRef} value=${data.food} onInput=${e=>onNameChange(e.target.value)}
             onBlur=${()=>setTimeout(()=>setSugg([]),200)}
             placeholder="e.g. Egg, Chicken, Rice…" style=${IS} autoComplete="off"/>
           <${SuggestDropdown} suggestions=${sugg} loading=${suggLoad} onSelect=${v=>{setData(p=>({...p,food:v}));setSugg([]);}}/>
@@ -255,7 +255,7 @@ function IngredientModal({show,editData,onSave,onClose,apiKey}){
       </div>
       <div style=${{marginBottom:8}}>
         <${Lbl}>Quantity<//>
-        <input value=${data.quantity} onChange=${e=>setData(p=>({...p,quantity:e.target.value}))} inputMode="decimal" placeholder="100" style=${IS}/>
+        <input value=${data.quantity} onInput=${e=>setData(p=>({...p,quantity:e.target.value}))} inputMode="decimal" placeholder="100" style=${IS}/>
       </div>
       <div style=${{marginBottom:12}}>
         <${Lbl}>Unit<//>
@@ -270,14 +270,14 @@ function IngredientModal({show,editData,onSave,onClose,apiKey}){
         <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:5,marginBottom:8}}>
           ${MACRO_FIELDS.map(({key,label,unit:u})=>html`<div key=${key}>
             <div style=${{fontSize:8,color:C.muted,marginBottom:2}}>${label}(${u})</div>
-            <input value=${data[key]||""} onChange=${e=>setData(p=>({...p,[key]:e.target.value}))} type="number" placeholder="0" style=${{...IS,padding:"5px 7px",fontSize:11,fontFamily:"monospace",color:Number(data[key])>0?C.accent:C.text}}/>
+            <input value=${data[key]||""} onInput=${e=>setData(p=>({...p,[key]:e.target.value}))} type="number" placeholder="0" style=${{...IS,padding:"5px 7px",fontSize:11,fontFamily:"monospace",color:Number(data[key])>0?C.accent:C.text}}/>
           </div>`)}
         </div>
         <div style=${{fontSize:10,color:C.purple,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:8}}>Micronutrients</div>
         <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:5}}>
           ${MICRO_FIELDS.map(({key,label,unit:u})=>html`<div key=${key}>
             <div style=${{fontSize:7,color:C.muted,marginBottom:2}}>${label}(${u})</div>
-            <input value=${data[key]||""} onChange=${e=>setData(p=>({...p,[key]:e.target.value}))} type="number" placeholder="0" style=${{...IS,padding:"5px 6px",fontSize:11,fontFamily:"monospace",color:Number(data[key])>0?C.green:C.text}}/>
+            <input value=${data[key]||""} onInput=${e=>setData(p=>({...p,[key]:e.target.value}))} type="number" placeholder="0" style=${{...IS,padding:"5px 6px",fontSize:11,fontFamily:"monospace",color:Number(data[key])>0?C.green:C.text}}/>
           </div>`)}
         </div>
       </div>
@@ -711,7 +711,7 @@ ${tab==="diary"&&view==="add"&&html`
                 ${quickRecipe.items.map(item=>{const k=item._id??item.food,oQ=parseFloat(item.quantity)||1,nQ=parseFloat(quickQtys[k])||oQ,ratio=nQ/oQ;return html`<div key=${k} style=${{borderBottom:`1px solid ${C.border}`,paddingBottom:10,marginBottom:10}}>
                   <div style=${{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
                     <div style=${{flex:1,fontSize:13,fontWeight:500}}>${item.food}</div>
-                    <input value=${quickQtys[k]||""} onChange=${e=>setQuickQtys(p=>({...p,[k]:e.target.value}))} type="number" style=${{...IS,width:70,flex:"none",padding:"6px 8px"}}/>
+                    <input value=${quickQtys[k]||""} onInput=${e=>setQuickQtys(p=>({...p,[k]:e.target.value}))} type="number" style=${{...IS,width:70,flex:"none",padding:"6px 8px"}}/>
                     <span style=${{fontSize:11,color:C.muted}}>${item.unit||"g"}</span>
                   </div>
                   <div style=${{fontSize:11,color:C.muted}}><span style=${{color:C.accent,fontFamily:"monospace"}}>${Math.round((Number(item.calories)||0)*ratio)}</span> kcal</div>
@@ -725,12 +725,12 @@ ${tab==="diary"&&view==="add"&&html`
             <div style=${{marginBottom:10}}>
               <${Lbl}>Food Name<//>
               <div style=${{position:"relative"}}>
-                <input value=${foodName} onChange=${e=>{setFoodName(e.target.value);setAiMsg("");fetchFoodSugg(e.target.value);}} onBlur=${()=>setTimeout(()=>setFoodSugg([]),200)} placeholder="e.g. Grilled chicken…" style=${IS}/>
+                <input value=${foodName} onInput=${e=>{setFoodName(e.target.value);setAiMsg("");fetchFoodSugg(e.target.value);}} onBlur=${()=>setTimeout(()=>setFoodSugg([]),200)} placeholder="e.g. Grilled chicken…" style=${IS}/>
                 <${SuggestDropdown} suggestions=${foodSugg} loading=${foodSuggLoad} onSelect=${v=>{setFoodName(v);setFoodSugg([]);}}/>
               </div>
             </div>
             <div style=${{marginBottom:8}}><${Lbl}>Amount<//>
-              <input value=${qty} onChange=${e=>setQty(e.target.value)} inputMode="decimal" placeholder="150" style=${IS}/></div>
+              <input value=${qty} onInput=${e=>setQty(e.target.value)} inputMode="decimal" placeholder="150" style=${IS}/></div>
             <div style=${{marginBottom:12}}><${Lbl}>Unit<//>
               <div style=${{display:"flex",gap:5,flexWrap:"wrap"}}>
                 ${UNITS.map(u=>html`<button key=${u} onClick=${()=>setUnit(u)} style=${{padding:"7px 12px",borderRadius:18,border:`1px solid ${unit===u?C.accent:C.border}`,background:unit===u?C.accent:"none",color:unit===u?C.bg:C.muted,fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:unit===u?700:400}}>${u}</button>`)}
@@ -747,11 +747,11 @@ ${tab==="diary"&&view==="add"&&html`
             <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:14,marginBottom:14}}>
               <div style=${{fontSize:10,color:C.accent,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10}}>Macronutrients</div>
               <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-                ${MACRO_FIELDS.map(({key,label,unit:u})=>html`<div key=${key}><div style=${{fontSize:9,color:C.muted,marginBottom:3}}>${label} (${u})</div><input value=${nut[key]} onChange=${e=>setNut(p=>({...p,[key]:e.target.value}))} type="number" placeholder="0" style=${{...IS,fontFamily:"monospace",padding:"8px 10px",fontSize:13}}/></div>`)}
+                ${MACRO_FIELDS.map(({key,label,unit:u})=>html`<div key=${key}><div style=${{fontSize:9,color:C.muted,marginBottom:3}}>${label} (${u})</div><input value=${nut[key]} onInput=${e=>setNut(p=>({...p,[key]:e.target.value}))} type="number" placeholder="0" style=${{...IS,fontFamily:"monospace",padding:"8px 10px",fontSize:13}}/></div>`)}
               </div>
               <div style=${{fontSize:10,color:C.purple,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10}}>Micronutrients</div>
               <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                ${MICRO_FIELDS.map(({key,label,unit:u})=>html`<div key=${key}><div style=${{fontSize:9,color:C.muted,marginBottom:3}}>${label} (${u})</div><input value=${nut[key]} onChange=${e=>setNut(p=>({...p,[key]:e.target.value}))} type="number" placeholder="0" style=${{...IS,fontFamily:"monospace",padding:"8px 10px",fontSize:13}}/></div>`)}
+                ${MICRO_FIELDS.map(({key,label,unit:u})=>html`<div key=${key}><div style=${{fontSize:9,color:C.muted,marginBottom:3}}>${label} (${u})</div><input value=${nut[key]} onInput=${e=>setNut(p=>({...p,[key]:e.target.value}))} type="number" placeholder="0" style=${{...IS,fontFamily:"monospace",padding:"8px 10px",fontSize:13}}/></div>`)}
               </div>
             </div>
             <${Btn} onClick=${addEntry} disabled=${!foodName.trim()||!nut.calories}>Add to ${addMeal}<//>
@@ -760,12 +760,12 @@ ${tab==="diary"&&view==="add"&&html`
           ${logMode==="paste"&&html`<div>
             <div style=${{marginBottom:10}}>
               <${Lbl}>Meal Name <span style=${{color:C.red}}>*</span><//>
-              <input value=${impName} onChange=${e=>setImpName(e.target.value)} placeholder="e.g. My Breakfast Bowl…" style=${IS}/>
+              <input value=${impName} onInput=${e=>setImpName(e.target.value)} placeholder="e.g. My Breakfast Bowl…" style=${IS}/>
             </div>
             <div style=${{marginBottom:12}}>
               <${Lbl}>Paste Claude's Nutrition Text<//>
               <div style=${{fontSize:11,color:C.muted,background:C.bg,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 12px",marginBottom:8,lineHeight:1.6}}>💡 Ask Claude for nutrition → copy reply → paste below</div>
-              <textarea value=${importTxt} onChange=${e=>{setImportTxt(e.target.value);setImpStatus("");setParsed([]);}} rows="5" placeholder="Paste Claude's response here…" style=${{...IS,resize:"vertical",lineHeight:1.7}}/>
+              <textarea value=${importTxt} onInput=${e=>{setImportTxt(e.target.value);setImpStatus("");setParsed([]);}} rows="5" placeholder="Paste Claude's response here…" style=${{...IS,resize:"vertical",lineHeight:1.7}}/>
             </div>
             <${Btn} onClick=${doParse} disabled=${impLoading||!importTxt.trim()} color=${`linear-gradient(135deg,${C.accent},${C.accentDim})`} style=${{marginBottom:8}}>${impLoading?"⏳ Parsing…":"🔍 Parse Nutrition Data"}<//>
             ${impStatus&&html`<div style=${{fontSize:11,marginBottom:10,textAlign:"center",color:impStatus.startsWith("✓")?C.green:impStatus.startsWith("⚠")?C.red:C.muted}}>${impStatus}</div>`}
@@ -799,7 +799,7 @@ ${tab==="profile"&&view==="main"&&html`
             ${weights.length>0&&html`<${WeightChart} weights=${weights} target=${parseFloat(profile.targetWeight)||null}/>`}
             ${weights.length===0&&html`<div style=${{textAlign:"center",padding:"12px 0",color:C.muted,fontSize:12}}>Log weight below to see graph</div>`}
             <div style=${{display:"flex",gap:8,marginTop:14}}>
-              <input value=${newWt} onChange=${e=>setNewWt(e.target.value)} type="number" placeholder="Log today's weight (kg)" style=${{...IS,flex:1}}/>
+              <input value=${newWt} onInput=${e=>setNewWt(e.target.value)} type="number" placeholder="Log today's weight (kg)" style=${{...IS,flex:1}}/>
               <button onClick=${logWeight} disabled=${!newWt} style=${{padding:"10px 14px",background:newWt?C.accent:C.border,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:newWt?"pointer":"not-allowed",fontFamily:"inherit"}}>Log</button>
             </div>
           </div>
@@ -807,7 +807,7 @@ ${tab==="profile"&&view==="main"&&html`
             <div style=${{fontSize:14,fontWeight:700,marginBottom:14}}>Personal Info</div>
             <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               ${[{label:"Name",key:"name",type:"text",ph:"Your name"},{label:"Height (cm)",key:"height",type:"number",ph:"175"},{label:"Current Weight (kg)",key:"currentWeight",type:"number",ph:"81"},{label:"Target Weight (kg)",key:"targetWeight",type:"number",ph:"70"}].map(({label,key,type,ph})=>html`<div key=${key}><${Lbl}>${label}<//>
-                <input value=${profEdit[key]||""} onChange=${e=>setProfEdit(p=>({...p,[key]:e.target.value}))} type=${type} placeholder=${ph} style=${IS}/></div>`)}
+                <input value=${profEdit[key]||""} onInput=${e=>setProfEdit(p=>({...p,[key]:e.target.value}))} type=${type} placeholder=${ph} style=${IS}/></div>`)}
             </div>
           </div>
           <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
@@ -821,7 +821,7 @@ ${tab==="profile"&&view==="main"&&html`
               <div style=${{fontSize:11,color,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>${title}</div>
               <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                 ${fields.map(({label,key,ph})=>html`<div key=${key}><${Lbl}>${label}<//>
-                  <input value=${profEdit[key]||""} onChange=${e=>setProfEdit(p=>({...p,[key]:e.target.value}))} type="number" placeholder=${ph} style=${IS}/></div>`)}
+                  <input value=${profEdit[key]||""} onInput=${e=>setProfEdit(p=>({...p,[key]:e.target.value}))} type="number" placeholder=${ph} style=${IS}/></div>`)}
               </div>
             </div>`)}
           </div>
@@ -831,7 +831,7 @@ ${tab==="profile"&&view==="main"&&html`
               <div><div style=${{fontSize:14,fontWeight:700,color:apiKey?C.green:C.accent}}>API Key ${apiKey?"Active":"Required"}</div><div style=${{fontSize:11,color:C.muted,marginTop:1}}>Stored only on this device</div></div>
             </div>
             <div style=${{display:"flex",gap:8,marginBottom:8}}>
-              <input value=${apiKeyInput} onChange=${e=>setApiKeyInput(e.target.value)} type="password" placeholder="sk-ant-api03-…" style=${{...IS,flex:1,fontFamily:"monospace",fontSize:12}}/>
+              <input value=${apiKeyInput} onInput=${e=>setApiKeyInput(e.target.value)} type="password" placeholder="sk-ant-api03-…" style=${{...IS,flex:1,fontFamily:"monospace",fontSize:12}}/>
               <button onClick=${saveApiKey} style=${{padding:"10px 14px",background:C.accent,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Save</button>
             </div>
             ${apiKeyMsg&&html`<div style=${{fontSize:11,color:C.green}}>${apiKeyMsg}</div>`}
@@ -857,14 +857,14 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v24.0 · Mar 22, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v25.0 · Mar 22, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
         <div style=${{padding:"16px 18px"}}>
           <button onClick=${()=>{setRecName("");setRecItems([]);setRecTags([]);setEditRecId(null);setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setView("recipe-new");}} style=${{width:"100%",padding:"13px",background:`linear-gradient(135deg,${C.accent},${C.accentDim})`,border:"none",borderRadius:10,color:C.bg,fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit",marginBottom:12}}>+ New Recipe</button>
           <div style=${{position:"relative",marginBottom:10}}>
-            <input value=${recipeSearch} onChange=${e=>setRecipeSearch(e.target.value)} placeholder="🔍 Search recipes…" style=${IS}/>
+            <input value=${recipeSearch} onInput=${e=>setRecipeSearch(e.target.value)} placeholder="🔍 Search recipes…" style=${IS}/>
             ${recipeSearch&&html`<button onClick=${()=>setRecipeSearch("")} style=${{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:C.muted,fontSize:16,cursor:"pointer",fontFamily:"inherit"}}>✕</button>`}
           </div>
           <div style=${{display:"flex",gap:5,overflowX:"auto",paddingBottom:4,marginBottom:14}}>
@@ -891,7 +891,7 @@ ${tab==="recipes"&&view==="main"&&html`
 ${view==="recipe-new"&&html`
         <div style=${{padding:"16px 18px"}}>
           <div style=${{marginBottom:12}}><${Lbl}>Recipe Name<//>
-            <input value=${recName} onChange=${e=>setRecName(e.target.value)} placeholder="e.g. Egg Veggies Omelette" style=${IS}/></div>
+            <input value=${recName} onInput=${e=>setRecName(e.target.value)} placeholder="e.g. Egg Veggies Omelette" style=${IS}/></div>
           <div style=${{marginBottom:14}}>
             <${Lbl}>Suitable for Meals<//>
             <div style=${{display:"flex",flexWrap:"wrap",gap:6}}>
@@ -904,7 +904,7 @@ ${view==="recipe-new"&&html`
           </div>
           ${recImportMode&&html`<div style=${{marginBottom:14}}>
             <div style=${{fontSize:11,color:C.muted,background:C.bg,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 10px",marginBottom:8,lineHeight:1.6}}>💡 Ask Claude for nutrition → copy → paste below</div>
-            <textarea value=${recImportTxt} onChange=${e=>{setRecImportTxt(e.target.value);setRecImpStatus("");setRecParsed([]);}} rows="5" placeholder="Paste Claude's response…" style=${{...IS,resize:"vertical",lineHeight:1.6,marginBottom:8}}/>
+            <textarea value=${recImportTxt} onInput=${e=>{setRecImportTxt(e.target.value);setRecImpStatus("");setRecParsed([]);}} rows="5" placeholder="Paste Claude's response…" style=${{...IS,resize:"vertical",lineHeight:1.6,marginBottom:8}}/>
             <${Btn} onClick=${doRecipeParse} disabled=${recImpLoading||!recImportTxt.trim()} color=${`linear-gradient(135deg,${C.accent},${C.accentDim})`} style=${{marginBottom:6}}>${recImpLoading?"⏳ Parsing…":"🔍 Parse Ingredients"}<//>
             ${recImpStatus&&html`<div style=${{fontSize:11,marginBottom:10,textAlign:"center",color:recImpStatus.startsWith("✓")?C.green:recImpStatus.startsWith("⚠")?C.red:C.muted}}>${recImpStatus}</div>`}
             ${recParsed.length>0&&html`<div style=${{marginBottom:12}}>
@@ -937,7 +937,7 @@ ${view==="recipe-use"&&useRec&&html`
             ${useRec.items.map(item=>{const k=item._id??item.food,oQ=parseFloat(item.quantity)||1,nQ=parseFloat(useQtys[k])||oQ,ratio=nQ/oQ;return html`<div key=${k} style=${{borderBottom:`1px solid ${C.border}`,paddingBottom:10,marginBottom:10}}>
               <div style=${{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
                 <div style=${{flex:1,fontSize:13,fontWeight:500}}>${item.food}</div>
-                <input value=${useQtys[k]||""} onChange=${e=>setUseQtys(p=>({...p,[k]:e.target.value}))} type="number" style=${{...IS,width:70,flex:"none",padding:"6px 8px"}}/>
+                <input value=${useQtys[k]||""} onInput=${e=>setUseQtys(p=>({...p,[k]:e.target.value}))} type="number" style=${{...IS,width:70,flex:"none",padding:"6px 8px"}}/>
                 <span style=${{fontSize:11,color:C.muted}}>${item.unit||"g"}</span>
               </div>
               <div style=${{fontSize:11,color:C.muted}}><span style=${{color:C.accent,fontFamily:"monospace"}}>${Math.round((Number(item.calories)||0)*ratio)}</span> kcal · P:${Math.round((Number(item.protein)||0)*ratio)}g · C:${Math.round((Number(item.carbs)||0)*ratio)}g · F:${Math.round((Number(item.fat)||0)*ratio)}g</div>
