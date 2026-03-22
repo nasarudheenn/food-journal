@@ -1,26 +1,60 @@
-<script>
-    let startX;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Journal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app"></div>
+    <script src="https://unpkg.com/preact@10.5.13/dist/preact.umd.js"></script>
+    <script>
+        const { h, render, Component } = preact;
+        class FoodJournal extends Component {
+            constructor() {
+                super();
+                this.state = {
+                    entries: [],
+                    swipeDetected: false
+                };
+            }
 
-    // Function to handle touch start event
-    function touchStart(e) {
-        startX = e.touches[0].clientX;
-    }
+            addEntry(entry) {
+                this.setState({ entries: [...this.state.entries, entry] });
+            }
 
-    // Function to handle touch move event
-    function touchMove(e) {
-        const deltaX = e.touches[0].clientX - startX;
-        if (deltaX > 50) { // Adjust swipe threshold as needed
-            // Navigate back to the main view
-            window.location.href = 'main_view.html'; // Change to your main view URL
+            detectSwipe() {
+                // logic for swipe gesture detection
+                this.setState({ swipeDetected: true });
+            }
+
+            confirmExit() {
+                const confirmed = confirm('Are you sure you want to exit?');
+                if (confirmed) {
+                    // logic to exit
+                }
+            }
+
+            componentDidMount() {
+                // Add swipe detection listeners
+                window.addEventListener('swipe', this.detectSwipe.bind(this));
+                window.addEventListener('beforeunload', this.confirmExit.bind(this));
+            }
+
+            render() {
+                return (
+                    <div>
+                        <h1>My Food Journal</h1>
+                        {/* Render journal entries */}
+                        <div>{this.state.entries.map(entry => <p>{entry}</p>)}</div>
+                        <button onClick={() => this.addEntry('New Entry')}>Add Entry</button>
+                        {this.state.swipeDetected && <p>Swipe detected!</p>}
+                    </div>
+                );
+            }
         }
-    }
-
-    // Function to show exit confirmation
-    window.onbeforeunload = function() {
-        return "Are you sure you want to leave?";
-    }
-
-    // Attach event listeners
-    document.addEventListener('touchstart', touchStart, false);
-    document.addEventListener('touchmove', touchMove, false);
-</script>
+        render(<FoodJournal />, document.getElementById('app'));
+    </script>
+</body>
+</html>
