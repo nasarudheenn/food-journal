@@ -870,7 +870,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v25.9 · Mar 22, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v26.0 · Mar 22, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
@@ -885,9 +885,21 @@ ${tab==="recipes"&&view==="main"&&html`
           </div>
           ${(()=>{
             const base=(recipeFilter==="All"?recipeBook:recipeBook.filter(r=>r.mealTags?.includes(recipeFilter)));
+            const renderRec=rec=>{const rt=sumE(rec.items);return html`<div key=${rec.id} style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,marginBottom:10,overflow:"hidden"}}>
+              <div onClick=${()=>{setRecName(rec.name);setRecItems(rec.items.map((x,i)=>({...x,_id:x._id??i})));setRecTags(rec.mealTags||[]);setEditRecId(rec.id);setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setView("recipe-new");}} style=${{padding:"14px 15px",cursor:"pointer"}}>
+                <div style=${{fontSize:15,fontWeight:700,marginBottom:4}}>${rec.name}</div>
+                ${rec.mealTags?.length&&html`<div style=${{fontSize:10,color:C.accent,marginBottom:4}}>${rec.mealTags.map(t=>MEAL_ICONS[t]).join(" ")} ${rec.mealTags.join(", ")}</div>`}
+                <div style=${{fontSize:11,color:C.muted,marginBottom:6}}>${rec.items.length} ingredients · tap to edit</div>
+                <div style=${{display:"flex",gap:8,flexWrap:"wrap"}}><span style=${{fontSize:13,color:C.accent,fontFamily:"monospace",fontWeight:700}}>${Math.round(rt.calories)} kcal</span><span style=${{fontSize:11,color:C.muted}}>P:${Math.round(rt.protein)}g C:${Math.round(rt.carbs)}g F:${Math.round(rt.fat)}g</span></div>
+              </div>
+              <div style=${{padding:"0 15px 14px",display:"flex",gap:8}}>
+                <button onClick=${e=>{e.stopPropagation();startUse(rec);}} style=${{flex:1,padding:"10px",background:C.green,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🍳 Use This Recipe</button>
+                <button onClick=${e=>{e.stopPropagation();setConfirmModal({msg:`Delete "${rec.name}"?`,onConfirm:()=>pRB(recipeBook.filter(r=>r.id!==rec.id))});}} style=${{padding:"10px 12px",background:"none",border:`1px solid ${C.red}`,borderRadius:9,color:C.red,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
+              </div>
+            </div>`;};
             if(!recipeSearch.trim()){
-              // No search - show all sorted alphabetically
-              return [...base].sort((a,b)=>a.name.localeCompare(b.name));
+              if(!base.length)return html`<div style=${{textAlign:"center",padding:"40px",color:C.muted,lineHeight:1.8}}><div style=${{fontSize:40,marginBottom:10}}>📚</div>No saved recipes.</div>`;
+              return [...base].sort((a,b)=>a.name.localeCompare(b.name)).map(renderRec);
             }
             const ql=recipeSearch.toLowerCase();
             // Find which word position matches and sort by priority then next letter
@@ -903,20 +915,8 @@ ${tab==="recipes"&&view==="main"&&html`
               }
             });
             if(!withPriority.length)return html`<div style=${{textAlign:"center",padding:"30px",color:C.muted,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}><div style=${{fontSize:24,marginBottom:8}}>🔍</div>No recipes found.</div>`;
-            // Sort: first by word position (priority), then by next letter alphabetically
             withPriority.sort((a,b)=>a.priority!==b.priority?a.priority-b.priority:a.nextLetter.localeCompare(b.nextLetter));
-            return withPriority.map(({rec})=>{const rt=sumE(rec.items);return html`<div key=${rec.id} style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,marginBottom:10,overflow:"hidden"}}>
-              <div onClick=${()=>{setRecName(rec.name);setRecItems(rec.items.map((x,i)=>({...x,_id:x._id??i})));setRecTags(rec.mealTags||[]);setEditRecId(rec.id);setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setView("recipe-new");}} style=${{padding:"14px 15px",cursor:"pointer"}}>
-                <div style=${{fontSize:15,fontWeight:700,marginBottom:4}}>${rec.name}</div>
-                ${rec.mealTags?.length&&html`<div style=${{fontSize:10,color:C.accent,marginBottom:4}}>${rec.mealTags.map(t=>MEAL_ICONS[t]).join(" ")} ${rec.mealTags.join(", ")}</div>`}
-                <div style=${{fontSize:11,color:C.muted,marginBottom:6}}>${rec.items.length} ingredients · tap to edit</div>
-                <div style=${{display:"flex",gap:8,flexWrap:"wrap"}}><span style=${{fontSize:13,color:C.accent,fontFamily:"monospace",fontWeight:700}}>${Math.round(rt.calories)} kcal</span><span style=${{fontSize:11,color:C.muted}}>P:${Math.round(rt.protein)}g C:${Math.round(rt.carbs)}g F:${Math.round(rt.fat)}g</span></div>
-              </div>
-              <div style=${{padding:"0 15px 14px",display:"flex",gap:8}}>
-                <button onClick=${e=>{e.stopPropagation();startUse(rec);}} style=${{flex:1,padding:"10px",background:C.green,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🍳 Use This Recipe</button>
-                <button onClick=${e=>{e.stopPropagation();setConfirmModal({msg:`Delete "${rec.name}"?`,onConfirm:()=>pRB(recipeBook.filter(r=>r.id!==rec.id))});}} style=${{padding:"10px 12px",background:"none",border:`1px solid ${C.red}`,borderRadius:9,color:C.red,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
-              </div>
-            </div>`;});
+            return withPriority.map(({rec})=>renderRec(rec));
           })()}
         </div>`}
 ${view==="recipe-new"&&html`
