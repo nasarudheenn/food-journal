@@ -83,6 +83,19 @@ const isoMonth=d=>d.slice(0,7);
 const emptyNut=()=>Object.fromEntries(ALL_FIELDS.map(f=>[f.key,""]));
 const sumE=list=>{const o=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,0]));list.forEach(e=>ALL_FIELDS.forEach(f=>{o[f.key]+=(Number(e[f.key])||0);}));return o;};
 const n2s=v=>v===undefined||v===null||v===""?"0":String(Math.round(Number(v)*10)/10);
+function getMealByTime(){
+  const h=new Date().getHours(),m=new Date().getMinutes(),t=h*60+m;
+  if(t<660)return"Breakfast";       // before 11:00
+  if(t<720)return"Mid-Morning";     // 11:00-11:59
+  if(t<900)return"Lunch";           // 12:00-14:59
+  if(t<1020)return"Evening";        // 15:00-16:59
+  return"Dinner";                    // 17:00+
+}
+function getMealByTimeFromTags(tags){
+  if(!tags||!tags.length)return getMealByTime();
+  const current=getMealByTime();
+  return tags.includes(current)?current:tags[0];
+}
 
 // ── AI helpers ────────────────────────────────────────────────────────────────
 async function callAI(messages,maxTokens=600){
@@ -327,7 +340,7 @@ function App(){
 
   // Add food
   const [logMode,setLogMode]=useState("recipe");
-  const [addMeal,setAddMeal]=useState("Breakfast");
+  const [addMeal,setAddMeal]=useState(()=>getMealByTime());
   const [foodName,setFoodName]=useState("");
   const [qty,setQty]=useState("");
   const [unit,setUnit]=useState("g");
@@ -366,7 +379,7 @@ function App(){
   // Recipe Use
   const [useRec,setUseRec]=useState(null);
   const [useQtys,setUseQtys]=useState({});
-  const [useMeal,setUseMeal]=useState("Lunch");
+  const [useMeal,setUseMeal]=useState(()=>getMealByTime());
 
   // Profile
   const [profEdit,setProfEdit]=useState(()=>{const p=store.get(SK.profile);return p?{...DEFAULT_PROFILE,...p}:DEFAULT_PROFILE;});
@@ -487,7 +500,7 @@ function App(){
     setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setRecImpStatus("");
     setView("main");
   }
-  function startUse(r){setUseRec(r);setUseQtys(Object.fromEntries(r.items.map(x=>[x._id??x.food,x.quantity])));setUseMeal(r.mealTags?.[0]||"Lunch");setView("recipe-use");}
+  function startUse(r){setUseRec(r);setUseQtys(Object.fromEntries(r.items.map(x=>[x._id??x.food,x.quantity])));setUseMeal(getMealByTimeFromTags(r.mealTags));setView("recipe-use");}
   function logRecipe(){
     if(!useRec)return;
     const now=new Date().toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"});
@@ -496,7 +509,7 @@ function App(){
     pE({...entries,[selDate]:[...(entries[selDate]||[]),...newEs]});
     setUseRec(null);setView("main");setTab("diary");
   }
-  function startQuickLog(rec){setQuickRecipe(rec);setQuickQtys(Object.fromEntries(rec.items.map(x=>[x._id??x.food,x.quantity])));const ft=rec.mealTags?.[0];if(ft)setAddMeal(ft);}
+  function startQuickLog(rec){setQuickRecipe(rec);setQuickQtys(Object.fromEntries(rec.items.map(x=>[x._id??x.food,x.quantity])));setAddMeal(getMealByTimeFromTags(rec.mealTags));}
   function logQuickRecipe(){
     if(!quickRecipe)return;
     const now=new Date().toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"});
@@ -874,7 +887,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v26.1 · Mar 22, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v26.2 · Mar 22, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
@@ -1070,7 +1083,7 @@ ${tab==="reports"&&view==="main"&&html`
           <span style=${{fontSize:10,letterSpacing:"0.06em",textTransform:"uppercase",color:tab===id?C.accent:C.muted,fontWeight:tab===id?700:400,fontFamily:"inherit"}}>${label}</span>
         </button>`)}
       </div>
-      ${tab==="diary"&&view==="main"&&html`<button onClick=${()=>setView("add")} style=${{position:"fixed",bottom:80,right:18,width:56,height:56,borderRadius:"50%",background:`linear-gradient(135deg,${C.accent},${C.accentDim})`,border:"none",color:C.bg,fontSize:26,cursor:"pointer",boxShadow:"0 4px 20px rgba(232,197,71,0.4)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>+</button>`}
+      ${tab==="diary"&&view==="main"&&html`<button onClick=${()=>{setAddMeal(getMealByTime());setView("add");}} style=${{position:"fixed",bottom:80,right:18,width:56,height:56,borderRadius:"50%",background:`linear-gradient(135deg,${C.accent},${C.accentDim})`,border:"none",color:C.bg,fontSize:26,cursor:"pointer",boxShadow:"0 4px 20px rgba(232,197,71,0.4)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>+</button>`}
     </div>`;
 }
 
