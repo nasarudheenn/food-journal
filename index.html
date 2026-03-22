@@ -1108,15 +1108,15 @@ function App(){
             const filtered=(recipeFilter==="All"
               ?recipeBook
               :recipeBook.filter(r=>r.mealTags&&r.mealTags.includes(recipeFilter)))
-              .filter(r=>!recipeSearch||r.name.toLowerCase().includes(recipeSearch.toLowerCase()));
+              .filter(r=>!recipeSearch.trim()||r.name.toLowerCase().includes(recipeSearch.toLowerCase()));
             if(filtered.length===0)return(
               <div style={{textAlign:"center",padding:"30px",color:C.muted,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}>
-                <div style={{fontSize:24,marginBottom:8}}>{MEAL_ICONS[recipeFilter]}</div>
-                No recipes tagged for <strong style={{color:C.accent}}>{recipeFilter}</strong>.
+                <div style={{fontSize:24,marginBottom:8}}>🔍</div>
+                No recipes found{recipeSearch?` for "${recipeSearch}"`:` for ${recipeFilter}`}.
               </div>
             );
-            // Group by meal tags if showing All, flat list if filtered
-            if(recipeFilter==="All"){
+            // Show flat list when searching, grouped when browsing All
+            if(recipeFilter==="All"&&!recipeSearch.trim()){
               return Object.entries(recipesByMeal).filter(([,recs])=>recs.length>0).map(([mealName,recs])=>(
                 <div key={mealName} style={{marginBottom:20}}>
                   <div style={{fontSize:11,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
