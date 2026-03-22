@@ -26,7 +26,6 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  
   if (e.request.url.includes('api.anthropic.com') || e.request.url.includes('cdn.jsdelivr.net')) return;
 
   e.respondWith(
