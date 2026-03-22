@@ -49,13 +49,28 @@ const store={
 
 // ── Fetch API key from private gist on startup ────────────────────────────────
 const GIST_URL="https://gist.githubusercontent.com/nasarudheenn/36f66934e828a52c0330cc87af935c28/raw/config.json";
-(async()=>{
-  try{
-    const res=await fetch(GIST_URL+"?t="+Date.now()); // cache bust
-    const data=await res.json();
-    if(data.apiKey){localStorage.setItem(SK.apiKey,data.apiKey);}
-  }catch(e){console.log("Gist fetch failed, using stored key");}
-})();
+async function fetchApiKey(){
+  // Try multiple fetch methods
+  const attempts=[
+    ()=>fetch(GIST_URL+"?t="+Date.now(),{cache:"no-store"}),
+    ()=>fetch(GIST_URL+"?t="+Date.now(),{cache:"no-store",mode:"cors"}),
+    ()=>fetch(GIST_URL,{cache:"no-cache"}),
+  ];
+  for(const attempt of attempts){
+    try{
+      const res=await attempt();
+      if(!res.ok)continue;
+      const data=await res.json();
+      if(data.apiKey&&data.apiKey.length>10){
+        localStorage.setItem("fd-apikey-v1",data.apiKey);
+        console.log("API key loaded from gist");
+        return;
+      }
+    }catch(e){continue;}
+  }
+  console.log("Gist fetch failed, using stored key:",localStorage.getItem("fd-apikey-v1")?"found":"not found");
+}
+fetchApiKey();
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const DEFAULT_PROFILE={name:"Nasarudheen N",currentWeight:"81",targetWeight:"70",height:"175",calorieGoal:1800,protein:130,carbs:180,fat:55,fiber:25,sugar:50,saturatedFat:20,polyFat:10,monoFat:15,cholesterol:300,sodium:2300,potassium:3500,calcium:1000,iron:18,vitC:90,vitD:20,vitB12:2.4,zinc:11};
@@ -598,6 +613,33 @@ function App(){
   };
 
   const [showExitConfirm,setShowExitConfirm]=useState(false);
+  const viewRef=useRef(view);
+  const ingModalRef=useRef(ingModal);
+  useEffect(()=>{viewRef.current=view;},[view]);
+  useEffect(()=>{ingModalRef.current=ingModal;},[ingModal]);
+
+  // Push initial state on mount
+  useEffect(()=>{
+    history.pushState({fj:true},"",'');
+  },[]);
+
+  // Handle back button - works in TWA
+  useEffect(()=>{
+    const onPopState=()=>{
+      // Re-push state so next back is intercepted
+      history.pushState({fj:true},"",'');
+      if(ingModalRef.current){
+        setIngModal(false);
+      } else if(viewRef.current!=="main"){
+        setView("main");
+        setQuickRecipe(null);
+      } else {
+        setShowExitConfirm(true);
+      }
+    };
+    window.addEventListener("popstate",onPopState);
+    return()=>window.removeEventListener("popstate",onPopState);
+  },[]);
 
   // ── RENDER ────────────────────────────────────────────────────────────────
   const UNITS=["g","ml","piece","tsp","tbsp","cup","serving"];
@@ -607,6 +649,17 @@ function App(){
       ${nutModal&&html`<${NutModal} item=${nutModal} onClose=${()=>setNutModal(null)}/>`}
       ${confirmModal&&html`<${ConfirmModal} msg=${confirmModal.msg} onConfirm=${()=>{confirmModal.onConfirm();setConfirmModal(null);}} onCancel=${()=>setConfirmModal(null)}/>`}
       <${IngredientModal} show=${ingModal} editData=${ingEditData} onSave=${saveIng} onClose=${()=>setIngModal(false)} apiKey=${apiKey}/>
+      ${showExitConfirm&&html`<div class="mov" onClick=${()=>setShowExitConfirm(false)}>
+        <div class="mbx" onClick=${e=>e.stopPropagation()} style=${{borderRadius:20,textAlign:"center"}}>
+          <div style=${{fontSize:36,marginBottom:12}}>👋</div>
+          <div style=${{fontSize:16,fontWeight:700,marginBottom:8}}>Exit Food Journal?</div>
+          <div style=${{fontSize:13,color:C.muted,marginBottom:24,lineHeight:1.6}}>Your data is saved automatically.</div>
+          <div style=${{display:"flex",gap:10}}>
+            <button onClick=${()=>setShowExitConfirm(false)} style=${{flex:1,padding:"13px",background:"none",border:`1px solid ${C.border}`,borderRadius:10,color:C.text,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Stay</button>
+            <button onClick=${()=>{setShowExitConfirm(false);history.go(-2);}} style=${{flex:1,padding:"13px",background:C.red,border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Exit</button>
+          </div>
+        </div>
+      </div>`}
       ${backupMsg&&tab!=="profile"&&html`<div style=${{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:200,background:backupMsg.startsWith("✓")?"rgba(82,196,122,0.95)":"rgba(224,82,82,0.95)",color:"#fff",borderRadius:20,padding:"10px 20px",fontSize:12,fontWeight:600,boxShadow:"0 4px 16px rgba(0,0,0,0.3)",whiteSpace:"nowrap"}}>${backupMsg}</div>`}
 <div style=${{padding:"max(env(safe-area-inset-top),18px) 18px 10px",borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,background:C.bg,zIndex:10}}>
         <div style=${{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -899,7 +952,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v27.9 · Mar 22, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v28.1 · Mar 22, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
