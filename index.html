@@ -116,7 +116,11 @@ async function aiSuggest(q){
       }
     }
   });
-  withPriority.sort((a,b)=>a.priority!==b.priority?a.priority-b.priority:a.nextLetter.localeCompare(b.nextLetter));
+  withPriority.sort((a,b)=>{
+    if(a.priority!==b.priority)return a.priority-b.priority;
+    if(a.priority===0)return a.nextLetter.localeCompare(b.nextLetter);
+    return a.s.toLowerCase().split(/\s+/)[0].localeCompare(b.s.toLowerCase().split(/\s+/)[0]);
+  });
   return withPriority.slice(0,5).map(x=>x.s);
 }
 async function aiParse(text){
@@ -870,7 +874,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v26.0 · Mar 22, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v26.1 · Mar 22, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
@@ -902,20 +906,26 @@ ${tab==="recipes"&&view==="main"&&html`
               return [...base].sort((a,b)=>a.name.localeCompare(b.name)).map(renderRec);
             }
             const ql=recipeSearch.toLowerCase();
-            // Find which word position matches and sort by priority then next letter
             const withPriority=[];
             base.forEach(r=>{
               const words=r.name.toLowerCase().split(/\s+/);
               for(let i=0;i<words.length;i++){
                 if(words[i].startsWith(ql)){
                   const nextLetter=words[i].slice(ql.length)||'';
-                  withPriority.push({rec:r,priority:i,nextLetter});
+                  withPriority.push({rec:r,priority:i,nextLetter,firstName:words[0]});
                   break;
                 }
               }
             });
             if(!withPriority.length)return html`<div style=${{textAlign:"center",padding:"30px",color:C.muted,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}><div style=${{fontSize:24,marginBottom:8}}>🔍</div>No recipes found.</div>`;
-            withPriority.sort((a,b)=>a.priority!==b.priority?a.priority-b.priority:a.nextLetter.localeCompare(b.nextLetter));
+            withPriority.sort((a,b)=>{
+              // First sort by which word position matched
+              if(a.priority!==b.priority)return a.priority-b.priority;
+              // 1st word match: sort by next letter after typed text
+              if(a.priority===0)return a.nextLetter.localeCompare(b.nextLetter);
+              // 2nd, 3rd+ word match: sort by first word alphabetically
+              return a.firstName.localeCompare(b.firstName);
+            });
             return withPriority.map(({rec})=>renderRec(rec));
           })()}
         </div>`}
