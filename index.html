@@ -599,12 +599,20 @@ function App(){
 
   const [showExitConfirm,setShowExitConfirm]=useState(false);
 
-  // Handle Android back button/gesture using History API
+  // Push initial history state on mount only
   useEffect(()=>{
     history.pushState({fj:true},"",'');
+  },[]);
+
+  // Handle Android back button - re-register whenever view changes
+  useEffect(()=>{
     const onPopState=()=>{
+      // Always push state back so next back is also intercepted
       history.pushState({fj:true},"",'');
-      if(view!=="main"){
+      if(ingModal){
+        // Close ingredient modal first
+        setIngModal(false);
+      } else if(view!=="main"){
         setView("main");
         setQuickRecipe(null);
       } else {
@@ -613,7 +621,7 @@ function App(){
     };
     window.addEventListener("popstate",onPopState);
     return()=>window.removeEventListener("popstate",onPopState);
-  },[view]);
+  },[view,ingModal]);
 
   // Swipe left from right edge to go back
   useEffect(()=>{
@@ -624,14 +632,15 @@ function App(){
       const dx=startX-e.changedTouches[0].clientX;
       const dy=Math.abs(e.changedTouches[0].clientY-startY);
       if(startX>screenW-60&&dx>80&&dy<60){
-        if(view!=="main"){setView("main");setQuickRecipe(null);}
-        else setShowExitConfirm(true);
+        if(ingModal){setIngModal(false);}
+        else if(view!=="main"){setView("main");setQuickRecipe(null);}
+        else{setShowExitConfirm(true);}
       }
     };
     document.addEventListener("touchstart",onTouchStart,{passive:true});
     document.addEventListener("touchend",onTouchEnd,{passive:true});
     return()=>{document.removeEventListener("touchstart",onTouchStart);document.removeEventListener("touchend",onTouchEnd);};
-  },[view]);
+  },[view,ingModal]);
 
   // ── RENDER ────────────────────────────────────────────────────────────────
   const UNITS=["g","ml","piece","tsp","tbsp","cup","serving"];
@@ -649,7 +658,7 @@ function App(){
           <div style=${{fontSize:13,color:C.muted,marginBottom:24,lineHeight:1.6}}>Your data is saved automatically.</div>
           <div style=${{display:"flex",gap:10}}>
             <button onClick=${()=>setShowExitConfirm(false)} style=${{flex:1,padding:"13px",background:"none",border:`1px solid ${C.border}`,borderRadius:10,color:C.text,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Stay</button>
-            <button onClick=${()=>{setShowExitConfirm(false);history.go(-2);}} style=${{flex:1,padding:"13px",background:C.red,border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Exit</button>
+            <button onClick=${()=>{setShowExitConfirm(false);window.close();setTimeout(()=>{history.go(-(history.length));},100);}} style=${{flex:1,padding:"13px",background:C.red,border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Exit</button>
           </div>
         </div>
       </div>`}
@@ -945,7 +954,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v27.4 · Mar 22, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v27.5 · Mar 22, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
