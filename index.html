@@ -37,7 +37,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script type="text/babel">
 const {useState,useEffect,useRef}=React;
-const SK={entries:"fd-entries-v2",profile:"fd-profile-v2",weights:"fd-weights-v2",recipes:"fd-recipebook-v2",apiKey:"fd-apikey-v1"};
+const SK={entries:"fd-entries-v2",profile:"fd-profile-v2",weights:"fd-weights-v2",recipes:"fd-recipebook-v2",apiKey:"fd-apikey-v1",autoBackup:"fd-autobackup-v1",lastBackup:"fd-lastbackup-v1"};
 const store={
   get:k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}},
   set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
@@ -289,6 +289,30 @@ function App(){
   const [repPeriod,setRepPeriod]=useState("daily");
   // Backup
   const [backupMsg,setBackupMsg]=useState("");
+  const [autoBackup,setAutoBackup]=useState(()=>localStorage.getItem(SK.autoBackup)==="true");
+
+  // Auto-backup on app open (once per day)
+  React.useEffect(()=>{
+    if(!autoBackup) return;
+    const lastBackup=localStorage.getItem(SK.lastBackup)||"";
+    const today=todayStr();
+    if(lastBackup===today) return; // already backed up today
+    // Wait 3 seconds after app opens then auto-backup
+    const t=setTimeout(()=>{
+      try{
+        const data={version:1,exportedAt:new Date().toISOString(),entries:store.get(SK.entries)||{},profile:store.get(SK.profile)||{},weights:store.get(SK.weights)||[],recipeBook:store.get(SK.recipes)||[]};
+        const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement("a");
+        a.href=url;a.download=`food-journal-backup-${today}.json`;
+        document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+        localStorage.setItem(SK.lastBackup,today);
+        setBackupMsg("✓ Auto-backup saved to Downloads!");
+        setTimeout(()=>setBackupMsg(""),4000);
+      }catch(e){console.error("Auto-backup failed",e);}
+    },3000);
+    return()=>clearTimeout(t);
+  },[autoBackup]);
 
   const goals={
     calories:Number(profile.calorieGoal)||1800,protein:Number(profile.protein)||130,
@@ -550,6 +574,13 @@ function App(){
     <div style={{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"Georgia,serif",maxWidth:480,margin:"0 auto",paddingBottom:80}}>
       {nutModal&&<NutModal item={nutModal} onClose={()=>setNutModal(null)}/>}
       {confirmModal&&<ConfirmModal msg={confirmModal.msg} onConfirm={()=>{confirmModal.onConfirm();setConfirmModal(null);}} onCancel={()=>setConfirmModal(null)}/>}
+
+      {/* Auto-backup toast */}
+      {backupMsg&&tab!=="profile"&&(
+        <div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:200,background:backupMsg.startsWith("✓")?"rgba(82,196,122,0.95)":"rgba(224,82,82,0.95)",color:"#fff",borderRadius:20,padding:"10px 20px",fontSize:12,fontWeight:600,fontFamily:"Georgia,serif",boxShadow:"0 4px 16px rgba(0,0,0,0.3)",maxWidth:360,textAlign:"center",whiteSpace:"nowrap"}}>
+          {backupMsg}
+        </div>
+      )}
 
       {/* HEADER */}
       <div style={{padding:"max(env(safe-area-inset-top),18px) 18px 10px",borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,background:C.bg,zIndex:10}}>
@@ -911,9 +942,43 @@ function App(){
           <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style={{fontSize:14,fontWeight:700,marginBottom:6}}>Data Backup</div>
             <div style={{fontSize:12,color:C.muted,marginBottom:14,lineHeight:1.6}}>Export to keep data safe — restore anytime if you reinstall or switch phones.</div>
+
+            {/* Auto-backup toggle */}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:C.bg,border:`1px solid ${autoBackup?C.green:C.border}`,borderRadius:10,padding:"12px 14px",marginBottom:12}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:600,color:autoBackup?C.green:C.text}}>🔄 Daily Auto-Backup</div>
+                <div style={{fontSize:11,color:C.muted,marginTop:2}}>
+                  {autoBackup
+                    ? `On — saves to Downloads on first open each day`
+                    : "Off — tap to enable automatic daily backups"}
+                </div>
+                {autoBackup&&(()=>{
+                  const lb=localStorage.getItem(SK.lastBackup);
+                  return lb?<div style={{fontSize:10,color:C.green,marginTop:2}}>Last backup: {lb}</div>:null;
+                })()}
+              </div>
+              <button onClick={()=>{
+                const newVal=!autoBackup;
+                setAutoBackup(newVal);
+                localStorage.setItem(SK.autoBackup,String(newVal));
+                if(!newVal){setBackupMsg("Auto-backup disabled.");setTimeout(()=>setBackupMsg(""),2000);}
+                else{setBackupMsg("✓ Auto-backup enabled! Will backup daily on app open.");setTimeout(()=>setBackupMsg(""),3000);}
+              }} style={{
+                width:50,height:28,borderRadius:14,border:"none",cursor:"pointer",
+                background:autoBackup?C.green:C.border,
+                position:"relative",transition:"background 0.2s",flexShrink:0
+              }}>
+                <div style={{
+                  width:22,height:22,borderRadius:"50%",background:"#fff",
+                  position:"absolute",top:3,transition:"left 0.2s",
+                  left:autoBackup?25:3
+                }}/>
+              </button>
+            </div>
+
             {backupMsg&&<div style={{fontSize:12,color:backupMsg.startsWith("✓")?C.green:C.red,marginBottom:12,padding:"10px",background:backupMsg.startsWith("✓")?"rgba(82,196,122,0.1)":"rgba(224,82,82,0.1)",borderRadius:8}}>{backupMsg}</div>}
             <div style={{display:"flex",gap:10}}>
-              <button onClick={exportData} style={{flex:1,padding:"12px 10px",background:`linear-gradient(135deg,${C.blue},#3a79c0)`,border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><span>⬇️</span> Export</button>
+              <button onClick={exportData} style={{flex:1,padding:"12px 10px",background:`linear-gradient(135deg,${C.blue},#3a79c0)`,border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><span>⬇️</span> Export Now</button>
               <label style={{flex:1,padding:"12px 10px",background:`linear-gradient(135deg,${C.orange},#b06830)`,border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><span>⬆️</span> Restore<input type="file" accept=".json" onChange={importDataFile} style={{display:"none"}}/></label>
             </div>
           </div>
