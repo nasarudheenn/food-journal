@@ -32,9 +32,13 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
 </head>
 <body>
 <div id="app"></div>
-<script type="module">
-import{html,render,Component}from'https://cdn.jsdelivr.net/npm/htm/preact/standalone.module.js';
-const{useState,useEffect,useRef,useCallback}=await import('https://cdn.jsdelivr.net/npm/preact@10/hooks/dist/hooks.module.js');
+<script src="https://cdn.jsdelivr.net/npm/preact@10/dist/preact.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/preact@10/hooks/dist/hooks.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3/dist/htm.umd.js"></script>
+<script>
+const {h, render} = preact;
+const {useState, useEffect, useRef, useCallback} = preactHooks;
+const html = htm.bind(h);
 
 // ── Storage ──────────────────────────────────────────────────────────────────
 const SK={entries:"fd-entries-v2",profile:"fd-profile-v2",weights:"fd-weights-v2",recipes:"fd-recipebook-v2",apiKey:"fd-apikey-v1",autoBackup:"fd-autobackup-v1",lastBackup:"fd-lastbackup-v1"};
@@ -142,22 +146,22 @@ function WeightChart({weights,target}){
   const ticks=weights.length<=5?weights.map((_,i)=>i):[0,Math.floor(weights.length/2),weights.length-1];
   return html`<svg width="100%" viewBox=${`0 0 ${W} ${H}`} style=${{display:"block"}}>
     <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color=${C.accent} stop-opacity="0.3"/>
-      <stop offset="100%" stop-color=${C.accent} stop-opacity="0"/>
+      <stop offset="0%" stopColor=${C.accent} stopOpacity="0.3"/>
+      <stop offset="100%" stopColor=${C.accent} stopOpacity="0"/>
     </linearGradient></defs>
-    ${[0,0.5,1].map(t=>{const y=P.t+t*(H-P.t-P.b),v=mx-t*(mx-mn);return html`<g key=${t}><line x1=${P.l} y1=${y} x2=${W-P.r} y2=${y} stroke=${C.border} stroke-dasharray="3,3"/><text x=${P.l-3} y=${y+3} font-size="9" fill=${C.muted} text-anchor="end">${v.toFixed(1)}</text></g>`;})}
-    ${tY&&html`<line x1=${P.l} y1=${tY} x2=${W-P.r} y2=${tY} stroke=${C.green} stroke-dasharray="4,3" stroke-width="1.5"/><text x=${W-P.r+2} y=${tY+3} font-size="8" fill=${C.green}>Goal</text>`}
+    ${[0,0.5,1].map(t=>{const y=P.t+t*(H-P.t-P.b),v=mx-t*(mx-mn);return html`<g key=${t}><line x1=${P.l} y1=${y} x2=${W-P.r} y2=${y} stroke=${C.border} strokeDasharray="3,3"/><text x=${P.l-3} y=${y+3} fontSize="9" fill=${C.muted} textAnchor="end">${v.toFixed(1)}</text></g>`;})}
+    ${tY&&html`<line x1=${P.l} y1=${tY} x2=${W-P.r} y2=${tY} stroke=${C.green} strokeDasharray="4,3" strokeWidth="1.5"/><text x=${W-P.r+2} y=${tY+3} fontSize="8" fill=${C.green}>Goal</text>`}
     ${vals.length>1&&html`<path d=${areaD} fill="url(#wg)"/>`}
-    ${vals.length>1&&html`<path d=${pathD} fill="none" stroke=${C.accent} stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`}
+    ${vals.length>1&&html`<path d=${pathD} fill="none" stroke=${C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>`}
     ${vals.map((v,i)=>html`<circle key=${i} cx=${xOf(i)} cy=${yOf(v)} r="3.5" fill=${C.accent}/>`)}
-    ${ticks.map(i=>html`<text key=${i} x=${xOf(i)} y=${H-2} font-size="8" fill=${C.muted} text-anchor="middle">${fmtShort(dates[i])}</text>`)}
+    ${ticks.map(i=>html`<text key=${i} x=${xOf(i)} y=${H-2} fontSize="8" fill=${C.muted} textAnchor="middle">${fmtShort(dates[i])}</text>`)}
   </svg>`;
 }
 
 function NutModal({item,onClose}){
   if(!item)return null;
-  return html`<div class="mov" onClick=${onClose}>
-    <div class="mbx" onClick=${e=>e.stopPropagation()}>
+  return html`<div className="mov" onClick=${onClose}>
+    <div className="mbx" onClick=${e=>e.stopPropagation()}>
       <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
         <div>
           <div style=${{fontSize:16,fontWeight:700}}>${item.food}</div>
@@ -190,8 +194,8 @@ function NutModal({item,onClose}){
 }
 
 function ConfirmModal({msg,onConfirm,onCancel}){
-  return html`<div class="mov" onClick=${onCancel}>
-    <div class="mbx" onClick=${e=>e.stopPropagation()} style=${{borderRadius:20}}>
+  return html`<div className="mov" onClick=${onCancel}>
+    <div className="mbx" onClick=${e=>e.stopPropagation()} style=${{borderRadius:20}}>
       <div style=${{fontSize:36,textAlign:"center",marginBottom:12}}>⚠️</div>
       <div style=${{fontSize:15,fontWeight:700,textAlign:"center",marginBottom:8}}>Delete Item?</div>
       <div style=${{fontSize:13,color:C.muted,textAlign:"center",marginBottom:20,lineHeight:1.6}}>${msg}</div>
@@ -234,8 +238,8 @@ function IngredientModal({show,editData,onSave,onClose,apiKey}){
     setLoading(false);
   };
   const UNITS=["g","ml","piece","tsp","tbsp","cup","serving"];
-  return html`<div class="mov" onClick=${onClose}>
-    <div class="mbx" onClick=${e=>e.stopPropagation()}>
+  return html`<div className="mov" onClick=${onClose}>
+    <div className="mbx" onClick=${e=>e.stopPropagation()}>
       <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
         <div style=${{fontSize:16,fontWeight:700}}>${editData?._id?"Edit Ingredient":"Add Ingredient"}</div>
         <button onClick=${onClose} style=${{background:"none",border:"none",color:C.muted,fontSize:22,cursor:"pointer"}}>✕</button>
@@ -562,9 +566,7 @@ function App(){
       ${confirmModal&&html`<${ConfirmModal} msg=${confirmModal.msg} onConfirm=${()=>{confirmModal.onConfirm();setConfirmModal(null);}} onCancel=${()=>setConfirmModal(null)}/>`}
       <${IngredientModal} show=${ingModal} editData=${ingEditData} onSave=${saveIng} onClose=${()=>setIngModal(false)} apiKey=${apiKey}/>
       ${backupMsg&&tab!=="profile"&&html`<div style=${{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:200,background:backupMsg.startsWith("✓")?"rgba(82,196,122,0.95)":"rgba(224,82,82,0.95)",color:"#fff",borderRadius:20,padding:"10px 20px",fontSize:12,fontWeight:600,boxShadow:"0 4px 16px rgba(0,0,0,0.3)",whiteSpace:"nowrap"}}>${backupMsg}</div>`}
-
-      <!-- HEADER -->
-      <div style=${{padding:"max(env(safe-area-inset-top),18px) 18px 10px",borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,background:C.bg,zIndex:10}}>
+<div style=${{padding:"max(env(safe-area-inset-top),18px) 18px 10px",borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,background:C.bg,zIndex:10}}>
         <div style=${{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div>
             <div style=${{fontSize:9,color:C.accent,letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:1}}>Food Journal</div>
@@ -587,18 +589,16 @@ function App(){
             })}
           </div>`}
       </div>
-
-      <!-- DIARY MAIN -->
-      ${tab==="diary"&&view==="main"&&html`
+${tab==="diary"&&view==="main"&&html`
         <div style=${{padding:"14px 18px"}}>
           <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style=${{display:"flex",alignItems:"center",gap:16}}>
               <div style=${{position:"relative",width:76,height:76,flexShrink:0}}>
                 <svg width="76" height="76" style=${{transform:"rotate(-90deg)"}}>
-                  <circle cx="38" cy="38" r="30" fill="none" stroke=${C.border} stroke-width="6"/>
-                  <circle cx="38" cy="38" r="30" fill="none" stroke=${calOver?C.red:C.accent} stroke-width="6"
-                    stroke-dasharray=${`${2*Math.PI*30}`} stroke-dashoffset=${`${2*Math.PI*30*(1-calPct/100)}`}
-                    stroke-linecap="round" style=${{transition:"stroke-dashoffset 0.6s ease"}}/>
+                  <circle cx="38" cy="38" r="30" fill="none" stroke=${C.border} strokeWidth="6"/>
+                  <circle cx="38" cy="38" r="30" fill="none" stroke=${calOver?C.red:C.accent} strokeWidth="6"
+                    strokeDasharray=${`${2*Math.PI*30}`} strokeDashoffset=${`${2*Math.PI*30*(1-calPct/100)}`}
+                    strokeLinecap="round" style=${{transition:"stroke-dashoffset 0.6s ease"}}/>
                 </svg>
                 <div style=${{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
                   <span style=${{fontSize:12,fontWeight:700,color:calOver?C.red:C.text,fontFamily:"monospace",lineHeight:1}}>${Math.round(dayT.calories)}</span>
@@ -673,9 +673,7 @@ function App(){
             })
           }
         </div>`}
-
-      <!-- ADD FOOD -->
-      ${tab==="diary"&&view==="add"&&html`
+${tab==="diary"&&view==="add"&&html`
         <div style=${{padding:"16px 18px"}}>
           <div style=${{display:"flex",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:3,marginBottom:16,gap:2}}>
             ${[{label:"📚 Recipe",v:"recipe"},{label:"✏️ Manual",v:"manual"},{label:"📋 Claude",v:"paste"}].map(({label,v})=>html`
@@ -781,9 +779,7 @@ function App(){
             </div>`}
           </div>`}
         </div>`}
-
-      <!-- HISTORY -->
-      ${tab==="diary"&&view==="history"&&html`
+${tab==="diary"&&view==="history"&&html`
         <div style=${{padding:"14px 18px"}}>
           ${histDates.length===0?html`<div style=${{textAlign:"center",padding:"40px",color:C.muted}}>No history yet.</div>`:
             histDates.map(date=>{const dd=entries[date]||[],cal=dd.reduce((s,e)=>s+e.calories,0),prot=dd.reduce((s,e)=>s+e.protein,0);return html`<button key=${date} onClick=${()=>{setSelDate(date);setView("main");}} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -792,9 +788,7 @@ function App(){
             </button>`;})
           }
         </div>`}
-
-      <!-- PROFILE -->
-      ${tab==="profile"&&view==="main"&&html`
+${tab==="profile"&&view==="main"&&html`
         <div style=${{padding:"16px 18px"}}>
           <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style=${{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:weights.length>0?14:8}}>
@@ -866,9 +860,7 @@ function App(){
             <div style=${{fontSize:11,color:C.muted}}>Food Journal · v24.0 · Mar 22, 2026</div>
           </div>
         </div>`}
-
-      <!-- RECIPES LIST -->
-      ${tab==="recipes"&&view==="main"&&html`
+${tab==="recipes"&&view==="main"&&html`
         <div style=${{padding:"16px 18px"}}>
           <button onClick=${()=>{setRecName("");setRecItems([]);setRecTags([]);setEditRecId(null);setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setView("recipe-new");}} style=${{width:"100%",padding:"13px",background:`linear-gradient(135deg,${C.accent},${C.accentDim})`,border:"none",borderRadius:10,color:C.bg,fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit",marginBottom:12}}>+ New Recipe</button>
           <div style=${{position:"relative",marginBottom:10}}>
@@ -896,9 +888,7 @@ function App(){
             </div>`;});
           })()}
         </div>`}
-
-      <!-- NEW/EDIT RECIPE -->
-      ${view==="recipe-new"&&html`
+${view==="recipe-new"&&html`
         <div style=${{padding:"16px 18px"}}>
           <div style=${{marginBottom:12}}><${Lbl}>Recipe Name<//>
             <input value=${recName} onChange=${e=>setRecName(e.target.value)} placeholder="e.g. Egg Veggies Omelette" style=${IS}/></div>
@@ -939,9 +929,7 @@ function App(){
           <button onClick=${()=>openIngModal(null)} style=${{width:"100%",padding:"11px",background:"none",border:`1px dashed ${C.accent}`,borderRadius:10,color:C.accent,fontSize:13,cursor:"pointer",fontFamily:"inherit",marginBottom:12}}>+ Add Ingredient Manually</button>
           <${Btn} onClick=${saveRecipe} disabled=${!recName.trim()||!recItems.length} color=${C.green}>${editRecId?"Update Recipe":"Save Recipe"}<//>
         </div>`}
-
-      <!-- RECIPE USE -->
-      ${view==="recipe-use"&&useRec&&html`
+${view==="recipe-use"&&useRec&&html`
         <div style=${{padding:"16px 18px"}}>
           <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
             <div style=${{fontSize:14,fontWeight:700,marginBottom:4}}>${useRec.name}</div>
@@ -963,9 +951,7 @@ function App(){
           </div>
           <${Btn} onClick=${logRecipe} color=${C.green}>Log Recipe to ${useMeal}<//>
         </div>`}
-
-      <!-- REPORTS -->
-      ${tab==="reports"&&view==="main"&&html`
+${tab==="reports"&&view==="main"&&html`
         <div style=${{padding:"16px 18px"}}>
           <div style=${{display:"flex",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:3,marginBottom:14,gap:3}}>
             ${[{label:"Daily",val:"daily"},{label:"Weekly",val:"weekly"},{label:"Monthly",val:"monthly"}].map(({label,val})=>html`
@@ -1037,9 +1023,7 @@ function App(){
             </div>`;
           })()}
         </div>`}
-
-      <!-- BOTTOM NAV -->
-      <div style=${{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:C.bg,borderTop:`1px solid ${C.border}`,display:"flex",zIndex:20,paddingBottom:"env(safe-area-inset-bottom,0)"}}>
+<div style=${{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:C.bg,borderTop:`1px solid ${C.border}`,display:"flex",zIndex:20,paddingBottom:"env(safe-area-inset-bottom,0)"}}>
         ${TABS.map(({id,icon,label})=>html`<button key=${id} onClick=${()=>{setTab(id);setView("main");}} style=${{flex:1,padding:"11px 0 13px",background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
           <span style=${{fontSize:20}}>${icon}</span>
           <span style=${{fontSize:10,letterSpacing:"0.06em",textTransform:"uppercase",color:tab===id?C.accent:C.muted,fontWeight:tab===id?700:400,fontFamily:"inherit"}}>${label}</span>
@@ -1054,8 +1038,8 @@ render(html`<${App}/>`, document.getElementById('app'));
 
 <button id="install-banner" style="display:none">
   <img src="icon-192.png" alt="Food Journal"/>
-  <div class="txt"><strong>Install Food Journal</strong><span>Add to home screen</span></div>
-  <span class="arrow">📲</span>
+  <div className="txt"><strong>Install Food Journal</strong><span>Add to home screen</span></div>
+  <span className="arrow">📲</span>
   <button id="install-dismiss">✕</button>
 </button>
 <script>
