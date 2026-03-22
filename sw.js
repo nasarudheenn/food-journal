@@ -1,4 +1,4 @@
-const CACHE = 'food-journal-v7'; // <--- INCREMENT THIS ON EVERY GITHUB PUSH
+const CACHE = 'food-journal-v30'; 
 const ASSETS = [
   'index.html',
   'manifest.json',
@@ -10,7 +10,7 @@ self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)
       .then(c => c.addAll(ASSETS))
-      .then(() => self.skipWaiting()) // Forces the new service worker to activate immediately
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -20,14 +20,13 @@ self.addEventListener('activate', e => {
       return Promise.all(
         keys.filter(k => k !== CACHE).map(k => caches.delete(k))
       );
-    }).then(() => self.clients.claim()) // Immediately take control of the page
+    }).then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   
-  // External APIs should always be fresh
   if (e.request.url.includes('api.anthropic.com') || e.request.url.includes('cdn.jsdelivr.net')) return;
 
   e.respondWith(
