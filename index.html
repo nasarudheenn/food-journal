@@ -598,19 +598,25 @@ function App(){
   };
 
   const [showExitConfirm,setShowExitConfirm]=useState(false);
+  const exitConfirmed=useRef(false);
 
-  // Push initial history state on mount only
+  // Push initial state on mount
   useEffect(()=>{
-    history.pushState({fj:true},"",'');
+    history.pushState({fj:1},"",'');
+    history.pushState({fj:2},"",''); // push 2 states so we have buffer
   },[]);
 
-  // Handle Android back button - re-register whenever view changes
+  // Handle back button
   useEffect(()=>{
     const onPopState=()=>{
-      // Always push state back so next back is also intercepted
-      history.pushState({fj:true},"",'');
+      if(exitConfirmed.current){
+        // User confirmed exit - let it close naturally
+        return;
+      }
+      // Always push state back to keep intercepting
+      history.pushState({fj:2},"",'');
+
       if(ingModal){
-        // Close ingredient modal first
         setIngModal(false);
       } else if(view!=="main"){
         setView("main");
@@ -623,7 +629,7 @@ function App(){
     return()=>window.removeEventListener("popstate",onPopState);
   },[view,ingModal]);
 
-  // Swipe left from right edge to go back
+  // Swipe left from right edge
   useEffect(()=>{
     let startX=0,startY=0;
     const onTouchStart=e=>{startX=e.touches[0].clientX;startY=e.touches[0].clientY;};
@@ -658,7 +664,12 @@ function App(){
           <div style=${{fontSize:13,color:C.muted,marginBottom:24,lineHeight:1.6}}>Your data is saved automatically.</div>
           <div style=${{display:"flex",gap:10}}>
             <button onClick=${()=>setShowExitConfirm(false)} style=${{flex:1,padding:"13px",background:"none",border:`1px solid ${C.border}`,borderRadius:10,color:C.text,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Stay</button>
-            <button onClick=${()=>{setShowExitConfirm(false);window.close();setTimeout(()=>{history.go(-(history.length));},100);}} style=${{flex:1,padding:"13px",background:C.red,border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Exit</button>
+            <button onClick=${()=>{
+              exitConfirmed.current=true;
+              setShowExitConfirm(false);
+              // Go back twice to pass through both pushed states and let OS close
+              history.go(-2);
+            }} style=${{flex:1,padding:"13px",background:C.red,border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Exit</button>
           </div>
         </div>
       </div>`}
@@ -954,7 +965,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v27.5 · Mar 22, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v27.6 · Mar 22, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
