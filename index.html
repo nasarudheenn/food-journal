@@ -41,14 +41,14 @@ const {useState, useEffect, useRef, useCallback} = preactHooks;
 const html = htm.bind(h);
 
 // ── Storage ──────────────────────────────────────────────────────────────────
-const SK={entries:"fd-entries-v2",profile:"fd-profile-v2",weights:"fd-weights-v2",recipes:"fd-recipebook-v2",apiKey:"fd-apikey-v1",autoBackup:"fd-autobackup-v1",lastBackup:"fd-lastbackup-v1"};
+const SK={entries:"fd-entries-v2",profile:"fd-profile-v2",weights:"fd-weights-v2",recipes:"fd-recipebook-v2",apiKey:"fd-apikey-v1",autoBackup:"fd-autobackup-v1",lastBackup:"fd-lastbackup-v1",goalMigration:"fd-goal-migration-v1"};
 const store={
   get:k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}},
   set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const DEFAULT_PROFILE={name:"Nasarudheen N",currentWeight:"81",targetWeight:"70",height:"175",calorieGoal:1800,protein:130,carbs:180,fat:55,fiber:25,sugar:50,saturatedFat:20,polyFat:10,monoFat:15,cholesterol:300,sodium:2300,potassium:3500,calcium:1000,iron:18,vitC:90,vitD:20,vitB12:2.4,zinc:11};
+const DEFAULT_PROFILE={name:"Nasarudheen N",currentWeight:"81",targetWeight:"70",height:"175",calorieGoal:1800,protein:100,carbs:180,fat:60,fiber:30,sugar:30,saturatedFat:20,polyFat:10,monoFat:15,cholesterol:300,sodium:1500,potassium:4700,calcium:1000,magnesium:410,iron:8,zinc:11,iodine:150,vitA:900,vitC:90,vitD:15,vitE:15,vitB12:2.4,folate:400};
 const C={bg:"#0f0e0c",card:"#222021",border:"#3a3835",accent:"#e8c547",accentDim:"#b89c2f",text:"#f0ece0",muted:"#7a7060",red:"#e05252",green:"#52c47a",blue:"#5299e0",orange:"#e08a52",purple:"#a07ee0"};
 const MEAL_TYPES=["Breakfast","Mid-Morning","Lunch","Evening","Dinner"];
 const MEAL_ICONS={Breakfast:"☀️","Mid-Morning":"🫐",Lunch:"🥗",Evening:"🍎",Dinner:"🌙"};
@@ -64,15 +64,34 @@ const MACRO_FIELDS=[
   {key:"fiber",label:"Fiber",unit:"g",color:C.green},
   {key:"sugar",label:"Sugar",unit:"g",color:"#e07ab0"},
 ];
-const MICRO_FIELDS=[
-  {key:"sodium",label:"Sodium",unit:"mg"},{key:"potassium",label:"Potassium",unit:"mg"},
-  {key:"calcium",label:"Calcium",unit:"mg"},{key:"iron",label:"Iron",unit:"mg"},
-  {key:"vitC",label:"Vit C",unit:"mg"},{key:"vitD",label:"Vit D",unit:"μg"},
-  {key:"vitB12",label:"Vit B12",unit:"μg"},{key:"zinc",label:"Zinc",unit:"mg"},
+const MINERAL_FIELDS=[
+  {key:"sodium",label:"Sodium",unit:"mg"},
+  {key:"potassium",label:"Potassium",unit:"mg"},
+  {key:"calcium",label:"Calcium",unit:"mg"},
+  {key:"magnesium",label:"Magnesium",unit:"mg"},
+  {key:"iron",label:"Iron",unit:"mg"},
+  {key:"zinc",label:"Zinc",unit:"mg"},
+  {key:"iodine",label:"Iodine",unit:"μg"},
 ];
+const VITAMIN_FIELDS=[
+  {key:"vitA",label:"Vit A",unit:"μg"},
+  {key:"vitC",label:"Vit C",unit:"mg"},
+  {key:"vitD",label:"Vit D",unit:"μg"},
+  {key:"vitE",label:"Vit E",unit:"mg"},
+  {key:"vitB12",label:"Vit B12",unit:"μg"},
+  {key:"folate",label:"Folate (B9)",unit:"μg"},
+];
+const MICRO_FIELDS=[...MINERAL_FIELDS,...VITAMIN_FIELDS];
 const ALL_FIELDS=[...MACRO_FIELDS,...MICRO_FIELDS];
 const TABS=[{id:"diary",icon:"📖",label:"Diary"},{id:"recipes",icon:"📚",label:"Recipes"},{id:"reports",icon:"📊",label:"Reports"},{id:"profile",icon:"👤",label:"Profile"}];
 const IS={width:"100%",padding:"10px 12px",background:"#222120",border:"1px solid #4a4845",borderRadius:9,color:"#f0ece0",fontSize:14,fontFamily:"Georgia,serif",outline:"none",boxSizing:"border-box"};
+const GOAL_KEYS=["calorieGoal","protein","carbs","fat","fiber","sugar","saturatedFat","polyFat","monoFat","cholesterol","sodium","potassium","calcium","magnesium","iron","zinc","iodine","vitA","vitC","vitD","vitE","vitB12","folate"];
+const GOAL_SECTIONS=[
+  {id:"energy",title:"Energy & Macros",color:C.accent,fields:[{label:"Calories (kcal)",key:"calorieGoal",ph:"1800"},{label:"Protein (g)",key:"protein",ph:"100"},{label:"Carbs (g)",key:"carbs",ph:"180"},{label:"Fat (g)",key:"fat",ph:"60"},{label:"Fiber (g)",key:"fiber",ph:"30"},{label:"Sugar (g)",key:"sugar",ph:"30"}]},
+  {id:"fats",title:"Fats Detail",color:C.accentDim,fields:[{label:"Saturated Fat (g)",key:"saturatedFat",ph:"20"},{label:"Polyunsat. Fat (g)",key:"polyFat",ph:"10"},{label:"Monounsat. Fat (g)",key:"monoFat",ph:"15"},{label:"Cholesterol (mg)",key:"cholesterol",ph:"300"}]},
+  {id:"minerals",title:"Minerals",color:C.purple,fields:[{label:"Sodium (mg)",key:"sodium",ph:"1500"},{label:"Potassium (mg)",key:"potassium",ph:"4700"},{label:"Calcium (mg)",key:"calcium",ph:"1000"},{label:"Magnesium (mg)",key:"magnesium",ph:"410"},{label:"Iron (mg)",key:"iron",ph:"8"},{label:"Zinc (mg)",key:"zinc",ph:"11"},{label:"Iodine (μg)",key:"iodine",ph:"150"}]},
+  {id:"vitamins",title:"Vitamins",color:C.green,fields:[{label:"Vit A (μg)",key:"vitA",ph:"900"},{label:"Vit C (mg)",key:"vitC",ph:"90"},{label:"Vit D (μg)",key:"vitD",ph:"15"},{label:"Vit E (mg)",key:"vitE",ph:"15"},{label:"Vit B12 (μg)",key:"vitB12",ph:"2.4"},{label:"Folate (B9) (μg)",key:"folate",ph:"400"}]},
+];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const todayStr=()=>new Date().toISOString().split("T")[0];
@@ -110,7 +129,7 @@ async function callAI(messages,maxTokens=600){
   return d.content?.map(b=>b.text||"").join("")||"";
 }
 async function aiNutrition(name,qty,unit){
-  const txt=await callAI([{role:"user",content:`Nutrition for ${qty} ${unit} of ${name}. Reply ONLY with this JSON:\n{"calories":0,"protein":0,"carbs":0,"fat":0,"saturatedFat":0,"polyFat":0,"monoFat":0,"cholesterol":0,"fiber":0,"sugar":0,"sodium":0,"potassium":0,"calcium":0,"iron":0,"vitC":0,"vitD":0,"vitB12":0,"zinc":0}\nReplace 0s with correct numeric values.`}]);
+  const txt=await callAI([{role:"user",content:`Nutrition for ${qty} ${unit} of ${name}. Reply ONLY with this JSON:\n{"calories":0,"protein":0,"carbs":0,"fat":0,"saturatedFat":0,"polyFat":0,"monoFat":0,"cholesterol":0,"fiber":0,"sugar":0,"sodium":0,"potassium":0,"calcium":0,"magnesium":0,"iron":0,"zinc":0,"iodine":0,"vitA":0,"vitC":0,"vitD":0,"vitE":0,"vitB12":0,"folate":0}\nReplace 0s with correct numeric values.`}]);
   const p=JSON.parse(txt.replace(/```json|```/g,"").trim());
   const r={};ALL_FIELDS.forEach(f=>{const v=Number(p[f.key]);r[f.key]=isNaN(v)?"0":String(Math.round(v*10)/10);});
   return r;
@@ -143,7 +162,7 @@ async function aiSuggest(q){
   return withPriority.slice(0,5).map(x=>x.s);
 }
 async function aiParse(text){
-  const txt=await callAI([{role:"user",content:`Extract food items from this text. Return ONLY a JSON array. Each item: {food,quantity,unit,calories,protein,carbs,fat,saturatedFat,polyFat,monoFat,cholesterol,fiber,sugar,sodium,potassium,calcium,iron,vitC,vitD,vitB12,zinc} (all numbers).\nText:\n${text}`}],2000);
+  const txt=await callAI([{role:"user",content:`Extract food items from this text. Return ONLY a JSON array. Each item: {food,quantity,unit,calories,protein,carbs,fat,saturatedFat,polyFat,monoFat,cholesterol,fiber,sugar,sodium,potassium,calcium,magnesium,iron,zinc,iodine,vitA,vitC,vitD,vitE,vitB12,folate} (all numbers).\nText:\n${text}`}],2000);
   const arr=JSON.parse(txt.replace(/```json|```/g,"").trim());
   return Array.isArray(arr)?arr:[];
 }
@@ -405,6 +424,7 @@ function App(){
   const [nutModal,setNutModal]=useState(null);
   const [confirmModal,setConfirmModal]=useState(null);
   const [backupMsg,setBackupMsg]=useState("");
+  const [goalMigMsg,setGoalMigMsg]=useState("");
 
   // Add food
   const [logMode,setLogMode]=useState("recipe");
@@ -454,11 +474,26 @@ function App(){
   const [profEdit,setProfEdit]=useState(()=>{const p=store.get(SK.profile);return p?{...DEFAULT_PROFILE,...p}:DEFAULT_PROFILE;});
   const [newWt,setNewWt]=useState("");
   const [apiKeyMsg,setApiKeyMsg]=useState("");
+  const [goalSectionsOpen,setGoalSectionsOpen]=useState({energy:false,fats:false,minerals:false,vitamins:false});
 
   // Reports
   const [repPeriod,setRepPeriod]=useState("daily");
   const [repDetail,setRepDetail]=useState(null);
   const [nutriSummary,setNutriSummary]=useState(null);
+
+  // One-time migration: update saved goal defaults for existing users
+  useEffect(()=>{
+    if(localStorage.getItem(SK.goalMigration)==="done")return;
+    const saved=store.get(SK.profile);
+    if(saved){
+      const migrated={...saved};
+      GOAL_KEYS.forEach(k=>{migrated[k]=DEFAULT_PROFILE[k];});
+      pP({...DEFAULT_PROFILE,...migrated});
+      setGoalMigMsg("✓ Goals updated to new defaults.");
+      setTimeout(()=>setGoalMigMsg(""),4000);
+    }
+    localStorage.setItem(SK.goalMigration,"done");
+  },[]);
 
   // Auto-backup
   useEffect(()=>{
@@ -487,14 +522,29 @@ function App(){
 
   // Goals
   const goals={
-    calories:Number(profile.calorieGoal)||1800,protein:Number(profile.protein)||130,
-    carbs:Number(profile.carbs)||180,fat:Number(profile.fat)||55,fiber:Number(profile.fiber)||25,
-    sugar:Number(profile.sugar)||50,saturatedFat:Number(profile.saturatedFat)||20,
-    polyFat:Number(profile.polyFat)||10,monoFat:Number(profile.monoFat)||15,
-    cholesterol:Number(profile.cholesterol)||300,sodium:Number(profile.sodium)||2300,
-    potassium:Number(profile.potassium)||3500,calcium:Number(profile.calcium)||1000,
-    iron:Number(profile.iron)||18,vitC:Number(profile.vitC)||90,vitD:Number(profile.vitD)||20,
-    vitB12:Number(profile.vitB12)||2.4,zinc:Number(profile.zinc)||11,
+    calories:Number(profile.calorieGoal)||DEFAULT_PROFILE.calorieGoal,
+    protein:Number(profile.protein)||DEFAULT_PROFILE.protein,
+    carbs:Number(profile.carbs)||DEFAULT_PROFILE.carbs,
+    fat:Number(profile.fat)||DEFAULT_PROFILE.fat,
+    fiber:Number(profile.fiber)||DEFAULT_PROFILE.fiber,
+    sugar:Number(profile.sugar)||DEFAULT_PROFILE.sugar,
+    saturatedFat:Number(profile.saturatedFat)||DEFAULT_PROFILE.saturatedFat,
+    polyFat:Number(profile.polyFat)||DEFAULT_PROFILE.polyFat,
+    monoFat:Number(profile.monoFat)||DEFAULT_PROFILE.monoFat,
+    cholesterol:Number(profile.cholesterol)||DEFAULT_PROFILE.cholesterol,
+    sodium:Number(profile.sodium)||DEFAULT_PROFILE.sodium,
+    potassium:Number(profile.potassium)||DEFAULT_PROFILE.potassium,
+    calcium:Number(profile.calcium)||DEFAULT_PROFILE.calcium,
+    magnesium:Number(profile.magnesium)||DEFAULT_PROFILE.magnesium,
+    iron:Number(profile.iron)||DEFAULT_PROFILE.iron,
+    zinc:Number(profile.zinc)||DEFAULT_PROFILE.zinc,
+    iodine:Number(profile.iodine)||DEFAULT_PROFILE.iodine,
+    vitA:Number(profile.vitA)||DEFAULT_PROFILE.vitA,
+    vitC:Number(profile.vitC)||DEFAULT_PROFILE.vitC,
+    vitD:Number(profile.vitD)||DEFAULT_PROFILE.vitD,
+    vitE:Number(profile.vitE)||DEFAULT_PROFILE.vitE,
+    vitB12:Number(profile.vitB12)||DEFAULT_PROFILE.vitB12,
+    folate:Number(profile.folate)||DEFAULT_PROFILE.folate,
   };
 
   // Computed
@@ -721,6 +771,7 @@ function App(){
       ${nutriSummary&&html`<${NutritionSummaryModal} data=${nutriSummary} onClose=${()=>setNutriSummary(null)}/>`}
       <${IngredientModal} show=${ingModal} editData=${ingEditData} onSave=${saveIng} onClose=${()=>setIngModal(false)} apiKey=${apiKey}/>
       ${backupMsg&&tab!=="profile"&&html`<div style=${{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:200,background:backupMsg.startsWith("✓")?"rgba(82,196,122,0.95)":"rgba(224,82,82,0.95)",color:"#fff",borderRadius:20,padding:"10px 20px",fontSize:12,fontWeight:600,boxShadow:"0 4px 16px rgba(0,0,0,0.3)",whiteSpace:"nowrap"}}>${backupMsg}</div>`}
+      ${goalMigMsg&&html`<div style=${{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:201,background:"rgba(82,196,122,0.95)",color:"#fff",borderRadius:20,padding:"10px 20px",fontSize:12,fontWeight:600,boxShadow:"0 4px 16px rgba(0,0,0,0.3)",whiteSpace:"nowrap"}}>${goalMigMsg}</div>`}
 <div style=${{padding:"max(env(safe-area-inset-top),18px) 18px 10px",borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,background:C.bg,zIndex:10}}>
         <div style=${{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div>
@@ -970,8 +1021,8 @@ ${tab==="diary"&&view==="add"&&html`
 ${tab==="diary"&&view==="history"&&html`
         <div style=${{padding:"14px 18px"}}>
           ${histDates.length===0?html`<div style=${{textAlign:"center",padding:"40px",color:C.muted}}>No history yet.</div>`:
-            histDates.map(date=>{const dd=entries[date]||[],cal=dd.reduce((s,e)=>s+e.calories,0),prot=dd.reduce((s,e)=>s+e.protein,0),carbs=dd.reduce((s,e)=>s+e.carbs,0),fat=dd.reduce((s,e)=>s+e.fat,0),fiber=dd.reduce((s,e)=>s+e.fiber,0);return html`<button key=${date} onClick=${()=>{setSelDate(date);setView("main");}} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div><div style=${{fontSize:13,fontWeight:600}}>${fmtDate(date)}</div><div style=${{fontSize:11,color:C.muted,marginTop:2}}>${dd.length} items · P:${Math.round(prot)}g C:${Math.round(carbs)}g F:${Math.round(fat)}g Fi:${Math.round(fiber)}g</div></div>
+            histDates.map(date=>{const dd=entries[date]||[],cal=dd.reduce((s,e)=>s+e.calories,0),prot=dd.reduce((s,e)=>s+e.protein,0),carbs=dd.reduce((s,e)=>s+e.carbs,0),fat=dd.reduce((s,e)=>s+e.fat,0),fiber=dd.reduce((s,e)=>s+e.fiber,0),overP=prot>goals.protein,overC=carbs>goals.carbs,overF=fat>goals.fat,overFi=fiber>goals.fiber;return html`<button key=${date} onClick=${()=>{setSelDate(date);setView("main");}} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div><div style=${{fontSize:13,fontWeight:600}}>${fmtDate(date)}</div><div style=${{fontSize:11,color:C.muted,marginTop:2}}>${dd.length} items · <span style=${{color:overP?C.red:C.muted}}>P:${Math.round(prot)}g</span> <span style=${{color:overC?C.red:C.muted}}>C:${Math.round(carbs)}g</span> <span style=${{color:overF?C.red:C.muted}}>F:${Math.round(fat)}g</span> <span style=${{color:overFi?C.red:C.muted}}>Fi:${Math.round(fiber)}g</span></div></div>
               <div style=${{textAlign:"right"}}>
                 <div style=${{fontSize:15,fontWeight:700,fontFamily:"monospace",color:cal>goals.calories?C.red:C.accent}}>${Math.round(cal)}</div>
                 <div style=${{fontSize:9,color:C.muted}}>kcal</div>
@@ -1004,17 +1055,18 @@ ${tab==="profile"&&view==="main"&&html`
           <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style=${{fontSize:14,fontWeight:700,marginBottom:4}}>Daily Nutrition Goals</div>
             <div style=${{fontSize:11,color:C.muted,marginBottom:14}}>Used in reports to track achievement %</div>
-            ${[{title:"Energy & Macros",color:C.accent,fields:[{label:"Calories (kcal)",key:"calorieGoal",ph:"1800"},{label:"Protein (g)",key:"protein",ph:"130"},{label:"Carbs (g)",key:"carbs",ph:"180"},{label:"Fat (g)",key:"fat",ph:"55"},{label:"Fiber (g)",key:"fiber",ph:"25"},{label:"Sugar (g)",key:"sugar",ph:"50"}]},
-               {title:"Fats Detail",color:C.accentDim,fields:[{label:"Saturated Fat (g)",key:"saturatedFat",ph:"20"},{label:"Polyunsat. Fat (g)",key:"polyFat",ph:"10"},{label:"Monounsat. Fat (g)",key:"monoFat",ph:"15"},{label:"Cholesterol (mg)",key:"cholesterol",ph:"300"}]},
-               {title:"Minerals",color:C.purple,fields:[{label:"Sodium (mg)",key:"sodium",ph:"2300"},{label:"Potassium (mg)",key:"potassium",ph:"3500"},{label:"Calcium (mg)",key:"calcium",ph:"1000"},{label:"Iron (mg)",key:"iron",ph:"18"},{label:"Zinc (mg)",key:"zinc",ph:"11"}]},
-               {title:"Vitamins",color:C.green,fields:[{label:"Vit C (mg)",key:"vitC",ph:"90"},{label:"Vit D (μg)",key:"vitD",ph:"20"},{label:"Vit B12 (μg)",key:"vitB12",ph:"2.4"}]},
-            ].map(({title,color,fields})=>html`<div key=${title} style=${{marginBottom:14}}>
-              <div style=${{fontSize:11,color,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>${title}</div>
-              <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                ${fields.map(({label,key,ph})=>html`<div key=${key}><${Lbl}>${label}<//>
-                  <input value=${profEdit[key]||""} onInput=${e=>setProfEdit(p=>({...p,[key]:e.target.value}))} type="number" placeholder=${ph} style=${IS}/></div>`)}
-              </div>
-            </div>`)}
+            ${GOAL_SECTIONS.map(({id,title,color,fields})=>{const isOpen=!!goalSectionsOpen[id];return html`<div key=${id} style=${{marginBottom:12,background:C.bg,border:`1px solid ${C.border}`,borderRadius:10,overflow:"hidden"}}>
+              <button onClick=${()=>setGoalSectionsOpen(p=>({...p,[id]:!p[id]}))} style=${{width:"100%",background:"none",border:"none",padding:"10px 12px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",fontFamily:"inherit"}}>
+                <span style=${{fontSize:11,color,letterSpacing:"0.07em",textTransform:"uppercase",fontWeight:600}}>${title}</span>
+                <span style=${{fontSize:11,color:C.muted,transform:isOpen?"rotate(90deg)":"none",transition:"transform 0.2s"}}>▶</span>
+              </button>
+              ${isOpen&&html`<div style=${{padding:"0 12px 12px"}}>
+                <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  ${fields.map(({label,key,ph})=>html`<div key=${key}><${Lbl}>${label}<//>
+                    <input value=${profEdit[key]||""} onInput=${e=>setProfEdit(p=>({...p,[key]:e.target.value}))} type="number" placeholder=${ph} style=${IS}/></div>`)}
+                </div>
+              </div>`}
+            </div>`;})}
           </div>
           <div style=${{background:apiKey?"rgba(82,196,122,0.07)":"rgba(232,197,71,0.06)",border:`1px solid ${apiKey?C.green:C.accent}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style=${{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
