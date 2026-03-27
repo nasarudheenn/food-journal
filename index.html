@@ -961,7 +961,7 @@ ${tab==="recipes"&&view==="main"&&html`
             <input value=${recipeSearch} onInput=${e=>setRecipeSearch(e.target.value)} placeholder="🔍 Search recipes…" style=${IS}/>
             ${recipeSearch&&html`<button onClick=${()=>setRecipeSearch("")} style=${{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:C.muted,fontSize:16,cursor:"pointer",fontFamily:"inherit"}}>✕</button>`}
           </div>
-          <div style=${{display:"flex",gap:5,overflowX:"auto",paddingBottom:4,marginBottom:14}}>
+          <div style=${{display:"flex",gap:5,flexWrap:"wrap",marginBottom:14}}>
             ${["All",...MEAL_TYPES].map(m=>html`<button key=${m} onClick=${()=>setRecipeFilter(m)} style=${{flex:"0 0 auto",padding:"6px 12px",borderRadius:18,fontSize:11,cursor:"pointer",fontFamily:"inherit",border:`1px solid ${recipeFilter===m?C.accent:C.border}`,background:recipeFilter===m?C.accent:"none",color:recipeFilter===m?C.bg:C.muted,fontWeight:recipeFilter===m?700:400,whiteSpace:"nowrap"}}>${m==="All"?"🍽️ All":MEAL_ICONS[m]+" "+m}</button>`)}
           </div>
           ${(()=>{
