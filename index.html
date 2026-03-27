@@ -503,13 +503,29 @@ function App(){
   }
 
   // ── Recipe helpers ──
-  function saveRecipe(){
-    if(!recName.trim()||!recItems.length)return;
-    const rec={id:editRecId||`rb_${Date.now()}`,name:recName.trim(),items:recItems,mealTags:recTags};
-    pRB(editRecId?recipeBook.map(r=>r.id===editRecId?rec:r):[...recipeBook,rec]);
+  function resetRecipeEditor(){
     setRecName("");setRecItems([]);setRecTags([]);setEditRecId(null);
     setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setRecImpStatus("");
     setView("main");
+  }
+  function saveRecipe(){
+    if(!recName.trim()||!recItems.length)return;
+    const name=recName.trim();
+    const dup=recipeBook.find(r=>r.id!==editRecId&&r.name.trim().toLowerCase()===name.toLowerCase());
+    if(dup){
+      setConfirmModal({
+        msg:`"${name}" already exists. Replace the existing recipe?`,
+        onConfirm:()=>{
+          const rec={id:dup.id,name,items:recItems,mealTags:recTags};
+          pRB(recipeBook.map(r=>r.id===dup.id?rec:r));
+          resetRecipeEditor();
+        }
+      });
+      return;
+    }
+    const rec={id:editRecId||`rb_${Date.now()}`,name,items:recItems,mealTags:recTags};
+    pRB(editRecId?recipeBook.map(r=>r.id===editRecId?rec:r):[...recipeBook,rec]);
+    resetRecipeEditor();
   }
   function startUse(r){setUseRec(r);setUseQtys(Object.fromEntries(r.items.map(x=>[x._id??x.food,x.quantity])));setUseMeal(getMealByTimeFromTags(r.mealTags));setView("recipe-use");}
   function logRecipe(){
