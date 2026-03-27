@@ -148,13 +148,16 @@ function Lbl({children}){return html`<div style=${{fontSize:10,color:C.muted,let
 function Btn({onClick,disabled,color,children,style={}}){return html`<button onClick=${onClick} disabled=${disabled} style=${{width:"100%",padding:"13px",borderRadius:10,border:"none",cursor:disabled?"not-allowed":"pointer",background:disabled?C.border:(color||C.green),color:C.bg,fontSize:14,fontWeight:700,fontFamily:"Georgia,serif",opacity:disabled?0.5:1,...style}}>${children}</button>`;}
 
 function MacroBar({label,value,goal,color,showPct}){
-  const pct=Math.min((value/goal)*100,100),over=value>goal;
+  const rawPct=(value/goal)*100;
+  const pct=Math.min(rawPct,100),over=value>goal;
+  const excessPct=over?rawPct-100:0;
   return html`<div style=${{marginBottom:8}}>
     <div style=${{display:"flex",justifyContent:"space-between",marginBottom:3}}>
       <span style=${{fontSize:11,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>${label}</span>
       <span style=${{fontSize:11,color:over?C.red:C.text,fontFamily:"monospace"}}>
         ${Math.round(value)}<span style=${{color:C.muted}}>/${goal}g</span>
         ${showPct&&html`<span style=${{marginLeft:6,color:over?C.red:C.accent}}>${Math.round(pct)}%</span>`}
+        ${showPct&&over&&html`<span style=${{marginLeft:4,color:C.red}}>(${`+${Math.round(excessPct)}%`})</span>`}
       </span>
     </div>
     <div style=${{height:5,background:C.border,borderRadius:3,overflow:"hidden"}}>
@@ -432,6 +435,7 @@ function App(){
   const dayT=sumE(dayEs);
   const calPct=Math.min((dayT.calories/goals.calories)*100,100);
   const calOver=dayT.calories>goals.calories;
+  const calExcessPct=calOver?((dayT.calories-goals.calories)/goals.calories)*100:0;
 
   const mealGroups=MEAL_TYPES.map(m=>{
     const mEs=dayEs.filter(e=>e.meal===m),rm={};
@@ -632,9 +636,10 @@ ${tab==="diary"&&view==="main"&&html`
                     strokeLinecap="round" style=${{transition:"stroke-dashoffset 0.6s ease"}}/>
                 </svg>
                 <div style=${{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-                  <span style=${{fontSize:12,fontWeight:700,color:calOver?C.red:C.text,fontFamily:"monospace",lineHeight:1}}>${Math.round(dayT.calories)}</span>
+                  <span style=${{fontSize:11,fontWeight:700,color:calOver?C.red:C.text,fontFamily:"monospace",lineHeight:1}}>${Math.round(dayT.calories)}/${goals.calories}</span>
                   <span style=${{fontSize:9,color:C.muted}}>kcal</span>
                   <span style=${{fontSize:11,fontWeight:700,color:calOver?C.red:C.accent,fontFamily:"monospace"}}>${Math.round(calPct)}%</span>
+                  ${calOver&&html`<span style=${{fontSize:9,fontWeight:700,color:C.red,fontFamily:"monospace"}}>(${`+${Math.round(calExcessPct)}%`})</span>`}
                 </div>
               </div>
               <div style=${{flex:1}}>
@@ -646,13 +651,14 @@ ${tab==="diary"&&view==="main"&&html`
             </div>
             <div style=${{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginTop:14,marginBottom:5}}>Remaining</div>
             <div style=${{display:"flex",gap:5}}>
-              ${[{label:"Calories",v:Math.max(0,goals.calories-dayT.calories),u:"kcal",c:calOver?C.red:C.accent,ov:calOver},
-                 {label:"Protein",v:Math.max(0,goals.protein-dayT.protein),u:"g",c:dayT.protein>goals.protein?C.red:C.blue,ov:dayT.protein>goals.protein},
-                 {label:"Carbs",v:Math.max(0,goals.carbs-dayT.carbs),u:"g",c:dayT.carbs>goals.carbs?C.red:C.orange,ov:dayT.carbs>goals.carbs},
-                 {label:"Fat",v:Math.max(0,goals.fat-dayT.fat),u:"g",c:dayT.fat>goals.fat?C.red:C.accentDim,ov:dayT.fat>goals.fat},
-                 {label:"Fiber",v:Math.max(0,goals.fiber-dayT.fiber),u:"g",c:dayT.fiber>goals.fiber?C.red:C.green,ov:dayT.fiber>goals.fiber},
+              ${[{label:"Calories",v:Math.max(0,goals.calories-dayT.calories),x:Math.max(0,dayT.calories-goals.calories),u:"kcal",c:calOver?C.red:C.accent,ov:calOver},
+                 {label:"Protein",v:Math.max(0,goals.protein-dayT.protein),x:Math.max(0,dayT.protein-goals.protein),u:"g",c:dayT.protein>goals.protein?C.red:C.blue,ov:dayT.protein>goals.protein},
+                 {label:"Carbs",v:Math.max(0,goals.carbs-dayT.carbs),x:Math.max(0,dayT.carbs-goals.carbs),u:"g",c:dayT.carbs>goals.carbs?C.red:C.orange,ov:dayT.carbs>goals.carbs},
+                 {label:"Fat",v:Math.max(0,goals.fat-dayT.fat),x:Math.max(0,dayT.fat-goals.fat),u:"g",c:dayT.fat>goals.fat?C.red:C.accentDim,ov:dayT.fat>goals.fat},
+                 {label:"Fiber",v:Math.max(0,goals.fiber-dayT.fiber),x:Math.max(0,dayT.fiber-goals.fiber),u:"g",c:dayT.fiber>goals.fiber?C.red:C.green,ov:dayT.fiber>goals.fiber},
               ].map(b=>html`<div key=${b.label} style=${{background:C.bg,border:`1px solid ${b.ov?C.red:C.border}`,borderRadius:8,padding:"7px 5px",textAlign:"center",flex:1,minWidth:0}}>
                 <div style=${{fontSize:12,fontWeight:700,color:b.c,fontFamily:"monospace",whiteSpace:"nowrap"}}>${b.v<1&&b.v>0?b.v.toFixed(1):Math.round(b.v)}<span style=${{fontSize:8,color:C.muted}}>${b.u}</span></div>
+                ${b.ov&&html`<div style=${{fontSize:8,color:C.red,fontFamily:"monospace",whiteSpace:"nowrap",marginTop:1}}>(+${b.x<1&&b.x>0?b.x.toFixed(1):Math.round(b.x)}${b.u})</div>`}
                 <div style=${{fontSize:8,color:C.muted,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${b.label}</div>
               </div>`)}
             </div>
