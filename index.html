@@ -485,7 +485,7 @@ function App(){
       // Use selected date
       const d=repSelectedDate;
       if(!entries[d]) return [];
-      return [{label:fmtShort(d),date:d,totals:sumE(entries[d]||[])}];
+      return [{label:fmtShort(d),date:d,totals:sumE(entries[d]||[]), dates:[d]}];
     }
     if(repPeriod==="weekly"){
       const bw={};
@@ -730,10 +730,10 @@ function App(){
             <button onClick=${()=>setNutrientBreakdownModal(null)} style=${{background:"none",border:"none",color:C.muted,fontSize:22,cursor:"pointer"}}>✕</button>
           </div>
           <table style=${{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-            <thead><tr style=${{borderBottom:`1px solid ${C.border}`}}><th style=${{textAlign:"left",padding:6}}>Food</th><th style=${{textAlign:"left",padding:6}}>Quantity</th><th style=${{textAlign:"left",padding:6}}>Meal</th><th style=${{textAlign:"right",padding:6}}>%</th></tr></thead>
+            <thead><tr style=${{borderBottom:`1px solid ${C.border}`}}><th style=${{textAlign:"left",padding:6}}>Food</th><th style=${{textAlign:"left",padding:6}}>Quantity</th><th style=${{textAlign:"left",padding:6}}>Meal</th><th style=${{textAlign:"right",padding:6}}>%</th> </tr></thead>
             <tbody>
               ${nutrientBreakdownModal.items.map(item=>html`
-                <tr style=${{borderBottom:`1px solid ${C.border}`}}>
+                <tr key=${item.food+item.meal} style=${{borderBottom:`1px solid ${C.border}`}}>
                   <td style=${{padding:6}}>${item.food}</td>
                   <td style=${{padding:6}}>${item.quantity}</td>
                   <td style=${{padding:6}}>${item.meal}</td>
@@ -1197,8 +1197,8 @@ ${tab==="reports"&&view==="main"&&html`
                     (entries[d]||[]).forEach(e=>allItems.push(e));
                   });
                 }
-                setNutrientBreakdownModal({period:repPeriod, nutrientKey:"All", items:allItems.map(e=>({food:e.food, quantity:e.quantity, meal:e.meal, value:e.calories, percent:0})), total:allItems.reduce((s,i)=>s+i.calories,0)});
-                setNutrientBreakdownModal({period:repPeriod, nutrientKey:"All", items:allItems.map(e=>({food:e.food, quantity:e.quantity, meal:e.meal, value:e.calories, percent:Math.round((e.calories/allItems.reduce((s,i)=>s+i.calories,0))*100)})), total:allItems.reduce((s,i)=>s+i.calories,0)});
+                const total=allItems.reduce((s,i)=>s+i.calories,0);
+                setNutrientBreakdownModal({period:repPeriod, nutrientKey:"All", items:allItems.map(e=>({food:e.food, quantity:e.quantity, meal:e.meal, value:e.calories, percent:Math.round((e.calories/total)*100)})), total:total});
               }} style=${{width:"100%",padding:"8px",background:"none",border:`1px solid ${C.accent}`,borderRadius:8,color:C.accent,fontSize:12,cursor:"pointer",marginTop:5}}>Tap for full breakdown</button>
             </div>
             <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
@@ -1210,11 +1210,11 @@ ${tab==="reports"&&view==="main"&&html`
                 const val=repData[0].totals[key]||0,pct=Math.min(Math.round((val/g)*100),200),over=val>g;
                 const barColor=over?C.red:pct>=90?C.green:pct>=60?C.accent:C.muted;
                 const diff=val-g;
-                return html`<div key=${key} style=${{marginBottom:12}} onClick=${()=>{
+                return html`<div key=${key} style=${{marginBottom:12,cursor:"pointer"}} onClick=${()=>{
                   const periodData=repData[0];
                   const breakdown=getNutrientBreakdown(periodData, key);
                   setNutrientBreakdownModal({period:repPeriod, nutrientKey:key, items:breakdown.items, total:breakdown.total});
-                }} style=${{cursor:"pointer"}}>
+                }}>
                   <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
                     <span style=${{fontSize:11,color:C.text}}>${label}</span>
                     <div style=${{display:"flex",alignItems:"center",gap:6}}>
@@ -1245,7 +1245,7 @@ ${tab==="reports"&&view==="main"&&html`
                   }
                 }).filter(m=>m.totals.calories>0);
                 if(!mealTotals.length)return html`<div style=${{color:C.muted,fontSize:12}}>No meal data.</div>`;
-                return mealTotals.map(({meal,totals:mt})=>html`<div key=${meal} style=${{marginBottom:16}} onClick=${()=>{
+                return mealTotals.map(({meal,totals:mt})=>html`<div key=${meal} style=${{marginBottom:16,cursor:"pointer"}} onClick=${()=>{
                   const allItems=[];
                   if(repPeriod==="daily"){
                     (entries[repSelectedDate]||[]).filter(e=>e.meal===meal).forEach(e=>allItems.push(e));
@@ -1256,7 +1256,7 @@ ${tab==="reports"&&view==="main"&&html`
                   }
                   const totalCals=allItems.reduce((s,i)=>s+i.calories,0);
                   setNutrientBreakdownModal({period:repPeriod, nutrientKey:`${meal}`, items:allItems.map(e=>({food:e.food, quantity:e.quantity, meal:e.meal, value:e.calories, percent:Math.round((e.calories/totalCals)*100)})), total:totalCals});
-                }} style=${{cursor:"pointer"}}>
+                }}>
                   <div style=${{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
                     <span>${MEAL_ICONS[meal]}</span><span style=${{fontSize:12,fontWeight:600}}>${meal}</span>
                     <span style=${{fontSize:11,color:C.accent,fontFamily:"monospace",marginLeft:"auto"}}>${Math.round(mt.calories)} kcal (${Math.round((mt.calories/(repPeriod==="daily"?goals.calories:(repPeriod==="weekly"?goals.calories*7:goals.calories*new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate())))*100)}%)</span>
@@ -1285,7 +1285,8 @@ ${tab==="reports"&&view==="main"&&html`
                 </div>
                 <button onClick=${()=>{
                   const allAverages=repData[0].totals;
-                  setNutrientBreakdownModal({period:repPeriod, nutrientKey:"Average", items:Object.keys(allAverages).map(k=>({food:k, quantity:"", meal:"", value:allAverages[k], percent:0})), total:0});
+                  const items=Object.keys(allAverages).filter(k=>k!=="sugar").map(k=>({food:k, quantity:"", meal:"", value:allAverages[k], percent:0}));
+                  setNutrientBreakdownModal({period:repPeriod, nutrientKey:"Average", items:items, total:0});
                 }} style=${{width:"100%",padding:"8px",background:"none",border:`1px solid ${C.accent}`,borderRadius:8,color:C.accent,fontSize:12,cursor:"pointer",marginTop:5}}>Tap for full average breakdown</button>
               </div>
             `}
