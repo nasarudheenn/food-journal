@@ -120,12 +120,17 @@ async function aiSuggest(q){
   const arr=JSON.parse(txt.replace(/```json|```/g,"").trim());
   if(!Array.isArray(arr))return[];
   const ql=q.toLowerCase();
+  const qTokens=ql.trim().split(/\s+/).filter(Boolean);
   const withPriority=[];
   arr.forEach(s=>{
     const words=s.toLowerCase().split(/\s+/);
-    for(let i=0;i<words.length;i++){
-      if(words[i].startsWith(ql)){
-        withPriority.push({s,priority:i,nextLetter:words[i].slice(ql.length)||''});
+    if(!qTokens.length)return;
+    for(let i=0;i<=words.length-qTokens.length;i++){
+      const isMatch=qTokens.every((tok,j)=>words[i+j].startsWith(tok));
+      if(isMatch){
+        const lastWord=words[i+qTokens.length-1];
+        const lastTok=qTokens[qTokens.length-1];
+        withPriority.push({s,priority:i,nextLetter:lastWord.slice(lastTok.length)||''});
         break;
       }
     }
