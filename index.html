@@ -232,15 +232,15 @@ function NutModal({item,onClose}){
   </div>`;
 }
 
-function ConfirmModal({msg,onConfirm,onCancel}){
+function ConfirmModal({msg,onConfirm,onCancel,title="Delete Item?",confirmText="Delete"}){
   return html`<div className="mov" onClick=${onCancel}>
     <div className="mbx" onClick=${e=>e.stopPropagation()} style=${{borderRadius:20}}>
       <div style=${{fontSize:36,textAlign:"center",marginBottom:12}}>⚠️</div>
-      <div style=${{fontSize:15,fontWeight:700,textAlign:"center",marginBottom:8}}>Delete Item?</div>
+      <div style=${{fontSize:15,fontWeight:700,textAlign:"center",marginBottom:8}}>${title}</div>
       <div style=${{fontSize:13,color:C.muted,textAlign:"center",marginBottom:20,lineHeight:1.6}}>${msg}</div>
       <div style=${{display:"flex",gap:10}}>
         <button onClick=${onCancel} style=${{flex:1,padding:"12px",background:"none",border:`1px solid ${C.border}`,borderRadius:10,color:C.muted,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
-        <button onClick=${onConfirm} style=${{flex:1,padding:"12px",background:C.red,border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Delete</button>
+        <button onClick=${onConfirm} style=${{flex:1,padding:"12px",background:C.red,border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>${confirmText}</button>
       </div>
     </div>
   </div>`;
@@ -514,6 +514,8 @@ function App(){
     const dup=recipeBook.find(r=>r.id!==editRecId&&r.name.trim().toLowerCase()===name.toLowerCase());
     if(dup){
       setConfirmModal({
+        title:"Replace Recipe?",
+        confirmText:"Replace",
         msg:`"${name}" already exists. Replace the existing recipe?`,
         onConfirm:()=>{
           const rec={id:dup.id,name,items:recItems,mealTags:recTags};
@@ -620,7 +622,7 @@ function App(){
   return html`
     <div style=${{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"Georgia,serif",maxWidth:480,margin:"0 auto",paddingBottom:80}}>
       ${nutModal&&html`<${NutModal} item=${nutModal} onClose=${()=>setNutModal(null)}/>`}
-      ${confirmModal&&html`<${ConfirmModal} msg=${confirmModal.msg} onConfirm=${()=>{confirmModal.onConfirm();setConfirmModal(null);}} onCancel=${()=>setConfirmModal(null)}/>`}
+      ${confirmModal&&html`<${ConfirmModal} title=${confirmModal.title} confirmText=${confirmModal.confirmText} msg=${confirmModal.msg} onConfirm=${()=>{confirmModal.onConfirm();setConfirmModal(null);}} onCancel=${()=>setConfirmModal(null)}/>`}
       <${IngredientModal} show=${ingModal} editData=${ingEditData} onSave=${saveIng} onClose=${()=>setIngModal(false)} apiKey=${apiKey}/>
       ${backupMsg&&tab!=="profile"&&html`<div style=${{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:200,background:backupMsg.startsWith("✓")?"rgba(82,196,122,0.95)":"rgba(224,82,82,0.95)",color:"#fff",borderRadius:20,padding:"10px 20px",fontSize:12,fontWeight:600,boxShadow:"0 4px 16px rgba(0,0,0,0.3)",whiteSpace:"nowrap"}}>${backupMsg}</div>`}
 <div style=${{padding:"max(env(safe-area-inset-top),18px) 18px 10px",borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,background:C.bg,zIndex:10}}>
