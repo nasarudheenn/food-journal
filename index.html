@@ -1259,13 +1259,27 @@ ${tab==="reports"&&view==="reports-history"&&html`
               return sortedDates.length===0?html`<div style=${{textAlign:"center",padding:"40px",color:C.muted}}>No report history yet.</div>`:
                 sortedDates.map(d=>{
                   const t=sumE(entries[d]||[]);
+                  const mult=1;
+                  const overCal=t.calories>(goals.calories*mult);
+                  const overP=t.protein>(goals.protein*mult);
+                  const overC=t.carbs>(goals.carbs*mult);
+                  const overF=t.fat>(goals.fat*mult);
+                  const overFi=t.fiber>(goals.fiber*mult);
                   return html`<button key=${d} onClick=${()=>openNutritionSummary(`Daily Summary · ${fmtDate(d)}`,"Total nutrition for the day",t)} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                     <div>
                       <div style=${{fontSize:13,fontWeight:600}}>${fmtDate(d)}</div>
-                      <div style=${{fontSize:11,color:C.muted,marginTop:2}}>P:${Math.round(t.protein)}g F:${Math.round(t.fat)}g Fi:${Math.round(t.fiber)}g</div>
+                      <div style=${{fontSize:11,color:C.muted,marginTop:2}}>
+                        <span style=${{color:overP?C.red:C.muted}}>P:${Math.round(t.protein)}g</span>
+                        <span> </span>
+                        <span style=${{color:overC?C.red:C.muted}}>C:${Math.round(t.carbs)}g</span>
+                        <span> </span>
+                        <span style=${{color:overF?C.red:C.muted}}>F:${Math.round(t.fat)}g</span>
+                        <span> </span>
+                        <span style=${{color:overFi?C.red:C.muted}}>Fi:${Math.round(t.fiber)}g</span>
+                      </div>
                     </div>
                     <div style=${{textAlign:"right"}}>
-                      <div style=${{fontSize:15,fontWeight:700,fontFamily:"monospace",color:C.accent}}>${Math.round(t.calories)}</div>
+                      <div style=${{fontSize:15,fontWeight:700,fontFamily:"monospace",color:overCal?C.red:C.accent}}>${Math.round(t.calories)}</div>
                       <div style=${{fontSize:9,color:C.muted}}>kcal</div>
                     </div>
                   </button>`;
@@ -1276,18 +1290,18 @@ ${tab==="reports"&&view==="reports-history"&&html`
               sortedDates.forEach(d=>{const dt=new Date(d+"T00:00:00");const dow=dt.getDay();const mon=new Date(dt);mon.setDate(dt.getDate()-(dow===0?6:dow-1));const sun=new Date(mon);sun.setDate(mon.getDate()+6);const key=mon.toISOString().split("T")[0];if(!buckets[key])buckets[key]={start:mon,end:sun,dates:[]};buckets[key].dates.push(d);});
               const weeks=Object.values(buckets).sort((a,b)=>b.start-a.start);
               return weeks.length===0?html`<div style=${{textAlign:"center",padding:"40px",color:C.muted}}>No report history yet.</div>`:
-                weeks.map((w,i)=>{const t=sumE(w.dates.flatMap(d=>entries[d]||[]));const lbl=`${w.start.getDate()}-${w.end.getDate()}`;return html`<button key=${i} onClick=${()=>openNutritionSummary(`Weekly Summary · ${lbl}`,"Consolidated weekly nutrition",t)} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <div><div style=${{fontSize:13,fontWeight:600}}>Week ${lbl}</div><div style=${{fontSize:11,color:C.muted,marginTop:2}}>P:${Math.round(t.protein)}g F:${Math.round(t.fat)}g Fi:${Math.round(t.fiber)}g</div></div>
-                  <div style=${{textAlign:"right"}}><div style=${{fontSize:15,fontWeight:700,fontFamily:"monospace",color:C.accent}}>${Math.round(t.calories)}</div><div style=${{fontSize:9,color:C.muted}}>kcal</div></div>
+                weeks.map((w,i)=>{const t=sumE(w.dates.flatMap(d=>entries[d]||[]));const lbl=`${w.start.getDate()}-${w.end.getDate()}`;const mult=7;const overCal=t.calories>(goals.calories*mult),overP=t.protein>(goals.protein*mult),overC=t.carbs>(goals.carbs*mult),overF=t.fat>(goals.fat*mult),overFi=t.fiber>(goals.fiber*mult);return html`<button key=${i} onClick=${()=>openNutritionSummary(`Weekly Summary · ${lbl}`,"Consolidated weekly nutrition",t)} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div><div style=${{fontSize:13,fontWeight:600}}>Week ${lbl}</div><div style=${{fontSize:11,color:C.muted,marginTop:2}}><span style=${{color:overP?C.red:C.muted}}>P:${Math.round(t.protein)}g</span> <span style=${{color:overC?C.red:C.muted}}>C:${Math.round(t.carbs)}g</span> <span style=${{color:overF?C.red:C.muted}}>F:${Math.round(t.fat)}g</span> <span style=${{color:overFi?C.red:C.muted}}>Fi:${Math.round(t.fiber)}g</span></div></div>
+                  <div style=${{textAlign:"right"}}><div style=${{fontSize:15,fontWeight:700,fontFamily:"monospace",color:overCal?C.red:C.accent}}>${Math.round(t.calories)}</div><div style=${{fontSize:9,color:C.muted}}>kcal</div></div>
                 </button>`;});
             }
             const months={};
             sortedDates.forEach(d=>{const mo=d.slice(0,7);if(!months[mo])months[mo]=[];months[mo].push(d);});
             const monthKeys=Object.keys(months).sort((a,b)=>b.localeCompare(a));
             return monthKeys.length===0?html`<div style=${{textAlign:"center",padding:"40px",color:C.muted}}>No report history yet.</div>`:
-              monthKeys.map(mo=>{const t=sumE(months[mo].flatMap(d=>entries[d]||[]));const lbl=new Date(mo+"-01T00:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"});return html`<button key=${mo} onClick=${()=>openNutritionSummary(`Monthly Summary · ${lbl}`,"Consolidated monthly nutrition",t)} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div><div style=${{fontSize:13,fontWeight:600}}>${lbl}</div><div style=${{fontSize:11,color:C.muted,marginTop:2}}>P:${Math.round(t.protein)}g F:${Math.round(t.fat)}g Fi:${Math.round(t.fiber)}g</div></div>
-                <div style=${{textAlign:"right"}}><div style=${{fontSize:15,fontWeight:700,fontFamily:"monospace",color:C.accent}}>${Math.round(t.calories)}</div><div style=${{fontSize:9,color:C.muted}}>kcal</div></div>
+              monthKeys.map(mo=>{const t=sumE(months[mo].flatMap(d=>entries[d]||[]));const lbl=new Date(mo+"-01T00:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"});const dt=new Date(mo+"-01T00:00:00");const mult=new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate();const overCal=t.calories>(goals.calories*mult),overP=t.protein>(goals.protein*mult),overC=t.carbs>(goals.carbs*mult),overF=t.fat>(goals.fat*mult),overFi=t.fiber>(goals.fiber*mult);return html`<button key=${mo} onClick=${()=>openNutritionSummary(`Monthly Summary · ${lbl}`,"Consolidated monthly nutrition",t)} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div><div style=${{fontSize:13,fontWeight:600}}>${lbl}</div><div style=${{fontSize:11,color:C.muted,marginTop:2}}><span style=${{color:overP?C.red:C.muted}}>P:${Math.round(t.protein)}g</span> <span style=${{color:overC?C.red:C.muted}}>C:${Math.round(t.carbs)}g</span> <span style=${{color:overF?C.red:C.muted}}>F:${Math.round(t.fat)}g</span> <span style=${{color:overFi?C.red:C.muted}}>Fi:${Math.round(t.fiber)}g</span></div></div>
+                <div style=${{textAlign:"right"}}><div style=${{fontSize:15,fontWeight:700,fontFamily:"monospace",color:overCal?C.red:C.accent}}>${Math.round(t.calories)}</div><div style=${{fontSize:9,color:C.muted}}>kcal</div></div>
               </button>`;});
           })()}
         </div>`}
