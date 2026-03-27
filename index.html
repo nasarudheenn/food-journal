@@ -48,7 +48,7 @@ const store={
 };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const DEFAULT_PROFILE={name:"Nasarudheen N",currentWeight:"81",targetWeight:"70",height:"175",calorieGoal:1800,protein:130,carbs:180,fat:55,fiber:25,sugar:50,saturatedFat:20,polyFat:10,monoFat:15,cholesterol:300,sodium:2300,potassium:3500,calcium:1000,iron:18,vitC:90,vitD:20,vitB12:2.4,zinc:11};
+const DEFAULT_PROFILE={name:"Nasarudheen N",beginningWeight:"81",targetWeight:"70",height:"175",calorieGoal:2000,protein:120,carbs:220,fat:65,fiber:30,sugar:40,saturatedFat:20,polyFat:10,monoFat:15,cholesterol:300,sodium:2000,potassium:3500,calcium:1000,iron:18,vitC:90,vitD:20,vitB12:2.4,zinc:11};
 const C={bg:"#0f0e0c",card:"#1a1917",border:"#3a3835",accent:"#e8c547",accentDim:"#b89c2f",text:"#f0ece0",muted:"#7a7060",red:"#e05252",green:"#52c47a",blue:"#5299e0",orange:"#e08a52",purple:"#a07ee0"};
 const MEAL_TYPES=["Breakfast","Mid-Morning","Lunch","Evening","Dinner"];
 const MEAL_ICONS={Breakfast:"☀️","Mid-Morning":"🫐",Lunch:"🥗",Evening:"🍎",Dinner:"🌙"};
@@ -147,49 +147,65 @@ function Lbl({children}){return html`<div style=${{fontSize:10,color:C.muted,let
 function Btn({onClick,disabled,color,children,style={}}){return html`<button onClick=${onClick} disabled=${disabled} style=${{width:"100%",padding:"13px",borderRadius:10,border:"none",cursor:disabled?"not-allowed":"pointer",background:disabled?C.border:(color||C.green),color:C.bg,fontSize:14,fontWeight:700,fontFamily:"Georgia,serif",opacity:disabled?0.5:1,...style}}>${children}</button>`;}
 
 function MacroBar({label,value,goal,color,showPct}){
-  const pct=Math.min((value/goal)*100,100),over=value>goal;
+  const pct=Math.min((value/goal)*100,100);
+  const over=value>goal;
+  const displayPct=over?`${Math.round(pct)}% (+${Math.round(value-goal)}%)`: `${Math.round(pct)}%`;
+  const barColor=over?C.red:color;
   return html`<div style=${{marginBottom:8}}>
     <div style=${{display:"flex",justifyContent:"space-between",marginBottom:3}}>
       <span style=${{fontSize:11,color:C.muted,letterSpacing:"0.07em",textTransform:"uppercase"}}>${label}</span>
       <span style=${{fontSize:11,color:over?C.red:C.text,fontFamily:"monospace"}}>
         ${Math.round(value)}<span style=${{color:C.muted}}>/${goal}g</span>
-        ${showPct&&html`<span style=${{marginLeft:6,color:over?C.red:C.accent}}>${Math.round(pct)}%</span>`}
+        ${showPct&&html`<span style=${{marginLeft:6,color:over?C.red:C.accent}}>${displayPct}</span>`}
       </span>
     </div>
     <div style=${{height:5,background:C.border,borderRadius:3,overflow:"hidden"}}>
-      <div style=${{height:"100%",width:`${pct}%`,background:over?C.red:color,borderRadius:3,transition:"width 0.5s ease"}}/>
+      <div style=${{height:"100%",width:`${Math.min(pct,100)}%`,background:barColor,borderRadius:3,transition:"width 0.5s ease"}}/>
     </div>
   </div>`;
 }
 
-function WeightChart({weights,target}){
+function WeightChart({weights,target,beginningWeight}){
   if(!weights.length)return null;
   const W=320,H=100,P={t:8,r:28,b:20,l:36};
-  const vals=weights.map(w=>w.weight),dates=weights.map(w=>w.date);
-  const all=target?[...vals,target]:vals;
-  const mn=Math.min(...all)-0.5,mx=Math.max(...all)+0.5;
+  const minY=50, maxY=100;
+  const vals=weights.map(w=>w.weight);
+  const dates=weights.map(w=>w.date);
   const xOf=i=>P.l+(i/(weights.length-1||1))*(W-P.l-P.r);
-  const yOf=v=>P.t+((mx-v)/(mx-mn))*(H-P.t-P.b);
-  const pathD=vals.map((v,i)=>`${i===0?"M":"L"}${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`).join(" ");
-  const areaD=`${pathD} L${xOf(vals.length-1).toFixed(1)},${H-P.b} L${xOf(0).toFixed(1)},${H-P.b} Z`;
-  const tY=target?yOf(target):null;
-  const ticks=weights.length<=5?weights.map((_,i)=>i):[0,Math.floor(weights.length/2),weights.length-1];
-  return html`<svg width="100%" viewBox=${`0 0 ${W} ${H}`} style=${{display:"block"}}>
-    <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stopColor=${C.accent} stopOpacity="0.3"/>
-      <stop offset="100%" stopColor=${C.accent} stopOpacity="0"/>
-    </linearGradient></defs>
-    ${[0,0.5,1].map(t=>{const y=P.t+t*(H-P.t-P.b),v=mx-t*(mx-mn);return html`<g key=${t}><line x1=${P.l} y1=${y} x2=${W-P.r} y2=${y} stroke=${C.border} strokeDasharray="3,3"/><text x=${P.l-3} y=${y+3} fontSize="9" fill=${C.muted} textAnchor="end">${v.toFixed(1)}</text></g>`;})}
-    ${tY&&html`<line x1=${P.l} y1=${tY} x2=${W-P.r} y2=${tY} stroke=${C.green} strokeDasharray="4,3" strokeWidth="1.5"/><text x=${W-P.r+2} y=${tY+3} fontSize="8" fill=${C.green}>Goal</text>`}
-    ${vals.length>1&&html`<path d=${areaD} fill="url(#wg)"/>`}
-    ${vals.length>1&&html`<path d=${pathD} fill="none" stroke=${C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>`}
-    ${vals.map((v,i)=>html`<circle key=${i} cx=${xOf(i)} cy=${yOf(v)} r="3.5" fill=${C.accent}/>`)}
-    ${ticks.map(i=>html`<text key=${i} x=${xOf(i)} y=${H-2} fontSize="8" fill=${C.muted} textAnchor="middle">${fmtShort(dates[i])}</text>`)}
-  </svg>`;
+  const yOf=v=>P.t+((maxY-v)/(maxY-minY))*(H-P.t-P.b);
+  const barWidth=Math.max(6, (W-P.l-P.r)/(vals.length*1.2));
+  const goalY=target?yOf(target):null;
+  return html`<div style=${{position:"relative",width:"100%",marginTop:8}}>
+    <svg width="100%" viewBox=${`0 0 ${W} ${H}`} style=${{display:"block"}}>
+      ${[minY, (minY+maxY)/2, maxY].map(y=>{
+        const yy=yOf(y);
+        return html`<g key=${y}>
+          <line x1=${P.l} y1=${yy} x2=${W-P.r} y2=${yy} stroke=${C.border} strokeDasharray="3,3"/>
+          <text x=${P.l-3} y=${yy+3} fontSize="9" fill=${C.muted} textAnchor="end">${y}</text>
+        </g>`;
+      })}
+      ${goalY&&html`<line x1=${P.l} y1=${goalY} x2=${W-P.r} y2=${goalY} stroke=${C.green} strokeWidth="1.5" strokeDasharray="4,3"/><text x=${W-P.r+2} y=${goalY+3} fontSize="8" fill=${C.green}>Goal</text>`}
+      ${vals.map((v,i)=>{
+        const x=xOf(i)-barWidth/2;
+        const barHeight=yOf(minY)-yOf(v);
+        const change=i>0?vals[i]-vals[i-1]:0;
+        const changeColor=change<0?C.green:change>0?C.red:C.muted;
+        const changeSign=change>0?"+":"";
+        return html`<g key=${i}>
+          <rect x=${x} y=${yOf(v)} width=${barWidth} height=${barHeight} fill=${change<0?C.green:change>0?C.red:C.accent} rx="2"/>
+          ${change!==0&&html`<text x=${x+barWidth/2} y=${yOf(v)-4} fontSize="8" fill=${changeColor} textAnchor="middle">${changeSign}${Math.abs(change).toFixed(1)}</text>`}
+          <text x=${x+barWidth/2} y=${H-2} fontSize="7" fill=${C.muted} textAnchor="middle">${fmtShort(dates[i])}</text>
+        </g>`;
+      })}
+    </svg>
+  </div>`;
 }
 
 function NutModal({item,onClose}){
   if(!item)return null;
+  // Group nutrients
+  const macroGroup=MACRO_FIELDS;
+  const microGroup=MICRO_FIELDS;
   return html`<div className="mov" onClick=${onClose}>
     <div className="mbx" onClick=${e=>e.stopPropagation()}>
       <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
@@ -199,26 +215,36 @@ function NutModal({item,onClose}){
         </div>
         <button onClick=${onClose} style=${{background:"none",border:"none",color:C.muted,fontSize:22,cursor:"pointer"}}>✕</button>
       </div>
-      <div style=${{marginBottom:14}}>
-        <div style=${{fontSize:10,color:C.accent,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>Macronutrients</div>
-        <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-          ${MACRO_FIELDS.map(({key,label,unit:u,color})=>html`
+      <details open>
+        <summary style=${{fontSize:10,color:C.accent,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>Macronutrients</summary>
+        <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+          ${macroGroup.map(({key,label,unit:u,color})=>html`
             <div key=${key} style=${{background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 11px"}}>
               <div style=${{fontSize:10,color:C.muted,marginBottom:2}}>${label}</div>
               <div style=${{fontSize:16,fontWeight:700,fontFamily:"monospace",color}}>${Number(item[key]||0)<1?Number(item[key]||0).toFixed(1):Math.round(Number(item[key]||0))}<span style=${{fontSize:9,color:C.muted}}>${u}</span></div>
             </div>`)}
         </div>
-      </div>
-      <div>
-        <div style=${{fontSize:10,color:C.purple,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>Micronutrients</div>
-        <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-          ${MICRO_FIELDS.map(({key,label,unit:u})=>html`
+      </details>
+      <details>
+        <summary style=${{fontSize:10,color:C.purple,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>Minerals</summary>
+        <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+          ${microGroup.filter(f=>["sodium","potassium","calcium","iron","zinc"].includes(f.key)).map(({key,label,unit:u})=>html`
             <div key=${key} style=${{background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 11px"}}>
               <div style=${{fontSize:10,color:C.muted,marginBottom:2}}>${label}</div>
               <div style=${{fontSize:16,fontWeight:700,fontFamily:"monospace",color:C.purple}}>${Number(item[key]||0)<1?Number(item[key]||0).toFixed(1):Math.round(Number(item[key]||0))}<span style=${{fontSize:9,color:C.muted}}>${u}</span></div>
             </div>`)}
         </div>
-      </div>
+      </details>
+      <details>
+        <summary style=${{fontSize:10,color:C.green,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>Vitamins</summary>
+        <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          ${microGroup.filter(f=>["vitC","vitD","vitB12"].includes(f.key)).map(({key,label,unit:u})=>html`
+            <div key=${key} style=${{background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"9px 11px"}}>
+              <div style=${{fontSize:10,color:C.muted,marginBottom:2}}>${label}</div>
+              <div style=${{fontSize:16,fontWeight:700,fontFamily:"monospace",color:C.green}}>${Number(item[key]||0)<1?Number(item[key]||0).toFixed(1):Math.round(Number(item[key]||0))}<span style=${{fontSize:9,color:C.muted}}>${u}</span></div>
+            </div>`)}
+        </div>
+      </details>
     </div>
   </div>`;
 }
@@ -227,11 +253,11 @@ function ConfirmModal({msg,onConfirm,onCancel}){
   return html`<div className="mov" onClick=${onCancel}>
     <div className="mbx" onClick=${e=>e.stopPropagation()} style=${{borderRadius:20}}>
       <div style=${{fontSize:36,textAlign:"center",marginBottom:12}}>⚠️</div>
-      <div style=${{fontSize:15,fontWeight:700,textAlign:"center",marginBottom:8}}>Delete Item?</div>
-      <div style=${{fontSize:13,color:C.muted,textAlign:"center",marginBottom:20,lineHeight:1.6}}>${msg}</div>
+      <div style=${{fontSize:15,fontWeight:700,textAlign:"center",marginBottom:8}}>${msg}</div>
+      <div style=${{fontSize:13,color:C.muted,textAlign:"center",marginBottom:20,lineHeight:1.6}}>Are you sure?</div>
       <div style=${{display:"flex",gap:10}}>
         <button onClick=${onCancel} style=${{flex:1,padding:"12px",background:"none",border:`1px solid ${C.border}`,borderRadius:10,color:C.muted,fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
-        <button onClick=${onConfirm} style=${{flex:1,padding:"12px",background:C.red,border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Delete</button>
+        <button onClick=${onConfirm} style=${{flex:1,padding:"12px",background:C.red,border:"none",borderRadius:10,color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Confirm</button>
       </div>
     </div>
   </div>`;
@@ -354,6 +380,7 @@ function App(){
   const [parsed,setParsed]=useState([]);
   const [quickRecipe,setQuickRecipe]=useState(null);
   const [quickQtys,setQuickQtys]=useState({});
+  const [quickRecipeSearch,setQuickRecipeSearch]=useState("");
   // Food suggestions for manual log
   const [foodSugg,setFoodSugg]=useState([]);
   const [foodSuggLoad,setFoodSuggLoad]=useState(false);
@@ -388,6 +415,9 @@ function App(){
 
   // Reports
   const [repPeriod,setRepPeriod]=useState("daily");
+  const [repSelectedDate,setRepSelectedDate]=useState(todayStr());
+  const [showDatePicker,setShowDatePicker]=useState(false);
+  const [nutrientBreakdownModal,setNutrientBreakdownModal]=useState(null); // {period, nutrientKey, periodData}
 
   // Auto-backup with confirmation
   useEffect(()=>{
@@ -418,11 +448,11 @@ function App(){
 
   // Goals
   const goals={
-    calories:Number(profile.calorieGoal)||1800,protein:Number(profile.protein)||130,
-    carbs:Number(profile.carbs)||180,fat:Number(profile.fat)||55,fiber:Number(profile.fiber)||25,
-    sugar:Number(profile.sugar)||50,saturatedFat:Number(profile.saturatedFat)||20,
+    calories:Number(profile.calorieGoal)||2000,protein:Number(profile.protein)||120,
+    carbs:Number(profile.carbs)||220,fat:Number(profile.fat)||65,fiber:Number(profile.fiber)||30,
+    sugar:Number(profile.sugar)||40,saturatedFat:Number(profile.saturatedFat)||20,
     polyFat:Number(profile.polyFat)||10,monoFat:Number(profile.monoFat)||15,
-    cholesterol:Number(profile.cholesterol)||300,sodium:Number(profile.sodium)||2300,
+    cholesterol:Number(profile.cholesterol)||300,sodium:Number(profile.sodium)||2000,
     potassium:Number(profile.potassium)||3500,calcium:Number(profile.calcium)||1000,
     iron:Number(profile.iron)||18,vitC:Number(profile.vitC)||90,vitD:Number(profile.vitD)||20,
     vitB12:Number(profile.vitB12)||2.4,zinc:Number(profile.zinc)||11,
@@ -433,6 +463,8 @@ function App(){
   const dayT=sumE(dayEs);
   const calPct=Math.min((dayT.calories/goals.calories)*100,100);
   const calOver=dayT.calories>goals.calories;
+  const calDisplay=calOver?`${Math.round(dayT.calories)} / ${goals.calories} kcal (+${Math.round(dayT.calories-goals.calories)} kcal)`: `${Math.round(dayT.calories)} / ${goals.calories} kcal`;
+  const calPctDisplay=calOver?`${Math.round(calPct)}% (+${Math.round(dayT.calories-goals.calories)} kcal)`: `${Math.round(calPct)}%`;
 
   const mealGroups=MEAL_TYPES.map(m=>{
     const mEs=dayEs.filter(e=>e.meal===m),rm={};
@@ -449,21 +481,70 @@ function App(){
   })();
 
   const repData=(()=>{
-    const ad=Object.keys(entries).sort();
-    if(repPeriod==="daily")return ad.slice(-14).map(d=>({label:fmtShort(d),date:d,totals:sumE(entries[d]||[])}));
-    if(repPeriod==="weekly"){
-      const bw={};ad.forEach(d=>{const wk=`${new Date(d+"T00:00:00").getFullYear()}-W${String(isoWeek(d)).padStart(2,"0")}`;if(!bw[wk])bw[wk]={label:`W${isoWeek(d)}`,dates:[]};bw[wk].dates.push(d);});
-      return Object.entries(bw).slice(-12).map(([,v])=>{const all=v.dates.flatMap(d=>entries[d]||[]),t=sumE(all),n=v.dates.length,avg={};ALL_FIELDS.forEach(f=>avg[f.key]=t[f.key]/n);return{label:v.label,totals:avg};});
+    if(repPeriod==="daily"){
+      // Use selected date
+      const d=repSelectedDate;
+      if(!entries[d]) return [];
+      return [{label:fmtShort(d),date:d,totals:sumE(entries[d]||[])}];
     }
-    const bm={};ad.forEach(d=>{const mo=isoMonth(d);if(!bm[mo])bm[mo]={label:new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",year:"2-digit"}),dates:[]};bm[mo].dates.push(d);});
-    return Object.entries(bm).slice(-6).map(([,v])=>{const all=v.dates.flatMap(d=>entries[d]||[]),t=sumE(all),n=v.dates.length,avg={};ALL_FIELDS.forEach(f=>avg[f.key]=t[f.key]/n);return{label:v.label,totals:avg};});
+    if(repPeriod==="weekly"){
+      const bw={};
+      const allDates=Object.keys(entries).sort();
+      allDates.forEach(d=>{
+        const wk=`${new Date(d+"T00:00:00").getFullYear()}-W${String(isoWeek(d)).padStart(2,"0")}`;
+        if(!bw[wk])bw[wk]={label:`W${isoWeek(d)}`,dates:[],start:d,end:d};
+        bw[wk].dates.push(d);
+        if(d<bw[wk].start)bw[wk].start=d;
+        if(d>bw[wk].end)bw[wk].end=d;
+      });
+      return Object.entries(bw).slice(-12).map(([,v])=>{
+        const all=v.dates.flatMap(d=>entries[d]||[]);
+        const t=sumE(all);
+        const n=v.dates.length;
+        const avg={};
+        ALL_FIELDS.forEach(f=>avg[f.key]=t[f.key]/n);
+        return {label:`${fmtShort(v.start)} – ${fmtShort(v.end)}`,totals:avg, dates:v.dates};
+      });
+    }
+    const bm={};
+    const allDates=Object.keys(entries).sort();
+    allDates.forEach(d=>{
+      const mo=isoMonth(d);
+      if(!bm[mo])bm[mo]={label:new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",year:"2-digit"}),dates:[],start:d,end:d};
+      bm[mo].dates.push(d);
+      if(d<bm[mo].start)bm[mo].start=d;
+      if(d>bm[mo].end)bm[mo].end=d;
+    });
+    return Object.entries(bm).slice(-6).map(([,v])=>{
+      const all=v.dates.flatMap(d=>entries[d]||[]);
+      const t=sumE(all);
+      const n=v.dates.length;
+      const avg={};
+      ALL_FIELDS.forEach(f=>avg[f.key]=t[f.key]/n);
+      return {label:`${fmtShort(v.start)} – ${fmtShort(v.end)}`,totals:avg, dates:v.dates};
+    });
   })();
 
-  const pageTitle=view==="recipe-new"?(editRecId?"Edit Recipe":"New Recipe"):view==="recipe-use"?"Use Recipe":view==="add"?"Log Food":view==="history"?"History":tab==="diary"?fmtDate(selDate):tab==="profile"?"My Profile":tab==="recipes"?"Recipe Book":"Reports";
+  const pageTitle=view==="recipe-new"?(editRecId?"Edit Recipe":"New Recipe"):view==="recipe-use"?"Use Recipe":view==="add"?"Log Food":view==="history"?"History":tab==="diary"?new Date(selDate).toLocaleDateString("en-US",{month:"long"}):tab==="profile"?"My Profile":tab==="recipes"?"Recipe Book":"Reports";
 
   // ── Diary helpers ──
   function addEntry(){
     if(!foodName.trim()||!nut.calories)return;
+    // Check for duplicate
+    const existing=dayEs.find(e=>e.food===foodName.trim() && e.quantity===`${qty} ${unit}`);
+    if(existing){
+      setConfirmModal({
+        msg:`"${foodName.trim()}" already exists for today with the same quantity. Replace it?`,
+        onConfirm:()=>{
+          const updated=dayEs.map(e=>e.id===existing.id?{...e, ...nut, quantity:`${qty} ${unit}`, time:new Date().toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"}), meal:addMeal}:e);
+          pE({...entries,[selDate]:updated});
+          setFoodName("");setQty("");setUnit("g");setNut(emptyNut());setAiMsg("");setView("main");
+          setConfirmModal(null);
+        },
+        onCancel:()=>setConfirmModal(null)
+      });
+      return;
+    }
     const rid=`r_${Date.now()}`;
     const e={id:Date.now(),meal:addMeal,food:foodName.trim(),quantity:`${qty} ${unit}`,
       time:new Date().toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"}),
@@ -554,7 +635,8 @@ function App(){
     if(!newWt)return;
     const e={date:todayStr(),weight:parseFloat(newWt)};
     const u=[...weights.filter(w=>w.date!==todayStr()),e].sort((a,b)=>a.date.localeCompare(b.date));
-    pW(u);const np={...profEdit,currentWeight:newWt};pP(np);setNewWt("");
+    pW(u);
+    setNewWt("");
   }
   function saveApiKey(){
     const k=apiKeyInput.trim();localStorage.setItem(SK.apiKey,k);setApiKey(k);
@@ -600,6 +682,40 @@ function App(){
     },500);
   };
 
+  // ── Reports helpers ──
+  function getNutrientBreakdown(periodData, nutrientKey){
+    const items=[];
+    if(repPeriod==="daily"){
+      const entriesForDate=entries[repSelectedDate]||[];
+      entriesForDate.forEach(e=>{
+        const val=Number(e[nutrientKey])||0;
+        if(val>0){
+          items.push({food:e.food, quantity:e.quantity, meal:e.meal, value:val, percent:0});
+        }
+      });
+      const total=items.reduce((s,i)=>s+i.value,0);
+      items.forEach(i=>i.percent=Math.round((i.value/total)*100));
+      items.sort((a,b)=>b.value-a.value);
+      return {items, total};
+    } else {
+      // weekly or monthly: use all entries in the period
+      const allEntries=[];
+      periodData.dates.forEach(d=>{
+        (entries[d]||[]).forEach(e=>allEntries.push(e));
+      });
+      allEntries.forEach(e=>{
+        const val=Number(e[nutrientKey])||0;
+        if(val>0){
+          items.push({food:e.food, quantity:e.quantity, meal:e.meal, value:val, percent:0});
+        }
+      });
+      const total=items.reduce((s,i)=>s+i.value,0);
+      items.forEach(i=>i.percent=Math.round((i.value/total)*100));
+      items.sort((a,b)=>b.value-a.value);
+      return {items, total};
+    }
+  }
+
   // ── RENDER ────────────────────────────────────────────────────────────────
   const UNITS=["g","ml","piece","tsp","tbsp","cup","serving"];
 
@@ -607,6 +723,28 @@ function App(){
     <div style=${{minHeight:"100vh",background:C.bg,color:C.text,fontFamily:"Georgia,serif",maxWidth:480,margin:"0 auto",paddingBottom:80}}>
       ${nutModal&&html`<${NutModal} item=${nutModal} onClose=${()=>setNutModal(null)}/>`}
       ${confirmModal&&html`<${ConfirmModal} msg=${confirmModal.msg} onConfirm=${()=>{confirmModal.onConfirm();setConfirmModal(null);}} onCancel=${()=>setConfirmModal(null)}/>`}
+      ${nutrientBreakdownModal&&html`<div className="mov" onClick=${()=>setNutrientBreakdownModal(null)}>
+        <div className="mbx" onClick=${e=>e.stopPropagation()}>
+          <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div style=${{fontSize:16,fontWeight:700}}>${nutrientBreakdownModal.nutrientKey.toUpperCase()} Breakdown</div>
+            <button onClick=${()=>setNutrientBreakdownModal(null)} style=${{background:"none",border:"none",color:C.muted,fontSize:22,cursor:"pointer"}}>✕</button>
+          </div>
+          <table style=${{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+            <thead><tr style=${{borderBottom:`1px solid ${C.border}`}}><th style=${{textAlign:"left",padding:6}}>Food</th><th style=${{textAlign:"left",padding:6}}>Quantity</th><th style=${{textAlign:"left",padding:6}}>Meal</th><th style=${{textAlign:"right",padding:6}}>%</th></tr></thead>
+            <tbody>
+              ${nutrientBreakdownModal.items.map(item=>html`
+                <tr style=${{borderBottom:`1px solid ${C.border}`}}>
+                  <td style=${{padding:6}}>${item.food}</td>
+                  <td style=${{padding:6}}>${item.quantity}</td>
+                  <td style=${{padding:6}}>${item.meal}</td>
+                  <td style=${{padding:6,textAlign:"right"}}>${item.percent}%</td>
+                </tr>
+              `)}
+              <tr style=${{borderTop:`2px solid ${C.accent}`,fontWeight:700}}><td colspan="3" style=${{padding:6,textAlign:"right"}}>Total</td><td style=${{padding:6,textAlign:"right"}}>100%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>`}
       <${IngredientModal} show=${ingModal} editData=${ingEditData} onSave=${saveIng} onClose=${()=>setIngModal(false)} apiKey=${apiKey}/>
       ${backupMsg&&tab!=="profile"&&html`<div style=${{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:200,background:backupMsg.startsWith("✓")?"rgba(82,196,122,0.95)":"rgba(224,82,82,0.95)",color:"#fff",borderRadius:20,padding:"10px 20px",fontSize:12,fontWeight:600,boxShadow:"0 4px 16px rgba(0,0,0,0.3)",whiteSpace:"nowrap"}}>${backupMsg}</div>`}
 <div style=${{padding:"max(env(safe-area-inset-top),18px) 18px 10px",borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,background:C.bg,zIndex:10}}>
@@ -618,6 +756,7 @@ function App(){
           <div style=${{display:"flex",gap:6}}>
             ${view!=="main"&&html`<button onClick=${()=>{setView("main");setQuickRecipe(null);}} style=${{background:"none",border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:13}}>← Back</button>`}
             ${tab==="diary"&&view==="main"&&html`<button onClick=${()=>setView("history")} style=${{background:"none",border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:13}}>📅</button>`}
+            ${tab==="reports"&&view==="main"&&html`<button onClick=${()=>setShowDatePicker(!showDatePicker)} style=${{background:"none",border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:13}}>📅</button>`}
           </div>
         </div>
         ${tab==="diary"&&view==="main"&&html`
@@ -643,10 +782,9 @@ ${tab==="diary"&&view==="main"&&html`
                     strokeDasharray=${`${2*Math.PI*30}`} strokeDashoffset=${`${2*Math.PI*30*(1-calPct/100)}`}
                     strokeLinecap="round" style=${{transition:"stroke-dashoffset 0.6s ease"}}/>
                 </svg>
-                <div style=${{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-                  <span style=${{fontSize:12,fontWeight:700,color:calOver?C.red:C.text,fontFamily:"monospace",lineHeight:1}}>${Math.round(dayT.calories)}</span>
-                  <span style=${{fontSize:9,color:C.muted}}>kcal</span>
-                  <span style=${{fontSize:11,fontWeight:700,color:calOver?C.red:C.accent,fontFamily:"monospace"}}>${Math.round(calPct)}%</span>
+                <div style=${{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}>
+                  <span style=${{fontSize:11,fontWeight:700,color:C.text,fontFamily:"monospace",lineHeight:1.2}}>${calDisplay}</span>
+                  <span style=${{fontSize:9,color:C.muted}}>${calPctDisplay}</span>
                 </div>
               </div>
               <div style=${{flex:1}}>
@@ -656,17 +794,21 @@ ${tab==="diary"&&view==="main"&&html`
                 <${MacroBar} label="Fiber" value=${dayT.fiber} goal=${goals.fiber} color=${C.green} showPct/>
               </div>
             </div>
-            <div style=${{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginTop:14,marginBottom:5}}>Remaining</div>
+            <div style=${{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginTop:14,marginBottom:5}}>Remaining / Excess</div>
             <div style=${{display:"flex",gap:5}}>
-              ${[{label:"Calories",v:Math.max(0,goals.calories-dayT.calories),u:"kcal",c:calOver?C.red:C.accent,ov:calOver},
-                 {label:"Protein",v:Math.max(0,goals.protein-dayT.protein),u:"g",c:dayT.protein>goals.protein?C.red:C.blue,ov:dayT.protein>goals.protein},
-                 {label:"Carbs",v:Math.max(0,goals.carbs-dayT.carbs),u:"g",c:dayT.carbs>goals.carbs?C.red:C.orange,ov:dayT.carbs>goals.carbs},
-                 {label:"Fat",v:Math.max(0,goals.fat-dayT.fat),u:"g",c:dayT.fat>goals.fat?C.red:C.accentDim,ov:dayT.fat>goals.fat},
-                 {label:"Fiber",v:Math.max(0,goals.fiber-dayT.fiber),u:"g",c:dayT.fiber>goals.fiber?C.red:C.green,ov:dayT.fiber>goals.fiber},
-              ].map(b=>html`<div key=${b.label} style=${{background:C.bg,border:`1px solid ${b.ov?C.red:C.border}`,borderRadius:8,padding:"7px 5px",textAlign:"center",flex:1,minWidth:0}}>
-                <div style=${{fontSize:12,fontWeight:700,color:b.c,fontFamily:"monospace",whiteSpace:"nowrap"}}>${b.v<1&&b.v>0?b.v.toFixed(1):Math.round(b.v)}<span style=${{fontSize:8,color:C.muted}}>${b.u}</span></div>
-                <div style=${{fontSize:8,color:C.muted,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${b.label}</div>
-              </div>`)}
+              ${[{label:"Calories",v:dayT.calories,g:goals.calories,u:"kcal",c:calOver?C.red:C.accent,ov:calOver},
+                 {label:"Protein",v:dayT.protein,g:goals.protein,u:"g",c:dayT.protein>goals.protein?C.red:C.blue,ov:dayT.protein>goals.protein},
+                 {label:"Carbs",v:dayT.carbs,g:goals.carbs,u:"g",c:dayT.carbs>goals.carbs?C.red:C.orange,ov:dayT.carbs>goals.carbs},
+                 {label:"Fat",v:dayT.fat,g:goals.fat,u:"g",c:dayT.fat>goals.fat?C.red:C.accentDim,ov:dayT.fat>goals.fat},
+                 {label:"Fiber",v:dayT.fiber,g:goals.fiber,u:"g",c:dayT.fiber>goals.fiber?C.red:C.green,ov:dayT.fiber>goals.fiber},
+              ].map(b=>{
+                const excess=b.v-b.g;
+                const displayVal=b.ov?`+${Math.round(excess)}`:b.v<1&&b.v>0?b.v.toFixed(1):Math.round(b.v);
+                return html`<div key=${b.label} style=${{background:C.bg,border:`1px solid ${b.ov?C.red:C.border}`,borderRadius:8,padding:"7px 5px",textAlign:"center",flex:1,minWidth:0}}>
+                  <div style=${{fontSize:12,fontWeight:700,color:b.c,fontFamily:"monospace",whiteSpace:"nowrap"}}>${displayVal}<span style=${{fontSize:8,color:C.muted}}>${b.u}</span>${b.ov?html`<span style=${{fontSize:9,color:C.red}}> (+${Math.round(excess)})</span>`:``}</div>
+                  <div style=${{fontSize:8,color:C.muted,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>${b.label}</div>
+                </div>`;
+              })}
             </div>
           </div>
           ${mealGroups.length===0?html`<div style=${{textAlign:"center",padding:"40px 20px",color:C.muted,lineHeight:1.8}}><div style=${{fontSize:40,marginBottom:12}}>🍽️</div>No meals logged.<br/>Tap + to add food.</div>`:
@@ -695,7 +837,7 @@ ${tab==="diary"&&view==="main"&&html`
                         <div style=${{fontSize:11,color:C.muted}}>${isMulti?`${recipe.items.length} ingredients`:recipe.items[0]?.quantity} · ${recipe.time}</div>
                         <div style=${{display:"flex",gap:8,marginTop:4}}>
                           <span style=${{fontSize:13,color:C.accent,fontFamily:"monospace",fontWeight:700}}>${Math.round(rt.calories)} kcal</span>
-                          <span style=${{fontSize:11,color:C.muted}}>P:${Math.round(rt.protein)}g C:${Math.round(rt.carbs)}g F:${Math.round(rt.fat)}g</span>
+                          <span style=${{fontSize:11,color:C.muted}}>P:${Math.round(rt.protein)}g C:${Math.round(rt.carbs)}g F:${Math.round(rt.fat)}g Fi:${Math.round(rt.fiber)}g</span>
                         </div>
                       </div>
                       <button onClick=${e=>{e.stopPropagation();setConfirmModal({msg:`Delete "${recipe.recipeName}"?`,onConfirm:()=>delGroup(selDate,recipe.recipeId)});}} style=${{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:18,padding:4,flexShrink:0}}>✕</button>
@@ -705,7 +847,7 @@ ${tab==="diary"&&view==="main"&&html`
                         <div style=${{width:6,height:6,borderRadius:"50%",background:C.accent+"88",flexShrink:0}}/>
                         <div style=${{flex:1}}>
                           <div style=${{fontSize:13,fontWeight:500}}>${entry.food}</div>
-                          <div style=${{fontSize:11,color:C.muted,marginTop:2}}>${entry.quantity} · <span style=${{fontFamily:"monospace"}}>${entry.calories} kcal</span> · P:${entry.protein}g C:${entry.carbs}g F:${entry.fat}g</div>
+                          <div style=${{fontSize:11,color:C.muted,marginTop:2}}>${entry.quantity} · <span style=${{fontFamily:"monospace"}}>${entry.calories} kcal</span> · P:${entry.protein}g C:${entry.carbs}g F:${entry.fat}g Fi:${entry.fiber}g</div>
                         </div>
                         <button onClick=${e=>{e.stopPropagation();setConfirmModal({msg:`Delete "${entry.food}"?`,onConfirm:()=>delEntry(selDate,entry.id)});}} style=${{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:15,padding:3}}>✕</button>
                       </div>`)}
@@ -732,10 +874,15 @@ ${tab==="diary"&&view==="add"&&html`
           ${logMode==="recipe"&&html`<div>
             ${recipeBook.length===0?html`<div style=${{textAlign:"center",padding:"40px",color:C.muted,lineHeight:1.8}}><div style=${{fontSize:36,marginBottom:10}}>📚</div>No saved recipes.<br/><span style=${{color:C.accent,cursor:"pointer"}} onClick=${()=>{setTab("recipes");setView("main");}}>Create one in Recipes tab</span></div>`:
             !quickRecipe?html`<div>
-              <${Lbl}>Select a Recipe<//>
+              <div style=${{marginBottom:10}}><${Lbl}>Search Recipes<//><input value=${quickRecipeSearch} onInput=${e=>setQuickRecipeSearch(e.target.value)} placeholder="🔍 Search…" style=${IS}/></div>
               ${(()=>{
-                const filtered=recipeBook.filter(r=>!r.mealTags||!r.mealTags.length||r.mealTags.includes(addMeal));
-                if(!filtered.length)return html`<div style=${{textAlign:"center",padding:"30px",color:C.muted,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}>No recipes tagged for <strong style=${{color:C.accent}}>${addMeal}</strong>.</div>`;
+                let filtered=recipeBook.filter(r=>!r.mealTags||!r.mealTags.length||r.mealTags.includes(addMeal));
+                if(quickRecipeSearch.trim()){
+                  const ql=quickRecipeSearch.toLowerCase();
+                  filtered=filtered.filter(r=>r.name.toLowerCase().includes(ql));
+                }
+                filtered.sort((a,b)=>a.name.localeCompare(b.name));
+                if(!filtered.length)return html`<div style=${{textAlign:"center",padding:"30px",color:C.muted,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}>No recipes found.</div>`;
                 return filtered.map(rec=>{const rt=sumE(rec.items);return html`<div key=${rec.id} onClick=${()=>startQuickLog(rec)} style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                   <div style=${{flex:1}}>
                     <div style=${{fontSize:14,fontWeight:600,marginBottom:3}}>${rec.name}</div>
@@ -827,8 +974,8 @@ ${tab==="diary"&&view==="add"&&html`
 ${tab==="diary"&&view==="history"&&html`
         <div style=${{padding:"14px 18px"}}>
           ${histDates.length===0?html`<div style=${{textAlign:"center",padding:"40px",color:C.muted}}>No history yet.</div>`:
-            histDates.map(date=>{const dd=entries[date]||[],cal=dd.reduce((s,e)=>s+e.calories,0),prot=dd.reduce((s,e)=>s+e.protein,0);return html`<button key=${date} onClick=${()=>{setSelDate(date);setView("main");}} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div><div style=${{fontSize:13,fontWeight:600}}>${fmtDate(date)}</div><div style=${{fontSize:11,color:C.muted,marginTop:2}}>${dd.length} items · P:${Math.round(prot)}g</div></div>
+            histDates.map(date=>{const dd=entries[date]||[],cal=dd.reduce((s,e)=>s+e.calories,0),prot=dd.reduce((s,e)=>s+e.protein,0),carbs=dd.reduce((s,e)=>s+e.carbs,0),fat=dd.reduce((s,e)=>s+e.fat,0),fiber=dd.reduce((s,e)=>s+e.fiber,0);return html`<button key=${date} onClick=${()=>{setSelDate(date);setView("main");}} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div><div style=${{fontSize:13,fontWeight:600}}>${fmtDate(date)}</div><div style=${{fontSize:11,color:C.muted,marginTop:2}}>${dd.length} items · P:${Math.round(prot)}g · C:${Math.round(carbs)}g · F:${Math.round(fat)}g · Fi:${Math.round(fiber)}g</div></div>
               <div style=${{textAlign:"right"}}><div style=${{fontSize:15,fontWeight:700,fontFamily:"monospace",color:cal>goals.calories?C.red:C.accent}}>${Math.round(cal)}</div><div style=${{fontSize:9,color:C.muted}}>kcal</div></div>
             </button>`;})
           }
@@ -837,11 +984,11 @@ ${tab==="profile"&&view==="main"&&html`
         <div style=${{padding:"16px 18px"}}>
           <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style=${{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:weights.length>0?14:8}}>
-              <div><div style=${{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:2}}>Current Weight</div><div style=${{fontSize:28,fontWeight:700,fontFamily:"monospace"}}>${profile.currentWeight||"—"}<span style=${{fontSize:13,color:C.muted}}> kg</span></div></div>
+              <div><div style=${{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:2}}>Beginning Weight</div><div style=${{fontSize:28,fontWeight:700,fontFamily:"monospace"}}>${profile.beginningWeight||"—"}<span style=${{fontSize:13,color:C.muted}}> kg</span></div></div>
               <div style=${{textAlign:"right"}}><div style=${{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:2}}>Target</div><div style=${{fontSize:22,fontWeight:700,fontFamily:"monospace",color:C.green}}>${profile.targetWeight||"—"}<span style=${{fontSize:11,color:C.muted}}> kg</span></div></div>
             </div>
-            ${profile.currentWeight&&profile.targetWeight&&html`<div style=${{fontSize:11,marginBottom:10}}>${parseFloat(profile.currentWeight)>parseFloat(profile.targetWeight)?html`<span style=${{color:C.orange}}>📉 ${(parseFloat(profile.currentWeight)-parseFloat(profile.targetWeight)).toFixed(1)} kg to goal</span>`:html`<span style=${{color:C.green}}>🎉 Target reached!</span>`}</div>`}
-            ${weights.length>0&&html`<${WeightChart} weights=${weights} target=${parseFloat(profile.targetWeight)||null}/>`}
+            ${profile.beginningWeight&&profile.targetWeight&&html`<div style=${{fontSize:11,marginBottom:10}}>${parseFloat(profile.beginningWeight)>parseFloat(profile.targetWeight)?html`<span style=${{color:C.orange}}>📉 ${(parseFloat(profile.beginningWeight)-parseFloat(profile.targetWeight)).toFixed(1)} kg to goal</span>`:html`<span style=${{color:C.green}}>🎉 Target reached!</span>`}</div>`}
+            ${weights.length>0&&html`<${WeightChart} weights=${weights} target=${parseFloat(profile.targetWeight)||null} beginningWeight=${profile.beginningWeight}/>`}
             ${weights.length===0&&html`<div style=${{textAlign:"center",padding:"12px 0",color:C.muted,fontSize:12}}>Log weight below to see graph</div>`}
             <div style=${{display:"flex",gap:8,marginTop:14}}>
               <input value=${newWt} onInput=${e=>setNewWt(e.target.value)} type="number" placeholder="Log today's weight (kg)" style=${{...IS,flex:1}}/>
@@ -851,16 +998,16 @@ ${tab==="profile"&&view==="main"&&html`
           <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style=${{fontSize:14,fontWeight:700,marginBottom:14}}>Personal Info</div>
             <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              ${[{label:"Name",key:"name",type:"text",ph:"Your name"},{label:"Height (cm)",key:"height",type:"number",ph:"175"},{label:"Current Weight (kg)",key:"currentWeight",type:"number",ph:"81"},{label:"Target Weight (kg)",key:"targetWeight",type:"number",ph:"70"}].map(({label,key,type,ph})=>html`<div key=${key}><${Lbl}>${label}<//>
+              ${[{label:"Name",key:"name",type:"text",ph:"Your name"},{label:"Height (cm)",key:"height",type:"number",ph:"175"},{label:"Beginning Weight (kg)",key:"beginningWeight",type:"number",ph:"81"},{label:"Target Weight (kg)",key:"targetWeight",type:"number",ph:"70"}].map(({label,key,type,ph})=>html`<div key=${key}><${Lbl}>${label}<//>
                 <input value=${profEdit[key]||""} onInput=${e=>setProfEdit(p=>({...p,[key]:e.target.value}))} type=${type} placeholder=${ph} style=${IS}/></div>`)}
             </div>
           </div>
           <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style=${{fontSize:14,fontWeight:700,marginBottom:4}}>Daily Nutrition Goals</div>
             <div style=${{fontSize:11,color:C.muted,marginBottom:14}}>Used in reports to track achievement %</div>
-            ${[{title:"Energy & Macros",color:C.accent,fields:[{label:"Calories (kcal)",key:"calorieGoal",ph:"1800"},{label:"Protein (g)",key:"protein",ph:"130"},{label:"Carbs (g)",key:"carbs",ph:"180"},{label:"Fat (g)",key:"fat",ph:"55"},{label:"Fiber (g)",key:"fiber",ph:"25"},{label:"Sugar (g)",key:"sugar",ph:"50"}]},
+            ${[{title:"Energy & Macros",color:C.accent,fields:[{label:"Calories (kcal)",key:"calorieGoal",ph:"2000"},{label:"Protein (g)",key:"protein",ph:"120"},{label:"Carbs (g)",key:"carbs",ph:"220"},{label:"Fat (g)",key:"fat",ph:"65"},{label:"Fiber (g)",key:"fiber",ph:"30"},{label:"Sugar (g)",key:"sugar",ph:"40"}]},
                {title:"Fats Detail",color:C.accentDim,fields:[{label:"Saturated Fat (g)",key:"saturatedFat",ph:"20"},{label:"Polyunsat. Fat (g)",key:"polyFat",ph:"10"},{label:"Monounsat. Fat (g)",key:"monoFat",ph:"15"},{label:"Cholesterol (mg)",key:"cholesterol",ph:"300"}]},
-               {title:"Minerals",color:C.purple,fields:[{label:"Sodium (mg)",key:"sodium",ph:"2300"},{label:"Potassium (mg)",key:"potassium",ph:"3500"},{label:"Calcium (mg)",key:"calcium",ph:"1000"},{label:"Iron (mg)",key:"iron",ph:"18"},{label:"Zinc (mg)",key:"zinc",ph:"11"}]},
+               {title:"Minerals",color:C.purple,fields:[{label:"Sodium (mg)",key:"sodium",ph:"2000"},{label:"Potassium (mg)",key:"potassium",ph:"3500"},{label:"Calcium (mg)",key:"calcium",ph:"1000"},{label:"Iron (mg)",key:"iron",ph:"18"},{label:"Zinc (mg)",key:"zinc",ph:"11"}]},
                {title:"Vitamins",color:C.green,fields:[{label:"Vit C (mg)",key:"vitC",ph:"90"},{label:"Vit D (μg)",key:"vitD",ph:"20"},{label:"Vit B12 (μg)",key:"vitB12",ph:"2.4"}]},
             ].map(({title,color,fields})=>html`<div key=${title} style=${{marginBottom:14}}>
               <div style=${{fontSize:11,color,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:8,fontWeight:600}}>${title}</div>
@@ -903,7 +1050,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v30.0 · Mar 23, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v31.0 · Apr 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
@@ -923,7 +1070,7 @@ ${tab==="recipes"&&view==="main"&&html`
                 <div style=${{fontSize:15,fontWeight:700,marginBottom:4}}>${rec.name}</div>
                 ${rec.mealTags?.length&&html`<div style=${{fontSize:10,color:C.accent,marginBottom:4}}>${rec.mealTags.map(t=>MEAL_ICONS[t]).join(" ")} ${rec.mealTags.join(", ")}</div>`}
                 <div style=${{fontSize:11,color:C.muted,marginBottom:6}}>${rec.items.length} ingredients · tap to edit</div>
-                <div style=${{display:"flex",gap:8,flexWrap:"wrap"}}><span style=${{fontSize:13,color:C.accent,fontFamily:"monospace",fontWeight:700}}>${Math.round(rt.calories)} kcal</span><span style=${{fontSize:11,color:C.muted}}>P:${Math.round(rt.protein)}g C:${Math.round(rt.carbs)}g F:${Math.round(rt.fat)}g</span></div>
+                <div style=${{display:"flex",gap:8,flexWrap:"wrap"}}><span style=${{fontSize:13,color:C.accent,fontFamily:"monospace",fontWeight:700}}>${Math.round(rt.calories)} kcal</span><span style=${{fontSize:11,color:C.muted}}>P:${Math.round(rt.protein)}g C:${Math.round(rt.carbs)}g F:${Math.round(rt.fat)}g Fi:${Math.round(rt.fiber)}g</span></div>
               </div>
               <div style=${{padding:"0 15px 14px",display:"flex",gap:8}}>
                 <button onClick=${e=>{e.stopPropagation();startUse(rec);}} style=${{flex:1,padding:"10px",background:C.green,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🍳 Use This Recipe</button>
@@ -988,7 +1135,7 @@ ${view==="recipe-new"&&html`
             ${recItems.map((item,idx)=>{const rt=sumE([item]);return html`<div key=${item._id} onClick=${()=>openIngModal(idx)} style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"11px 13px",marginBottom:8,display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
               <div style=${{flex:1,minWidth:0}}>
                 <div style=${{fontSize:13,fontWeight:600,marginBottom:2}}>${item.food}</div>
-                <div style=${{fontSize:11,color:C.muted}}>${item.quantity} ${item.unit} · <span style=${{color:C.accent,fontFamily:"monospace"}}>${Math.round(rt.calories)} kcal</span> · P:${Math.round(rt.protein)}g C:${Math.round(rt.carbs)}g F:${Math.round(rt.fat)}g</div>
+                <div style=${{fontSize:11,color:C.muted}}>${item.quantity} ${item.unit} · <span style=${{color:C.accent,fontFamily:"monospace"}}>${Math.round(rt.calories)} kcal</span> · P:${Math.round(rt.protein)}g C:${Math.round(rt.carbs)}g F:${Math.round(rt.fat)}g Fi:${Math.round(rt.fiber)}g</div>
               </div>
               <button onClick=${e=>{e.stopPropagation();setRecItems(p=>p.filter((_,i)=>i!==idx));}} style=${{background:"none",border:`1px solid ${C.border}`,borderRadius:7,color:C.muted,fontSize:12,cursor:"pointer",fontFamily:"inherit",padding:"4px 9px",flexShrink:0}}>✕</button>
             </div>`;} )}
@@ -1008,7 +1155,7 @@ ${view==="recipe-use"&&useRec&&html`
                 <input value=${useQtys[k]||""} onInput=${e=>setUseQtys(p=>({...p,[k]:e.target.value}))} type="number" style=${{...IS,width:70,flex:"none",padding:"6px 8px"}}/>
                 <span style=${{fontSize:11,color:C.muted}}>${item.unit||"g"}</span>
               </div>
-              <div style=${{fontSize:11,color:C.muted}}><span style=${{color:C.accent,fontFamily:"monospace"}}>${Math.round((Number(item.calories)||0)*ratio)}</span> kcal · P:${Math.round((Number(item.protein)||0)*ratio)}g · C:${Math.round((Number(item.carbs)||0)*ratio)}g · F:${Math.round((Number(item.fat)||0)*ratio)}g</div>
+              <div style=${{fontSize:11,color:C.muted}}><span style=${{color:C.accent,fontFamily:"monospace"}}>${Math.round((Number(item.calories)||0)*ratio)}</span> kcal · P:${Math.round((Number(item.protein)||0)*ratio)}g · C:${Math.round((Number(item.carbs)||0)*ratio)}g · F:${Math.round((Number(item.fat)||0)*ratio)}g · Fi:${Math.round((Number(item.fiber)||0)*ratio)}g</div>
             </div>`;})}
           </div>
           <div style=${{marginBottom:14}}>
@@ -1021,75 +1168,128 @@ ${view==="recipe-use"&&useRec&&html`
         </div>`}
 ${tab==="reports"&&view==="main"&&html`
         <div style=${{padding:"16px 18px"}}>
+          ${showDatePicker&&html`
+            <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:12,marginBottom:14}}>
+              <div style=${{fontSize:12,fontWeight:600,marginBottom:8}}>Select a date for daily report:</div>
+              <input type="date" value=${repSelectedDate} onChange=${e=>{setRepSelectedDate(e.target.value);setShowDatePicker(false);}} style=${IS}/>
+            </div>
+          `}
           <div style=${{display:"flex",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:3,marginBottom:14,gap:3}}>
             ${[{label:"Daily",val:"daily"},{label:"Weekly",val:"weekly"},{label:"Monthly",val:"monthly"}].map(({label,val})=>html`
-              <button key=${val} onClick=${()=>setRepPeriod(val)} style=${{flex:1,padding:"9px",borderRadius:7,border:"none",cursor:"pointer",background:repPeriod===val?C.accent:"none",color:repPeriod===val?C.bg:C.muted,fontSize:13,fontFamily:"inherit",fontWeight:repPeriod===val?700:400}}>${label}</button>`)}
+              <button key=${val} onClick=${()=>{setRepPeriod(val);setShowDatePicker(false);}} style=${{flex:1,padding:"9px",borderRadius:7,border:"none",cursor:"pointer",background:repPeriod===val?C.accent:"none",color:repPeriod===val?C.bg:C.muted,fontSize:13,fontFamily:"inherit",fontWeight:repPeriod===val?700:400}}>${label}</button>`)}
           </div>
-          ${repData.length===0?html`<div style=${{textAlign:"center",padding:"40px",color:C.muted}}>No data yet.</div>`:(()=>{
-            const now=new Date(),daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
-            const mult=repPeriod==="weekly"?7:repPeriod==="monthly"?daysInMonth:1;
-            const pGoals=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,(goals[f.key]||0)*mult]));
-            const totals=(()=>{
-              if(repPeriod==="daily"){const t=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,0]));repData.forEach(d=>ALL_FIELDS.forEach(f=>{t[f.key]+=(d.totals[f.key]||0);}));ALL_FIELDS.forEach(f=>{t[f.key]=t[f.key]/(repData.length||1);});return t;}
-              const cutDate=new Date();cutDate.setDate(cutDate.getDate()-(repPeriod==="weekly"?7:daysInMonth));
-              const cutStr=cutDate.toISOString().split("T")[0];
-              const inRange=Object.keys(entries).filter(d=>d>=cutStr);
-              return sumE(inRange.flatMap(d=>entries[d]||[]));
-            })();
-            const mealTotals=MEAL_TYPES.map(m=>{
-              if(repPeriod==="daily"){return{meal:m,totals:sumE((entries[todayStr()]||[]).filter(e=>e.meal===m))};}
-              const cutDate=new Date();cutDate.setDate(cutDate.getDate()-(repPeriod==="weekly"?7:daysInMonth));
-              const cutStr=cutDate.toISOString().split("T")[0];
-              const inRange=Object.keys(entries).filter(d=>d>=cutStr);
-              return{meal:m,totals:sumE(inRange.flatMap(d=>(entries[d]||[]).filter(e=>e.meal===m)))};
-            }).filter(m=>m.totals.calories>0);
-            return html`<div>
-              <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
-                <div style=${{fontSize:13,fontWeight:600,marginBottom:2}}>Achievement vs Goal</div>
-                <div style=${{fontSize:11,color:C.muted,marginBottom:14}}>${repPeriod==="daily"?"Today's intake":repPeriod==="weekly"?"This week total":"This month total"} vs ${repPeriod==="daily"?"daily":repPeriod==="weekly"?`weekly (×7)`:`monthly (×${daysInMonth})`} goal</div>
-                ${ALL_FIELDS.map(({key,label,unit:u,color})=>{
-                  const g=pGoals[key];if(!g)return null;
-                  const val=totals[key]||0,pct=Math.min(Math.round((val/g)*100),200),over=val>g;
-                  const barColor=over?C.red:pct>=90?C.green:pct>=60?C.accent:C.muted;
-                  const diff=val-g;
-                  return html`<div key=${key} style=${{marginBottom:12}}>
-                    <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                      <span style=${{fontSize:11,color:C.text}}>${label}</span>
-                      <div style=${{display:"flex",alignItems:"center",gap:6}}>
-                        <span style=${{fontSize:10,color:C.muted,fontFamily:"monospace"}}>${val<1?val.toFixed(1):Math.round(val)}/${Math.round(g)}${u}</span>
-                        <span style=${{fontSize:10,fontFamily:"monospace",fontWeight:700,color:over?C.red:pct>=90?C.green:C.accent,background:over?"rgba(224,82,82,0.12)":pct>=90?"rgba(82,196,122,0.12)":"rgba(232,197,71,0.12)",padding:"1px 6px",borderRadius:5}}>${pct}%</span>
-                        <span style=${{fontSize:9,color:over?C.red:C.green,fontFamily:"monospace"}}>${diff>0?"+":""}${diff<1&&diff>-1?diff.toFixed(1):Math.round(diff)}${u}</span>
-                      </div>
-                    </div>
-                    <div style=${{height:5,background:C.border,borderRadius:3,overflow:"hidden"}}>
-                      <div style=${{height:"100%",width:`${Math.min(pct,100)}%`,background:barColor,borderRadius:3,transition:"width 0.4s ease"}}/>
-                    </div>
-                  </div>`;
-                })}
+          ${repData.length===0?html`<div style=${{textAlign:"center",padding:"40px",color:C.muted}}>No data for selected period.</div>`:html`
+            <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
+              <div style=${{fontSize:13,fontWeight:600,marginBottom:2}}>${repPeriod==="daily"?"Daily Summary":repPeriod==="weekly"?"Weekly Summary":"Monthly Summary"}</div>
+              <div style=${{fontSize:11,color:C.muted,marginBottom:14}}>${repPeriod==="daily"?`${fmtDate(repSelectedDate)}`:`${repData[0]?.label}`}</div>
+              <div style=${{display:"flex",justifyContent:"space-between",gap:10,marginBottom:10}}>
+                <div style=${{background:C.bg,borderRadius:10,padding:10,flex:1,textAlign:"center"}}><div style=${{fontSize:11,color:C.muted}}>Calories</div><div style=${{fontSize:18,fontWeight:700,color:C.accent}}>${Math.round(repData[0].totals.calories)} kcal</div></div>
+                <div style=${{background:C.bg,borderRadius:10,padding:10,flex:1,textAlign:"center"}}><div style=${{fontSize:11,color:C.muted}}>Protein</div><div style=${{fontSize:18,fontWeight:700,color:C.blue}}>${Math.round(repData[0].totals.protein)} g</div></div>
+                <div style=${{background:C.bg,borderRadius:10,padding:10,flex:1,textAlign:"center"}}><div style=${{fontSize:11,color:C.muted}}>Fat</div><div style=${{fontSize:18,fontWeight:700,color:C.accentDim}}>${Math.round(repData[0].totals.fat)} g</div></div>
+                <div style=${{background:C.bg,borderRadius:10,padding:10,flex:1,textAlign:"center"}}><div style=${{fontSize:11,color:C.muted}}>Fiber</div><div style=${{fontSize:18,fontWeight:700,color:C.green}}>${Math.round(repData[0].totals.fiber)} g</div></div>
               </div>
-              <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
-                <div style=${{fontSize:13,fontWeight:600,marginBottom:4}}>Meal Contribution</div>
-                <div style=${{fontSize:11,color:C.muted,marginBottom:14}}>${repPeriod==="daily"?"Today's meals":repPeriod==="weekly"?"This week's meals":"This month's meals"} vs ${repPeriod==="daily"?"daily":repPeriod==="weekly"?"weekly":"monthly"} goal</div>
-                ${mealTotals.length===0?html`<div style=${{color:C.muted,fontSize:12}}>No meal data.</div>`:mealTotals.map(({meal,totals:mt})=>html`<div key=${meal} style=${{marginBottom:16}}>
+              <button onClick=${()=>{
+                const allItems=[];
+                if(repPeriod==="daily"){
+                  (entries[repSelectedDate]||[]).forEach(e=>allItems.push(e));
+                } else {
+                  repData[0].dates.forEach(d=>{
+                    (entries[d]||[]).forEach(e=>allItems.push(e));
+                  });
+                }
+                setNutrientBreakdownModal({period:repPeriod, nutrientKey:"All", items:allItems.map(e=>({food:e.food, quantity:e.quantity, meal:e.meal, value:e.calories, percent:0})), total:allItems.reduce((s,i)=>s+i.calories,0)});
+                setNutrientBreakdownModal({period:repPeriod, nutrientKey:"All", items:allItems.map(e=>({food:e.food, quantity:e.quantity, meal:e.meal, value:e.calories, percent:Math.round((e.calories/allItems.reduce((s,i)=>s+i.calories,0))*100)})), total:allItems.reduce((s,i)=>s+i.calories,0)});
+              }} style=${{width:"100%",padding:"8px",background:"none",border:`1px solid ${C.accent}`,borderRadius:8,color:C.accent,fontSize:12,cursor:"pointer",marginTop:5}}>Tap for full breakdown</button>
+            </div>
+            <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
+              <div style=${{fontSize:13,fontWeight:600,marginBottom:2}}>Achievement vs Goal</div>
+              <div style=${{fontSize:11,color:C.muted,marginBottom:14}}>${repPeriod==="daily"?"Today's intake":repPeriod==="weekly"?"This week total":"This month total"} vs goal</div>
+              ${ALL_FIELDS.map(({key,label,unit:u,color})=>{
+                const g=repPeriod==="daily"?goals[key]:(repPeriod==="weekly"?goals[key]*7:goals[key]*new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate());
+                if(!g)return null;
+                const val=repData[0].totals[key]||0,pct=Math.min(Math.round((val/g)*100),200),over=val>g;
+                const barColor=over?C.red:pct>=90?C.green:pct>=60?C.accent:C.muted;
+                const diff=val-g;
+                return html`<div key=${key} style=${{marginBottom:12}} onClick=${()=>{
+                  const periodData=repData[0];
+                  const breakdown=getNutrientBreakdown(periodData, key);
+                  setNutrientBreakdownModal({period:repPeriod, nutrientKey:key, items:breakdown.items, total:breakdown.total});
+                }} style=${{cursor:"pointer"}}>
+                  <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                    <span style=${{fontSize:11,color:C.text}}>${label}</span>
+                    <div style=${{display:"flex",alignItems:"center",gap:6}}>
+                      <span style=${{fontSize:10,color:C.muted,fontFamily:"monospace"}}>${val<1?val.toFixed(1):Math.round(val)}/${Math.round(g)}${u}</span>
+                      <span style=${{fontSize:10,fontFamily:"monospace",fontWeight:700,color:over?C.red:pct>=90?C.green:C.accent,background:over?"rgba(224,82,82,0.12)":pct>=90?"rgba(82,196,122,0.12)":"rgba(232,197,71,0.12)",padding:"1px 6px",borderRadius:5}}>${pct}%</span>
+                      <span style=${{fontSize:9,color:over?C.red:C.green,fontFamily:"monospace"}}>${diff>0?"+":""}${diff<1&&diff>-1?diff.toFixed(1):Math.round(diff)}${u}</span>
+                    </div>
+                  </div>
+                  <div style=${{height:5,background:C.border,borderRadius:3,overflow:"hidden"}}>
+                    <div style=${{height:"100%",width:`${Math.min(pct,100)}%`,background:barColor,borderRadius:3,transition:"width 0.4s ease"}}/>
+                  </div>
+                </div>`;
+              })}
+            </div>
+            <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
+              <div style=${{fontSize:13,fontWeight:600,marginBottom:4}}>Meal Contribution</div>
+              <div style=${{fontSize:11,color:C.muted,marginBottom:14}}>${repPeriod==="daily"?"Today's meals":repPeriod==="weekly"?"This week's meals":"This month's meals"} vs goal</div>
+              ${(()=>{
+                const mealTotals=MEAL_TYPES.map(m=>{
+                  if(repPeriod==="daily"){
+                    return{meal:m,totals:sumE((entries[repSelectedDate]||[]).filter(e=>e.meal===m))};
+                  } else {
+                    const allEntries=[];
+                    repData[0].dates.forEach(d=>{
+                      (entries[d]||[]).forEach(e=>allEntries.push(e));
+                    });
+                    return{meal:m,totals:sumE(allEntries.filter(e=>e.meal===m))};
+                  }
+                }).filter(m=>m.totals.calories>0);
+                if(!mealTotals.length)return html`<div style=${{color:C.muted,fontSize:12}}>No meal data.</div>`;
+                return mealTotals.map(({meal,totals:mt})=>html`<div key=${meal} style=${{marginBottom:16}} onClick=${()=>{
+                  const allItems=[];
+                  if(repPeriod==="daily"){
+                    (entries[repSelectedDate]||[]).filter(e=>e.meal===meal).forEach(e=>allItems.push(e));
+                  } else {
+                    repData[0].dates.forEach(d=>{
+                      (entries[d]||[]).filter(e=>e.meal===meal).forEach(e=>allItems.push(e));
+                    });
+                  }
+                  const totalCals=allItems.reduce((s,i)=>s+i.calories,0);
+                  setNutrientBreakdownModal({period:repPeriod, nutrientKey:`${meal}`, items:allItems.map(e=>({food:e.food, quantity:e.quantity, meal:e.meal, value:e.calories, percent:Math.round((e.calories/totalCals)*100)})), total:totalCals});
+                }} style=${{cursor:"pointer"}}>
                   <div style=${{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
                     <span>${MEAL_ICONS[meal]}</span><span style=${{fontSize:12,fontWeight:600}}>${meal}</span>
-                    <span style=${{fontSize:11,color:C.accent,fontFamily:"monospace",marginLeft:"auto"}}>${Math.round(mt.calories)} kcal (${Math.round((mt.calories/pGoals.calories)*100)}%)</span>
+                    <span style=${{fontSize:11,color:C.accent,fontFamily:"monospace",marginLeft:"auto"}}>${Math.round(mt.calories)} kcal (${Math.round((mt.calories/(repPeriod==="daily"?goals.calories:(repPeriod==="weekly"?goals.calories*7:goals.calories*new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate())))*100)}%)</span>
                   </div>
                   <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-                    ${[{key:"protein",label:"Protein",color:C.blue},{key:"carbs",label:"Carbs",color:C.orange},{key:"fat",label:"Fat",color:C.accentDim},{key:"fiber",label:"Fiber",color:C.green},{key:"sodium",label:"Sodium",color:C.purple},{key:"calcium",label:"Calcium",color:C.purple}].map(({key,label,color})=>{
-                      const pct=pGoals[key]?Math.round((mt[key]/pGoals[key])*100):0;
-                      const fld=ALL_FIELDS.find(f=>f.key===key);
+                    ${[{key:"protein",label:"Protein",color:C.blue},{key:"carbs",label:"Carbs",color:C.orange},{key:"fat",label:"Fat",color:C.accentDim},{key:"fiber",label:"Fiber",color:C.green},{key:"sugar",label:"Sugar",color:"#e07ab0"},{key:"sodium",label:"Sodium",color:C.purple}].map(({key,label,color})=>{
+                      const pct=Math.round((mt[key]/(repPeriod==="daily"?goals[key]:(repPeriod==="weekly"?goals[key]*7:goals[key]*new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate())))*100);
                       return html`<div key=${key} style=${{background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 9px"}}>
                         <div style=${{fontSize:9,color:C.muted,marginBottom:2}}>${label}</div>
                         <div style=${{fontSize:12,fontWeight:700,fontFamily:"monospace",color}}>${pct}%</div>
-                        <div style=${{fontSize:9,color:C.muted}}>${mt[key]<1?mt[key].toFixed(1):Math.round(mt[key])}${fld?.unit||"g"}</div>
+                        <div style=${{fontSize:9,color:C.muted}}>${mt[key]<1?mt[key].toFixed(1):Math.round(mt[key])}${key==="sugar"?"g":key==="sodium"?"mg":"g"}</div>
                       </div>`;
                     })}
                   </div>
-                </div>`)}
+                </div>`;
+              })()}
+            </div>
+            ${repPeriod!=="daily"&&html`
+              <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
+                <div style=${{fontSize:13,fontWeight:600,marginBottom:4}}>${repPeriod==="weekly"?"Current Week's Average":"Current Month's Average"}</div>
+                <div style=${{display:"flex",justifyContent:"space-between",gap:10,marginBottom:10}}>
+                  <div style=${{background:C.bg,borderRadius:10,padding:10,flex:1,textAlign:"center"}}><div style=${{fontSize:11,color:C.muted}}>Avg Calories</div><div style=${{fontSize:18,fontWeight:700,color:C.accent}}>${Math.round(repData[0].totals.calories)} kcal</div></div>
+                  <div style=${{background:C.bg,borderRadius:10,padding:10,flex:1,textAlign:"center"}}><div style=${{fontSize:11,color:C.muted}}>Avg Protein</div><div style=${{fontSize:18,fontWeight:700,color:C.blue}}>${Math.round(repData[0].totals.protein)} g</div></div>
+                  <div style=${{background:C.bg,borderRadius:10,padding:10,flex:1,textAlign:"center"}}><div style=${{fontSize:11,color:C.muted}}>Avg Fat</div><div style=${{fontSize:18,fontWeight:700,color:C.accentDim}}>${Math.round(repData[0].totals.fat)} g</div></div>
+                  <div style=${{background:C.bg,borderRadius:10,padding:10,flex:1,textAlign:"center"}}><div style=${{fontSize:11,color:C.muted}}>Avg Fiber</div><div style=${{fontSize:18,fontWeight:700,color:C.green}}>${Math.round(repData[0].totals.fiber)} g</div></div>
+                </div>
+                <button onClick=${()=>{
+                  const allAverages=repData[0].totals;
+                  setNutrientBreakdownModal({period:repPeriod, nutrientKey:"Average", items:Object.keys(allAverages).map(k=>({food:k, quantity:"", meal:"", value:allAverages[k], percent:0})), total:0});
+                }} style=${{width:"100%",padding:"8px",background:"none",border:`1px solid ${C.accent}`,borderRadius:8,color:C.accent,fontSize:12,cursor:"pointer",marginTop:5}}>Tap for full average breakdown</button>
               </div>
-            </div>`;
-          })()}
+            `}
+          `}
         </div>`}
 <div style=${{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:C.bg,borderTop:`1px solid ${C.border}`,display:"flex",zIndex:20,paddingBottom:"env(safe-area-inset-bottom,0)"}}>
         ${TABS.map(({id,icon,label})=>html`<button key=${id} onClick=${()=>{setTab(id);setView("main");}} style=${{flex:1,padding:"11px 0 13px",background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
