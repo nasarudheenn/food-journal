@@ -283,6 +283,28 @@ function ReportDetailModal({data,onClose}){
   </div>`;
 }
 
+function NutritionSummaryModal({data,onClose}){
+  if(!data)return null;
+  const fmtVal=v=>v<1&&v>0?v.toFixed(1):Math.round(v);
+  return html`<div className="mov" onClick=${onClose}>
+    <div className="mbx" onClick=${e=>e.stopPropagation()} style=${{borderRadius:20,paddingBottom:18}}>
+      <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div>
+          <div style=${{fontSize:15,fontWeight:700}}>${data.title}</div>
+          <div style=${{fontSize:11,color:C.muted,marginTop:2}}>${data.subtitle}</div>
+        </div>
+        <button onClick=${onClose} style=${{background:"none",border:"none",color:C.muted,fontSize:22,cursor:"pointer"}}>✕</button>
+      </div>
+      <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        ${ALL_FIELDS.map(f=>html`<div key=${f.key} style=${{background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px"}}>
+          <div style=${{fontSize:10,color:C.muted,marginBottom:2}}>${f.label}</div>
+          <div style=${{fontSize:13,fontFamily:"monospace",fontWeight:700,color:C.text}}>${fmtVal(data.totals[f.key]||0)}${f.unit}</div>
+        </div>`)}
+      </div>
+    </div>
+  </div>`;
+}
+
 function SuggestDropdown({suggestions,loading,onSelect}){
   if(!loading&&!suggestions.length)return null;
   return html`<div style=${{position:"absolute",width:"100%",background:C.card,border:`1px solid ${C.accent}`,borderRadius:8,marginTop:2,zIndex:50,overflow:"hidden",boxShadow:"0 4px 12px rgba(0,0,0,0.4)"}}>
@@ -436,6 +458,7 @@ function App(){
   // Reports
   const [repPeriod,setRepPeriod]=useState("daily");
   const [repDetail,setRepDetail]=useState(null);
+  const [nutriSummary,setNutriSummary]=useState(null);
 
   // Auto-backup
   useEffect(()=>{
@@ -506,7 +529,7 @@ function App(){
     return Object.entries(bm).slice(-6).map(([,v])=>{const all=v.dates.flatMap(d=>entries[d]||[]),t=sumE(all),n=v.dates.length,avg={};ALL_FIELDS.forEach(f=>avg[f.key]=t[f.key]/n);return{label:v.label,totals:avg};});
   })();
 
-  const pageTitle=view==="recipe-new"?(editRecId?"Edit Recipe":"New Recipe"):view==="recipe-use"?"Use Recipe":view==="add"?"Log Food":view==="history"?"History":tab==="diary"?fmtMonth(selDate):tab==="profile"?"My Profile":tab==="recipes"?"Recipe Book":"Reports";
+  const pageTitle=view==="recipe-new"?(editRecId?"Edit Recipe":"New Recipe"):view==="recipe-use"?"Use Recipe":view==="add"?"Log Food":view==="history"?"History":view==="reports-history"?"Report History":tab==="diary"?fmtMonth(selDate):tab==="profile"?"My Profile":tab==="recipes"?"Recipe Book":"Reports";
 
   // ── Diary helpers ──
   function addEntry(){
@@ -683,6 +706,9 @@ function App(){
       rows:rowsWithPct
     });
   };
+  const openNutritionSummary=(title,subtitle,totals)=>{
+    setNutriSummary({title,subtitle,totals});
+  };
 
   // ── RENDER ────────────────────────────────────────────────────────────────
   const UNITS=["g","ml","piece","tsp","tbsp","cup","serving"];
@@ -692,6 +718,7 @@ function App(){
       ${nutModal&&html`<${NutModal} item=${nutModal} onClose=${()=>setNutModal(null)}/>`}
       ${confirmModal&&html`<${ConfirmModal} title=${confirmModal.title} confirmText=${confirmModal.confirmText} msg=${confirmModal.msg} onConfirm=${()=>{confirmModal.onConfirm();setConfirmModal(null);}} onCancel=${()=>setConfirmModal(null)}/>`}
       ${repDetail&&html`<${ReportDetailModal} data=${repDetail} onClose=${()=>setRepDetail(null)}/>`}
+      ${nutriSummary&&html`<${NutritionSummaryModal} data=${nutriSummary} onClose=${()=>setNutriSummary(null)}/>`}
       <${IngredientModal} show=${ingModal} editData=${ingEditData} onSave=${saveIng} onClose=${()=>setIngModal(false)} apiKey=${apiKey}/>
       ${backupMsg&&tab!=="profile"&&html`<div style=${{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:200,background:backupMsg.startsWith("✓")?"rgba(82,196,122,0.95)":"rgba(224,82,82,0.95)",color:"#fff",borderRadius:20,padding:"10px 20px",fontSize:12,fontWeight:600,boxShadow:"0 4px 16px rgba(0,0,0,0.3)",whiteSpace:"nowrap"}}>${backupMsg}</div>`}
 <div style=${{padding:"max(env(safe-area-inset-top),18px) 18px 10px",borderBottom:`1px solid ${C.border}`,position:"sticky",top:0,background:C.bg,zIndex:10}}>
@@ -703,6 +730,7 @@ function App(){
           <div style=${{display:"flex",gap:6}}>
             ${view!=="main"&&html`<button onClick=${()=>{setView("main");setQuickRecipe(null);}} style=${{background:"none",border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:13}}>← Back</button>`}
             ${tab==="diary"&&view==="main"&&html`<button onClick=${()=>setView("history")} style=${{background:"none",border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:13}}>📅</button>`}
+            ${tab==="reports"&&view==="main"&&html`<button onClick=${()=>setView("reports-history")} style=${{background:"none",border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:13}}>📅</button>`}
           </div>
         </div>
         ${tab==="diary"&&view==="main"&&html`
@@ -1149,7 +1177,7 @@ ${tab==="reports"&&view==="main"&&html`
             const mult=repPeriod==="weekly"?7:repPeriod==="monthly"?daysInMonth:1;
             const pGoals=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,(goals[f.key]||0)*mult]));
             const totals=(()=>{
-              if(repPeriod==="daily"){const t=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,0]));repData.forEach(d=>ALL_FIELDS.forEach(f=>{t[f.key]+=(d.totals[f.key]||0);}));ALL_FIELDS.forEach(f=>{t[f.key]=t[f.key]/(repData.length||1);});return t;}
+              if(repPeriod==="daily"){return sumE(entries[todayStr()]||[]);}
               const cutDate=new Date();cutDate.setDate(cutDate.getDate()-(repPeriod==="weekly"?7:daysInMonth));
               const cutStr=cutDate.toISOString().split("T")[0];
               const inRange=Object.keys(entries).filter(d=>d>=cutStr);
@@ -1162,7 +1190,16 @@ ${tab==="reports"&&view==="main"&&html`
               const inRange=Object.keys(entries).filter(d=>d>=cutStr);
               return{meal:m,totals:sumE(inRange.flatMap(d=>(entries[d]||[]).filter(e=>e.meal===m)))};
             }).filter(m=>m.totals.calories>0);
+            const avgTotals=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,(totals[f.key]||0)/mult]));
             return html`<div>
+              ${repPeriod!=="daily"&&html`<div onClick=${()=>openNutritionSummary(repPeriod==="weekly"?"Weekly Average Nutrition":"Monthly Average Nutrition",repPeriod==="weekly"?"Current week daily averages":"Current month daily averages",avgTotals)} style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14,cursor:"pointer"}}>
+                <div style=${{fontSize:11,color:C.muted,marginBottom:4,letterSpacing:"0.06em",textTransform:"uppercase"}}>${repPeriod==="weekly"?"Current Week":"Current Month"} Average</div>
+                <div style=${{display:"flex",alignItems:"baseline",gap:8}}>
+                  <span style=${{fontSize:24,fontWeight:700,fontFamily:"monospace",color:C.accent}}>${Math.round(avgTotals.calories||0)}</span>
+                  <span style=${{fontSize:12,color:C.muted}}>kcal / day</span>
+                </div>
+                <div style=${{fontSize:10,color:C.muted,marginTop:4}}>Tap to view all nutrient averages</div>
+              </div>`}
               <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
                 <div style=${{fontSize:13,fontWeight:600,marginBottom:2}}>Achievement vs Goal</div>
                 <div style=${{fontSize:11,color:C.muted,marginBottom:14}}>${repPeriod==="daily"?"Today's intake":repPeriod==="weekly"?"This week total":"This month total"} vs ${repPeriod==="daily"?"daily":repPeriod==="weekly"?`weekly (×7)`:`monthly (×${daysInMonth})`} goal</div>
@@ -1208,6 +1245,50 @@ ${tab==="reports"&&view==="main"&&html`
                 </div>`)}
               </div>
             </div>`;
+          })()}
+        </div>`}
+${tab==="reports"&&view==="reports-history"&&html`
+        <div style=${{padding:"16px 18px"}}>
+          <div style=${{display:"flex",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:3,marginBottom:14,gap:3}}>
+            ${[{label:"Daily",val:"daily"},{label:"Weekly",val:"weekly"},{label:"Monthly",val:"monthly"}].map(({label,val})=>html`
+              <button key=${val} onClick=${()=>setRepPeriod(val)} style=${{flex:1,padding:"9px",borderRadius:7,border:"none",cursor:"pointer",background:repPeriod===val?C.accent:"none",color:repPeriod===val?C.bg:C.muted,fontSize:13,fontFamily:"inherit",fontWeight:repPeriod===val?700:400}}>${label}</button>`)}
+          </div>
+          ${(()=>{
+            const sortedDates=Object.keys(entries).sort((a,b)=>b.localeCompare(a));
+            if(repPeriod==="daily"){
+              return sortedDates.length===0?html`<div style=${{textAlign:"center",padding:"40px",color:C.muted}}>No report history yet.</div>`:
+                sortedDates.map(d=>{
+                  const t=sumE(entries[d]||[]);
+                  return html`<button key=${d} onClick=${()=>openNutritionSummary(`Daily Summary · ${fmtDate(d)}`,"Total nutrition for the day",t)} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <div>
+                      <div style=${{fontSize:13,fontWeight:600}}>${fmtDate(d)}</div>
+                      <div style=${{fontSize:11,color:C.muted,marginTop:2}}>P:${Math.round(t.protein)}g F:${Math.round(t.fat)}g Fi:${Math.round(t.fiber)}g</div>
+                    </div>
+                    <div style=${{textAlign:"right"}}>
+                      <div style=${{fontSize:15,fontWeight:700,fontFamily:"monospace",color:C.accent}}>${Math.round(t.calories)}</div>
+                      <div style=${{fontSize:9,color:C.muted}}>kcal</div>
+                    </div>
+                  </button>`;
+                });
+            }
+            if(repPeriod==="weekly"){
+              const buckets={};
+              sortedDates.forEach(d=>{const dt=new Date(d+"T00:00:00");const dow=dt.getDay();const mon=new Date(dt);mon.setDate(dt.getDate()-(dow===0?6:dow-1));const sun=new Date(mon);sun.setDate(mon.getDate()+6);const key=mon.toISOString().split("T")[0];if(!buckets[key])buckets[key]={start:mon,end:sun,dates:[]};buckets[key].dates.push(d);});
+              const weeks=Object.values(buckets).sort((a,b)=>b.start-a.start);
+              return weeks.length===0?html`<div style=${{textAlign:"center",padding:"40px",color:C.muted}}>No report history yet.</div>`:
+                weeks.map((w,i)=>{const t=sumE(w.dates.flatMap(d=>entries[d]||[]));const lbl=`${w.start.getDate()}-${w.end.getDate()}`;return html`<button key=${i} onClick=${()=>openNutritionSummary(`Weekly Summary · ${lbl}`,"Consolidated weekly nutrition",t)} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div><div style=${{fontSize:13,fontWeight:600}}>Week ${lbl}</div><div style=${{fontSize:11,color:C.muted,marginTop:2}}>P:${Math.round(t.protein)}g F:${Math.round(t.fat)}g Fi:${Math.round(t.fiber)}g</div></div>
+                  <div style=${{textAlign:"right"}}><div style=${{fontSize:15,fontWeight:700,fontFamily:"monospace",color:C.accent}}>${Math.round(t.calories)}</div><div style=${{fontSize:9,color:C.muted}}>kcal</div></div>
+                </button>`;});
+            }
+            const months={};
+            sortedDates.forEach(d=>{const mo=d.slice(0,7);if(!months[mo])months[mo]=[];months[mo].push(d);});
+            const monthKeys=Object.keys(months).sort((a,b)=>b.localeCompare(a));
+            return monthKeys.length===0?html`<div style=${{textAlign:"center",padding:"40px",color:C.muted}}>No report history yet.</div>`:
+              monthKeys.map(mo=>{const t=sumE(months[mo].flatMap(d=>entries[d]||[]));const lbl=new Date(mo+"-01T00:00:00").toLocaleDateString("en-US",{month:"long",year:"numeric"});return html`<button key=${mo} onClick=${()=>openNutritionSummary(`Monthly Summary · ${lbl}`,"Consolidated monthly nutrition",t)} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div><div style=${{fontSize:13,fontWeight:600}}>${lbl}</div><div style=${{fontSize:11,color:C.muted,marginTop:2}}>P:${Math.round(t.protein)}g F:${Math.round(t.fat)}g Fi:${Math.round(t.fiber)}g</div></div>
+                <div style=${{textAlign:"right"}}><div style=${{fontSize:15,fontWeight:700,fontFamily:"monospace",color:C.accent}}>${Math.round(t.calories)}</div><div style=${{fontSize:9,color:C.muted}}>kcal</div></div>
+              </button>`;});
           })()}
         </div>`}
 <div style=${{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:C.bg,borderTop:`1px solid ${C.border}`,display:"flex",zIndex:20,paddingBottom:"env(safe-area-inset-bottom,0)"}}>
