@@ -717,6 +717,10 @@ ${tab==="diary"&&view==="add"&&html`
             ${[{label:"📚 Recipe",v:"recipe"},{label:"✏️ Manual",v:"manual"},{label:"📋 Claude",v:"paste"}].map(({label,v})=>html`
               <button key=${v} onClick=${()=>{setLogMode(v);setAiMsg("");setImpStatus("");setQuickRecipe(null);}} style=${{flex:1,padding:"9px 4px",borderRadius:7,border:"none",cursor:"pointer",background:logMode===v?C.accent:"none",color:logMode===v?C.bg:C.muted,fontSize:11,fontFamily:"inherit",fontWeight:logMode===v?700:400,whiteSpace:"nowrap"}}>${label}</button>`)}
           </div>
+          ${logMode==="recipe"&&html`<div style=${{position:"relative",marginBottom:10}}>
+            <input value=${logRecipeSearch} onInput=${e=>setLogRecipeSearch(e.target.value)} placeholder="🔍 Search recipes…" style=${IS}/>
+            ${logRecipeSearch&&html`<button onClick=${()=>setLogRecipeSearch("")} style=${{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:C.muted,fontSize:16,cursor:"pointer",fontFamily:"inherit"}}>✕</button>`}
+          </div>`}
           <div style=${{marginBottom:14}}>
             <${Lbl}>Meal<//>
             <div style=${{display:"flex",flexWrap:"wrap",gap:7}}>
@@ -727,10 +731,6 @@ ${tab==="diary"&&view==="add"&&html`
           ${logMode==="recipe"&&html`<div>
             ${recipeBook.length===0?html`<div style=${{textAlign:"center",padding:"40px",color:C.muted,lineHeight:1.8}}><div style=${{fontSize:36,marginBottom:10}}>📚</div>No saved recipes.<br/><span style=${{color:C.accent,cursor:"pointer"}} onClick=${()=>{setTab("recipes");setView("main");}}>Create one in Recipes tab</span></div>`:
             !quickRecipe?html`<div>
-              <div style=${{position:"relative",marginBottom:10}}>
-                <input value=${logRecipeSearch} onInput=${e=>setLogRecipeSearch(e.target.value)} placeholder="🔍 Search recipes…" style=${IS}/>
-                ${logRecipeSearch&&html`<button onClick=${()=>setLogRecipeSearch("")} style=${{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:C.muted,fontSize:16,cursor:"pointer",fontFamily:"inherit"}}>✕</button>`}
-              </div>
               <${Lbl}>Select a Recipe<//>
               ${(()=>{
                 const mealFiltered=recipeBook.filter(r=>!r.mealTags||!r.mealTags.length||r.mealTags.includes(addMeal));
