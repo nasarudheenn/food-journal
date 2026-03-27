@@ -49,7 +49,7 @@ const store={
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const DEFAULT_PROFILE={name:"Nasarudheen N",currentWeight:"81",targetWeight:"70",height:"175",calorieGoal:1800,protein:130,carbs:180,fat:55,fiber:25,sugar:50,saturatedFat:20,polyFat:10,monoFat:15,cholesterol:300,sodium:2300,potassium:3500,calcium:1000,iron:18,vitC:90,vitD:20,vitB12:2.4,zinc:11};
-const C={bg:"#0f0e0c",card:"#222021",border:"#3a3835",accent:"#e8c547",accentDim:"#b89c2f",text:"#f0ece0",muted:"#7a7060",red:"#e05252",green:"#52c47a",blue:"#5299e0",orange:"#e08a52",purple:"#a07ee0"};
+const C={bg:"#0f0e0c",card:"#1a1917",border:"#3a3835",accent:"#e8c547",accentDim:"#b89c2f",text:"#f0ece0",muted:"#7a7060",red:"#e05252",green:"#52c47a",blue:"#5299e0",orange:"#e08a52",purple:"#a07ee0"};
 const MEAL_TYPES=["Breakfast","Mid-Morning","Lunch","Evening","Dinner"];
 const MEAL_ICONS={Breakfast:"☀️","Mid-Morning":"🫐",Lunch:"🥗",Evening:"🍎",Dinner:"🌙"};
 const MACRO_FIELDS=[
@@ -85,11 +85,11 @@ const sumE=list=>{const o=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,0]));list.
 const n2s=v=>v===undefined||v===null||v===""?"0":String(Math.round(Number(v)*10)/10);
 function getMealByTime(){
   const h=new Date().getHours(),m=new Date().getMinutes(),t=h*60+m;
-  if(t<660)return"Breakfast";       // before 11:00
-  if(t<720)return"Mid-Morning";     // 11:00-11:59
-  if(t<900)return"Lunch";           // 12:00-14:59
-  if(t<1020)return"Evening";        // 15:00-16:59
-  return"Dinner";                    // 17:00+
+  if(t<660)return"Breakfast";
+  if(t<720)return"Mid-Morning";
+  if(t<900)return"Lunch";
+  if(t<1020)return"Evening";
+  return"Dinner";
 }
 function getMealByTimeFromTags(tags){
   if(!tags||!tags.length)return getMealByTime();
@@ -97,15 +97,15 @@ function getMealByTimeFromTags(tags){
   return tags.includes(current)?current:tags[0];
 }
 
-// ── AI helpers ────────────────────────────────────────────────────────────────
+// ── AI helpers (with model update & better error handling) ────────────────────
 async function callAI(messages,maxTokens=600){
   const key=localStorage.getItem(SK.apiKey)||"";
-  if(!key){throw new Error("No API key");}
+  if(!key){throw new Error("No API key. Please add your Anthropic key in Profile.");}
   const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
     headers:{"Content-Type":"application/json","x-api-key":key.trim(),"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-    body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:maxTokens,messages})});
+    body:JSON.stringify({model:"claude-3-5-haiku-latest",max_tokens:maxTokens,messages})});
   const d=await res.json();
-  if(d.error)throw new Error(d.error.message);
+  if(d.error)throw new Error(d.error.message || "API error");
   return d.content?.map(b=>b.text||"").join("")||"";
 }
 async function aiNutrition(name,qty,unit){
@@ -389,21 +389,23 @@ function App(){
   // Reports
   const [repPeriod,setRepPeriod]=useState("daily");
 
-  // Auto-backup
+  // Auto-backup with confirmation
   useEffect(()=>{
     if(!autoBackup)return;
     const lb=localStorage.getItem(SK.lastBackup)||"";
     const today=todayStr();
     if(lb===today)return;
     const t=setTimeout(()=>{
-      try{
-        const data={version:1,exportedAt:new Date().toISOString(),entries:store.get(SK.entries)||{},profile:store.get(SK.profile)||{},weights:store.get(SK.weights)||[],recipeBook:store.get(SK.recipes)||[]};
-        const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement("a");a.href=url;a.download=`food-journal-backup-${today}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-        localStorage.setItem(SK.lastBackup,today);
-        setBackupMsg("✓ Auto-backup saved!");setTimeout(()=>setBackupMsg(""),4000);
-      }catch(e){console.error(e);}
+      if(window.confirm("Auto-backup will download today's data. Continue?")){
+        try{
+          const data={version:1,exportedAt:new Date().toISOString(),entries:store.get(SK.entries)||{},profile:store.get(SK.profile)||{},weights:store.get(SK.weights)||[],recipeBook:store.get(SK.recipes)||[]};
+          const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+          const url=URL.createObjectURL(blob);
+          const a=document.createElement("a");a.href=url;a.download=`food-journal-backup-${today}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+          localStorage.setItem(SK.lastBackup,today);
+          setBackupMsg("✓ Auto-backup saved!");setTimeout(()=>setBackupMsg(""),4000);
+        }catch(e){console.error(e);}
+      }
     },3000);
     return()=>clearTimeout(t);
   },[autoBackup]);
@@ -491,7 +493,7 @@ function App(){
     setImpLoading(false);
   }
 
-  // ── Recipe helpers ──
+  // ── Recipe helpers (with duplicate) ──
   function saveRecipe(){
     if(!recName.trim()||!recItems.length)return;
     const rec={id:editRecId||`rb_${Date.now()}`,name:recName.trim(),items:recItems,mealTags:recTags};
@@ -499,6 +501,11 @@ function App(){
     setRecName("");setRecItems([]);setRecTags([]);setEditRecId(null);
     setRecImportMode(false);setRecImportTxt("");setRecParsed([]);setRecImpStatus("");
     setView("main");
+  }
+  function duplicateRecipe(rec){
+    const newRec={...rec,id:`rb_${Date.now()}`,name:`${rec.name} (Copy)`};
+    pRB([...recipeBook,newRec]);
+    setBackupMsg(`✓ Duplicated "${rec.name}"`);setTimeout(()=>setBackupMsg(""),3000);
   }
   function startUse(r){setUseRec(r);setUseQtys(Object.fromEntries(r.items.map(x=>[x._id??x.food,x.quantity])));setUseMeal(getMealByTimeFromTags(r.mealTags));setView("recipe-use");}
   function logRecipe(){
@@ -522,7 +529,7 @@ function App(){
   async function doRecipeParse(){
     if(!recImportTxt.trim())return;
     setRecImpLoading(true);setRecImpStatus("Parsing…");setRecParsed([]);
-    try{const arr=await aiParse(recImportTxt);if(!arr.length)throw 0;setRecParsed(arr.map((x,i)=>({...x,selected:true,_id:Date.now()+i})));setRecImpStatus(`✓ Found ${arr.length} ingredients`);}
+    try{const arr=await aiParse(recImportTxt);if(!arr.length)throw 0;setRecParsed(arr.map((x,i)=>({...x,selected:true,_id:Date.now()+i,unit:x.unit||"g"})));setRecImpStatus(`✓ Found ${arr.length} ingredients`);}
     catch{setRecImpStatus("⚠ Couldn't parse.");}
     setRecImpLoading(false);
   }
@@ -542,7 +549,7 @@ function App(){
     setIngModal(false);
   }
 
-  // ── Profile helpers ──
+  // ── Profile helpers (with clear all data) ──
   function logWeight(){
     if(!newWt)return;
     const e={date:todayStr(),weight:parseFloat(newWt)};
@@ -574,6 +581,12 @@ function App(){
       }catch{setBackupMsg("⚠ Invalid backup file.");setTimeout(()=>setBackupMsg(""),3000);}
     };
     reader.readAsText(file);e.target.value="";
+  }
+  function clearAllData(){
+    if(window.confirm("⚠️ WARNING: This will delete ALL entries, recipes, profile data, and settings. This cannot be undone. Continue?")){
+      localStorage.clear();
+      window.location.reload();
+    }
   }
 
   // ── Food name suggestions ──
@@ -767,12 +780,14 @@ ${tab==="diary"&&view==="add"&&html`
               </div>
             </div>
             <${Btn} onClick=${async()=>{
+              if(!apiKey){setAiMsg("⚠️ No API key. Please add in Profile first.");return;}
               if(!foodName.trim()||!qty){setAiMsg("⚠ Enter food name and amount.");return;}
               setAiLoading(true);setAiMsg("⏳ Looking up…");
               try{const r=await aiNutrition(foodName,qty,unit);setNut(r);setAiMsg("✓ Filled!");}
               catch(e){setAiMsg("⚠ "+e.message);}
               setAiLoading(false);
-            }} disabled=${aiLoading||!foodName.trim()||!qty} color=${`linear-gradient(135deg,${C.accent},${C.accentDim})`} style=${{marginBottom:8}}>${aiLoading?"⏳ Looking up…":"✨ Auto-fill Nutrition with AI"}<//>
+            }} disabled=${aiLoading||!foodName.trim()||!qty||!apiKey} color=${`linear-gradient(135deg,${C.accent},${C.accentDim})`} style=${{marginBottom:8}}>${aiLoading?"⏳ Looking up…":"✨ Auto-fill Nutrition with AI"}<//>
+            ${!apiKey&&html`<div style=${{fontSize:11,color:C.red,marginBottom:10,textAlign:"center"}}>🔑 API key missing – AI fill disabled. Add in Profile.</div>`}
             ${aiMsg&&html`<div style=${{fontSize:11,color:aiMsg.startsWith("✓")?C.green:C.muted,marginBottom:10,textAlign:"center"}}>${aiMsg}</div>`}
             <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:14,marginBottom:14}}>
               <div style=${{fontSize:10,color:C.accent,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10}}>Macronutrients</div>
@@ -872,7 +887,7 @@ ${tab==="profile"&&view==="main"&&html`
             <div style=${{display:"flex",alignItems:"center",justifyContent:"space-between",background:C.bg,border:`1px solid ${autoBackup?C.green:C.border}`,borderRadius:10,padding:"12px 14px",marginBottom:12}}>
               <div>
                 <div style=${{fontSize:13,fontWeight:600,color:autoBackup?C.green:C.text}}>🔄 Daily Auto-Backup</div>
-                <div style=${{fontSize:11,color:C.muted,marginTop:2}}>${autoBackup?"On — saves to Downloads daily":"Off — tap to enable"}</div>
+                <div style=${{fontSize:11,color:C.muted,marginTop:2}}>${autoBackup?"On — saves to Downloads daily (with confirmation)":"Off — tap to enable"}</div>
                 ${autoBackup&&localStorage.getItem(SK.lastBackup)&&html`<div style=${{fontSize:10,color:C.green,marginTop:2}}>Last: ${localStorage.getItem(SK.lastBackup)}</div>`}
               </div>
               <button onClick=${()=>{const v=!autoBackup;setAutoBackup(v);localStorage.setItem(SK.autoBackup,String(v));}} style=${{width:50,height:28,borderRadius:14,border:"none",cursor:"pointer",background:autoBackup?C.green:C.border,position:"relative",transition:"background 0.2s",flexShrink:0}}>
@@ -880,10 +895,11 @@ ${tab==="profile"&&view==="main"&&html`
               </button>
             </div>
             ${backupMsg&&html`<div style=${{fontSize:12,color:backupMsg.startsWith("✓")?C.green:C.red,marginBottom:12,padding:"10px",background:backupMsg.startsWith("✓")?"rgba(82,196,122,0.1)":"rgba(224,82,82,0.1)",borderRadius:8}}>${backupMsg}</div>`}
-            <div style=${{display:"flex",gap:10}}>
+            <div style=${{display:"flex",gap:10,marginBottom:12}}>
               <button onClick=${exportData} style=${{flex:1,padding:"12px 10px",background:`linear-gradient(135deg,${C.blue},#3a79c0)`,border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><span>⬇️</span> Export</button>
               <label style=${{flex:1,padding:"12px 10px",background:`linear-gradient(135deg,${C.orange},#b06830)`,border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><span>⬆️</span> Restore<input type="file" accept=".json" onChange=${importDataFile} style=${{display:"none"}}/></label>
             </div>
+            <button onClick=${clearAllData} style=${{width:"100%",padding:"12px",background:"none",border:`1px solid ${C.red}`,borderRadius:10,color:C.red,fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>⚠️ Clear All Data (irreversible)</button>
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
@@ -911,6 +927,7 @@ ${tab==="recipes"&&view==="main"&&html`
               </div>
               <div style=${{padding:"0 15px 14px",display:"flex",gap:8}}>
                 <button onClick=${e=>{e.stopPropagation();startUse(rec);}} style=${{flex:1,padding:"10px",background:C.green,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🍳 Use This Recipe</button>
+                <button onClick=${e=>{e.stopPropagation();duplicateRecipe(rec);}} style=${{padding:"10px 12px",background:"none",border:`1px solid ${C.blue}`,borderRadius:9,color:C.blue,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>📋 Copy</button>
                 <button onClick=${e=>{e.stopPropagation();setConfirmModal({msg:`Delete "${rec.name}"?`,onConfirm:()=>pRB(recipeBook.filter(r=>r.id!==rec.id))});}} style=${{padding:"10px 12px",background:"none",border:`1px solid ${C.red}`,borderRadius:9,color:C.red,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🗑</button>
               </div>
             </div>`;};
@@ -932,11 +949,8 @@ ${tab==="recipes"&&view==="main"&&html`
             });
             if(!withPriority.length)return html`<div style=${{textAlign:"center",padding:"30px",color:C.muted,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}><div style=${{fontSize:24,marginBottom:8}}>🔍</div>No recipes found.</div>`;
             withPriority.sort((a,b)=>{
-              // First sort by which word position matched
               if(a.priority!==b.priority)return a.priority-b.priority;
-              // 1st word match: sort by next letter after typed text
               if(a.priority===0)return a.nextLetter.localeCompare(b.nextLetter);
-              // 2nd, 3rd+ word match: sort by first word alphabetically
               return a.firstName.localeCompare(b.firstName);
             });
             return withPriority.map(({rec})=>renderRec(rec));
