@@ -820,11 +820,10 @@ ${tab==="diary"&&view==="history"&&html`
         <div style=${{padding:"14px 18px"}}>
           ${histDates.length===0?html`<div style=${{textAlign:"center",padding:"40px",color:C.muted}}>No history yet.</div>`:
             histDates.map(date=>{const dd=entries[date]||[],cal=dd.reduce((s,e)=>s+e.calories,0),prot=dd.reduce((s,e)=>s+e.protein,0),carbs=dd.reduce((s,e)=>s+e.carbs,0),fat=dd.reduce((s,e)=>s+e.fat,0),fiber=dd.reduce((s,e)=>s+e.fiber,0);return html`<button key=${date} onClick=${()=>{setSelDate(date);setView("main");}} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div><div style=${{fontSize:13,fontWeight:600}}>${fmtDate(date)}</div><div style=${{fontSize:11,color:C.muted,marginTop:2}}>${dd.length} items · P:${Math.round(prot)}g</div></div>
+              <div><div style=${{fontSize:13,fontWeight:600}}>${fmtDate(date)}</div><div style=${{fontSize:11,color:C.muted,marginTop:2}}>${dd.length} items · P:${Math.round(prot)}g C:${Math.round(carbs)}g F:${Math.round(fat)}g Fi:${Math.round(fiber)}g</div></div>
               <div style=${{textAlign:"right"}}>
                 <div style=${{fontSize:15,fontWeight:700,fontFamily:"monospace",color:cal>goals.calories?C.red:C.accent}}>${Math.round(cal)}</div>
-                <div style=${{fontSize:9,color:C.muted,marginBottom:2}}>kcal</div>
-                <div style=${{fontSize:9,color:C.muted,fontFamily:"monospace"}}>C:${Math.round(carbs)}g F:${Math.round(fat)}g Fi:${Math.round(fiber)}g</div>
+                <div style=${{fontSize:9,color:C.muted}}>kcal</div>
               </div>
             </button>`;})
           }
