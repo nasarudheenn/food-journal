@@ -1195,7 +1195,7 @@ ${tab==="reports"&&view==="main"&&html`
                     <span style=${{fontSize:11,color:C.accent,fontFamily:"monospace",marginLeft:"auto"}}>${Math.round(mt.calories)} kcal (${Math.round((mt.calories/pGoals.calories)*100)}%)</span>
                   </div>
                   <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-                    ${[{key:"protein",label:"Protein",color:C.blue},{key:"carbs",label:"Carbs",color:C.orange},{key:"fat",label:"Fat",color:C.accentDim},{key:"fiber",label:"Fiber",color:C.green},{key:"sodium",label:"Sodium",color:C.purple},{key:"calcium",label:"Calcium",color:C.purple}].map(({key,label,color})=>{
+                    ${[{key:"protein",label:"Protein",color:C.blue},{key:"carbs",label:"Carbs",color:C.orange},{key:"fat",label:"Fat",color:C.accentDim},{key:"fiber",label:"Fiber",color:C.green},{key:"sugar",label:"Sugar",color:"#e07ab0"},{key:"sodium",label:"Sodium",color:C.purple}].map(({key,label,color})=>{
                       const pct=pGoals[key]?Math.round((mt[key]/pGoals[key])*100):0;
                       const fld=ALL_FIELDS.find(f=>f.key===key);
                       return html`<div key=${key} onClick=${()=>openRepDetail(key,meal)} style=${{background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 9px",cursor:"pointer"}}>
