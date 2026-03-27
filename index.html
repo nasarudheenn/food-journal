@@ -362,6 +362,7 @@ function App(){
   const [foodSugg,setFoodSugg]=useState([]);
   const [foodSuggLoad,setFoodSuggLoad]=useState(false);
   const foodSuggTimer=useRef(null);
+  const [logRecipeSearch,setLogRecipeSearch]=useState("");
 
   // Recipes
   const [recName,setRecName]=useState("");
@@ -726,11 +727,41 @@ ${tab==="diary"&&view==="add"&&html`
           ${logMode==="recipe"&&html`<div>
             ${recipeBook.length===0?html`<div style=${{textAlign:"center",padding:"40px",color:C.muted,lineHeight:1.8}}><div style=${{fontSize:36,marginBottom:10}}>📚</div>No saved recipes.<br/><span style=${{color:C.accent,cursor:"pointer"}} onClick=${()=>{setTab("recipes");setView("main");}}>Create one in Recipes tab</span></div>`:
             !quickRecipe?html`<div>
+              <div style=${{position:"relative",marginBottom:10}}>
+                <input value=${logRecipeSearch} onInput=${e=>setLogRecipeSearch(e.target.value)} placeholder="🔍 Search recipes…" style=${IS}/>
+                ${logRecipeSearch&&html`<button onClick=${()=>setLogRecipeSearch("")} style=${{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:C.muted,fontSize:16,cursor:"pointer",fontFamily:"inherit"}}>✕</button>`}
+              </div>
               <${Lbl}>Select a Recipe<//>
               ${(()=>{
-                const filtered=recipeBook.filter(r=>!r.mealTags||!r.mealTags.length||r.mealTags.includes(addMeal));
-                if(!filtered.length)return html`<div style=${{textAlign:"center",padding:"30px",color:C.muted,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}>No recipes tagged for <strong style=${{color:C.accent}}>${addMeal}</strong>.</div>`;
-                return filtered.map(rec=>{const rt=sumE(rec.items);return html`<div key=${rec.id} onClick=${()=>startQuickLog(rec)} style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                const mealFiltered=recipeBook.filter(r=>!r.mealTags||!r.mealTags.length||r.mealTags.includes(addMeal));
+                const ql=logRecipeSearch.trim().toLowerCase();
+                let sorted=[];
+                if(!ql){
+                  sorted=[...mealFiltered].sort((a,b)=>a.name.localeCompare(b.name));
+                }else{
+                  const withPriority=[];
+                  mealFiltered.forEach(r=>{
+                    const words=r.name.toLowerCase().split(/\s+/);
+                    for(let i=0;i<words.length;i++){
+                      if(words[i].startsWith(ql)){
+                        const nextLetter=words[i].slice(ql.length)||"";
+                        withPriority.push({rec:r,priority:i,nextLetter,firstName:words[0]});
+                        break;
+                      }
+                    }
+                  });
+                  withPriority.sort((a,b)=>{
+                    if(a.priority!==b.priority)return a.priority-b.priority;
+                    if(a.priority===0)return a.nextLetter.localeCompare(b.nextLetter);
+                    return a.firstName.localeCompare(b.firstName);
+                  });
+                  sorted=withPriority.map(x=>x.rec);
+                }
+                if(!sorted.length){
+                  if(ql)return html`<div style=${{textAlign:"center",padding:"30px",color:C.muted,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}>No recipes match "<strong style=${{color:C.accent}}>${logRecipeSearch}</strong>" for <strong style=${{color:C.accent}}>${addMeal}</strong>.</div>`;
+                  return html`<div style=${{textAlign:"center",padding:"30px",color:C.muted,background:C.card,borderRadius:12,border:`1px solid ${C.border}`}}>No recipes tagged for <strong style=${{color:C.accent}}>${addMeal}</strong>.</div>`;
+                }
+                return sorted.map(rec=>{const rt=sumE(rec.items);return html`<div key=${rec.id} onClick=${()=>startQuickLog(rec)} style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                   <div style=${{flex:1}}>
                     <div style=${{fontSize:14,fontWeight:600,marginBottom:3}}>${rec.name}</div>
                     ${rec.mealTags?.length&&html`<div style=${{fontSize:10,color:C.accent,marginBottom:4}}>${rec.mealTags.map(t=>MEAL_ICONS[t]).join(" ")} ${rec.mealTags.join(", ")}</div>`}
