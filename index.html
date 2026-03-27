@@ -628,11 +628,11 @@ ${tab==="diary"&&view==="main"&&html`
         <div style=${{padding:"14px 18px"}}>
           <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style=${{display:"flex",alignItems:"center",gap:16}}>
-              <div style=${{position:"relative",width:76,height:76,flexShrink:0}}>
-                <svg width="76" height="76" style=${{transform:"rotate(-90deg)"}}>
-                  <circle cx="38" cy="38" r="30" fill="none" stroke=${C.border} strokeWidth="6"/>
-                  <circle cx="38" cy="38" r="30" fill="none" stroke=${calOver?C.red:C.accent} strokeWidth="6"
-                    strokeDasharray=${`${2*Math.PI*30}`} strokeDashoffset=${`${2*Math.PI*30*(1-calPct/100)}`}
+              <div style=${{position:"relative",width:88,height:88,flexShrink:0}}>
+                <svg width="88" height="88" style=${{transform:"rotate(-90deg)"}}>
+                  <circle cx="44" cy="44" r="36" fill="none" stroke=${C.border} strokeWidth="6"/>
+                  <circle cx="44" cy="44" r="36" fill="none" stroke=${calOver?C.red:C.accent} strokeWidth="6"
+                    strokeDasharray=${`${2*Math.PI*36}`} strokeDashoffset=${`${2*Math.PI*36*(1-calPct/100)}`}
                     strokeLinecap="round" style=${{transition:"stroke-dashoffset 0.6s ease"}}/>
                 </svg>
                 <div style=${{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
