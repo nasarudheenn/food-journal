@@ -689,7 +689,7 @@ ${tab==="diary"&&view==="main"&&html`
                         <div style=${{fontSize:11,color:C.muted}}>${isMulti?`${recipe.items.length} ingredients`:recipe.items[0]?.quantity} · ${recipe.time}</div>
                         <div style=${{display:"flex",gap:8,marginTop:4}}>
                           <span style=${{fontSize:13,color:C.accent,fontFamily:"monospace",fontWeight:700}}>${Math.round(rt.calories)} kcal</span>
-                          <span style=${{fontSize:11,color:C.muted}}>P:${Math.round(rt.protein)}g C:${Math.round(rt.carbs)}g F:${Math.round(rt.fat)}g</span>
+                          <span style=${{fontSize:11,color:C.muted}}>P:${Math.round(rt.protein)}g C:${Math.round(rt.carbs)}g F:${Math.round(rt.fat)}g Fi:${Math.round(rt.fiber)}g</span>
                         </div>
                       </div>
                       <button onClick=${e=>{e.stopPropagation();setConfirmModal({msg:`Delete "${recipe.recipeName}"?`,onConfirm:()=>delGroup(selDate,recipe.recipeId)});}} style=${{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:18,padding:4,flexShrink:0}}>✕</button>
@@ -699,7 +699,7 @@ ${tab==="diary"&&view==="main"&&html`
                         <div style=${{width:6,height:6,borderRadius:"50%",background:C.accent+"88",flexShrink:0}}/>
                         <div style=${{flex:1}}>
                           <div style=${{fontSize:13,fontWeight:500}}>${entry.food}</div>
-                          <div style=${{fontSize:11,color:C.muted,marginTop:2}}>${entry.quantity} · <span style=${{fontFamily:"monospace"}}>${entry.calories} kcal</span> · P:${entry.protein}g C:${entry.carbs}g F:${entry.fat}g</div>
+                          <div style=${{fontSize:11,color:C.muted,marginTop:2}}>${entry.quantity} · <span style=${{fontFamily:"monospace"}}>${entry.calories} kcal</span> · P:${entry.protein}g C:${entry.carbs}g F:${entry.fat}g Fi:${entry.fiber}g</div>
                         </div>
                         <button onClick=${e=>{e.stopPropagation();setConfirmModal({msg:`Delete "${entry.food}"?`,onConfirm:()=>delEntry(selDate,entry.id)});}} style=${{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:15,padding:3}}>✕</button>
                       </div>`)}
@@ -917,7 +917,7 @@ ${tab==="recipes"&&view==="main"&&html`
                 <div style=${{fontSize:15,fontWeight:700,marginBottom:4}}>${rec.name}</div>
                 ${rec.mealTags?.length&&html`<div style=${{fontSize:10,color:C.accent,marginBottom:4}}>${rec.mealTags.map(t=>MEAL_ICONS[t]).join(" ")} ${rec.mealTags.join(", ")}</div>`}
                 <div style=${{fontSize:11,color:C.muted,marginBottom:6}}>${rec.items.length} ingredients · tap to edit</div>
-                <div style=${{display:"flex",gap:8,flexWrap:"wrap"}}><span style=${{fontSize:13,color:C.accent,fontFamily:"monospace",fontWeight:700}}>${Math.round(rt.calories)} kcal</span><span style=${{fontSize:11,color:C.muted}}>P:${Math.round(rt.protein)}g C:${Math.round(rt.carbs)}g F:${Math.round(rt.fat)}g</span></div>
+                <div style=${{display:"flex",gap:8,flexWrap:"wrap"}}><span style=${{fontSize:13,color:C.accent,fontFamily:"monospace",fontWeight:700}}>${Math.round(rt.calories)} kcal</span><span style=${{fontSize:11,color:C.muted}}>P:${Math.round(rt.protein)}g C:${Math.round(rt.carbs)}g F:${Math.round(rt.fat)}g Fi:${Math.round(rt.fiber)}g</span></div>
               </div>
               <div style=${{padding:"0 15px 14px",display:"flex",gap:8}}>
                 <button onClick=${e=>{e.stopPropagation();startUse(rec);}} style=${{flex:1,padding:"10px",background:C.green,border:"none",borderRadius:9,color:C.bg,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>🍳 Use This Recipe</button>
@@ -984,7 +984,7 @@ ${view==="recipe-new"&&html`
             ${recItems.map((item,idx)=>{const rt=sumE([item]);return html`<div key=${item._id} onClick=${()=>openIngModal(idx)} style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"11px 13px",marginBottom:8,display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
               <div style=${{flex:1,minWidth:0}}>
                 <div style=${{fontSize:13,fontWeight:600,marginBottom:2}}>${item.food}</div>
-                <div style=${{fontSize:11,color:C.muted}}>${item.quantity} ${item.unit} · <span style=${{color:C.accent,fontFamily:"monospace"}}>${Math.round(rt.calories)} kcal</span> · P:${Math.round(rt.protein)}g C:${Math.round(rt.carbs)}g F:${Math.round(rt.fat)}g</div>
+                <div style=${{fontSize:11,color:C.muted}}>${item.quantity} ${item.unit} · <span style=${{color:C.accent,fontFamily:"monospace"}}>${Math.round(rt.calories)} kcal</span> · P:${Math.round(rt.protein)}g C:${Math.round(rt.carbs)}g F:${Math.round(rt.fat)}g Fi:${Math.round(rt.fiber)}g</div>
               </div>
               <button onClick=${e=>{e.stopPropagation();setRecItems(p=>p.filter((_,i)=>i!==idx));}} style=${{background:"none",border:`1px solid ${C.border}`,borderRadius:7,color:C.muted,fontSize:12,cursor:"pointer",fontFamily:"inherit",padding:"4px 9px",flexShrink:0}}>✕</button>
             </div>`;} )}
