@@ -281,7 +281,7 @@ function WeightChartWeek({weights,target,onTap,chartType,onChartTypeChange}){
         return html`<g key=${i}>
           <rect x=${cx-barW/2} y=${bTop} width=${barW} height=${bH} rx="3" fill=${barColor} opacity="0.85"/>
           ${diff!==null&&html`<text x=${cx} y=${bTop-4} fontSize="6.5" fill=${barColor} textAnchor="middle" fontWeight="700">${isUp?"+":""}${diff}</text>`}
-          <text x=${cx} y=${bTop+10} fontSize="7" fill="#ffffff" textAnchor="middle" dominantBaseline="middle" fontWeight="700">${v}</text>
+          <text x=${cx} y=${bTop+bH/2} fontSize="7" fill="#ffffff" textAnchor="middle" dominantBaseline="middle" fontWeight="700" transform=${`rotate(-90, ${cx}, ${bTop+bH/2})`}>${v}</text>
         </g>`;
       })}
       ${chartType==="line"&&displayWeights.length>1&&html`<path d=${displayWeights.map((w,i)=>`${i===0?"M":"L"} ${xOf(i)} ${yOf(w.weight)}`).join(" ")} fill="none" stroke=${C.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>`}
@@ -1323,7 +1323,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v30.7 · Mar 28, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v30.8 · Mar 28, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
