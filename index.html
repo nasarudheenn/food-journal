@@ -228,52 +228,38 @@ function WeightChart({weights,target,onTap}){
 function WeightChartWeek({weights,target,onTap,chartType,onChartTypeChange}){
   if(!weights.length)return null;
   
-  // Calculate weekly data
-  const weeklyData=[];
-  const sortedWeights=[...weights].sort((a,b)=>a.date.localeCompare(b.date));
+  // Get current week data
+  const now=new Date();
+  const dow=now.getDay();
+  const monday=new Date(now);monday.setDate(now.getDate()-(dow===0?6:dow-1));
+  const currentWeekStart=monday.toISOString().split("T")[0];
   
-  // Group by week
-  const weeks={};
-  sortedWeights.forEach(w=>{
-    const dt=new Date(w.date+"T00:00:00");
-    const dow=dt.getDay();
-    const mon=new Date(dt);mon.setDate(dt.getDate()-(dow===0?6:dow-1));
-    const weekKey=mon.toISOString().split("T")[0];
-    if(!weeks[weekKey])weeks[weekKey]={start:mon,dates:[]};
-    weeks[weekKey].dates.push(w);
-  });
+  // Filter for current week
+  const currentWeekWeights=[];
+  for(let i=0;i<7;i++){
+    const dt=new Date(monday);dt.setDate(monday.getDate()+i);
+    const dateStr=dt.toISOString().split("T")[0];
+    const weightEntry=weights.find(w=>w.date===dateStr);
+    if(weightEntry){
+      currentWeekWeights.push({...weightEntry,dateStr});
+    }
+  }
   
-  // Create weekly summary
-  Object.entries(weeks).forEach(([key,week])=>{
-    const sorted=week.dates.sort((a,b)=>a.date.localeCompare(b.date));
-    const first=sorted[0];
-    const last=sorted[sorted.length-1];
-    const change=Math.round((last.weight-first.weight)*10)/10;
-    weeklyData.push({
-      weekKey:key,
-      start:week.start,
-      firstWeight:first.weight,
-      lastWeight:last.weight,
-      change,
-      isGain:change>0,
-      dates:week.dates.map(d=>d.date)
-    });
-  });
+  // If no current week data, use last 7 days
+  let displayWeights=currentWeekWeights.length>0?currentWeekWeights:[...weights].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,7);
   
   const W=320,H=130,P={t:24,r:10,b:20,l:10};
   const MIN_W=50,MAX_W=100;
   const chartH=H-P.t-P.b,chartW=W-P.l-P.r;
-  const n=weeklyData.length;
+  const n=displayWeights.length;
   const barW=Math.min(28,Math.floor(chartW/n)-4);
   const xOf=i=>P.l+(i+0.5)*(chartW/n);
   const yOf=v=>P.t+chartH-((v-MIN_W)/(MAX_W-MIN_W))*chartH;
   const tY=target?yOf(Math.min(Math.max(target,MIN_W),MAX_W)):null;
-  const ticks=n<=7?weeklyData.map((_,i)=>i):[0,Math.floor(n/2),n-1];
   
-  const formatWeekLabel=w=>{
-    const start=new Date(w.start);
-    const end=new Date(start);end.setDate(start.getDate()+6);
-    return `${start.getDate()}-${end.getDate()}`;
+  const formatDayLabel=w=>{
+    const dt=new Date(w.date+"T00:00:00");
+    return dt.toLocaleDateString("en-US",{weekday:"short",day:"numeric"});
   };
   
   return html`<div style=${{position:"relative"}}>
@@ -287,25 +273,32 @@ function WeightChartWeek({weights,target,onTap,chartType,onChartTypeChange}){
       </g>`;})}
       ${tY&&html`<line x1=${P.l} y1=${tY} x2=${W-P.r} y2=${tY} stroke=${C.green} strokeDasharray="5,3" strokeWidth="1.5"/>
         <text x=${W-P.r-2} y=${tY-3} fontSize="8" fill=${C.green} textAnchor="end">Goal</text>`}
-      ${chartType==="bar"&&weeklyData.map((w,i)=>{
-        const v=w.lastWeight,bTop=yOf(v),bH=chartH-(bTop-P.t);
-        const barColor=w.change===0?C.accent:w.isGain?C.red:C.green;
+      ${chartType==="bar"&&displayWeights.map((w,i)=>{
+        const v=w.weight,bTop=yOf(v),bH=chartH-(bTop-P.t);
+        const prev=i>0?displayWeights[i-1].weight:null;
+        const diff=prev!==null?Math.round((v-prev)*10)/10:null;
+        const isUp=diff!==null&&diff>0;
+        const barColor=diff===null?C.accent:isUp?C.red:C.green;
         const cx=xOf(i);
         return html`<g key=${i}>
           <rect x=${cx-barW/2} y=${bTop} width=${barW} height=${bH} rx="3" fill=${barColor} opacity="0.85"/>
-          ${w.change!==0&&html`<text x=${cx} y=${bTop-8} fontSize="7" fill=${barColor} textAnchor="middle" fontWeight="700">${w.isGain?"+":""}${w.change}</text>`}
+          ${diff!==null&&html`<text x=${cx} y=${bTop-8} fontSize="7" fill=${barColor} textAnchor="middle" fontWeight="700">${isUp?"+":""}${diff}</text>`}
           <text x=${cx} y=${bTop-18} fontSize="7" fill=${C.text} textAnchor="middle" fontWeight="700">${v}</text>
         </g>`;
       })}
-      ${chartType==="line"&&weeklyData.length>1&&html`<path d=${weeklyData.map((w,i)=>`${i===0?"M":"L"} ${xOf(i)} ${yOf(w.lastWeight)}`).join(" ")} fill="none" stroke=${C.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>`}
-      ${chartType==="line"&&weeklyData.map((w,i)=>{
-        const cx=xOf(i),cy=yOf(w.lastWeight);
+      ${chartType==="line"&&displayWeights.length>1&&html`<path d=${displayWeights.map((w,i)=>`${i===0?"M":"L"} ${xOf(i)} ${yOf(w.weight)}`).join(" ")} fill="none" stroke=${C.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>`}
+      ${chartType==="line"&&displayWeights.map((w,i)=>{
+        const cx=xOf(i),cy=yOf(w.weight);
+        const prev=i>0?displayWeights[i-1].weight:null;
+        const diff=prev!==null?Math.round((w.weight-prev)*10)/10:null;
+        const isUp=diff!==null&&diff>0;
+        const pointColor=diff===null?C.accent:isUp?C.red:C.green;
         return html`<g key=${i}>
-          <circle cx=${cx} cy=${cy} r="3.5" fill=${C.accent} stroke=${C.bg} strokeWidth="1"/>
-          <text x=${cx} y=${cy-8} fontSize="7" fill=${C.text} textAnchor="middle" fontWeight="700">${w.lastWeight}</text>
+          <circle cx=${cx} cy=${cy} r="4" fill=${pointColor} stroke=${C.bg} strokeWidth="1" style=${{cursor:"pointer"}} onClick=${(e)=>{e.stopPropagation();onTap&&onTap(w);}}/>
+          <text x=${cx} y=${cy-10} fontSize="7" fill=${C.text} textAnchor="middle" fontWeight="700">${w.weight}</text>
         </g>`;
       })}
-      ${ticks.map(i=>html`<text key=${i} x=${xOf(i)} y=${H-2} fontSize="7.5" fill=${C.muted} textAnchor="middle">${formatWeekLabel(weeklyData[i])}</text>`)}
+      ${displayWeights.map((w,i)=>html`<text key=${i} x=${xOf(i)} y=${H-2} fontSize="7.5" fill=${C.muted} textAnchor="middle">${formatDayLabel(w)}</text>`)}
       ${onTap&&html`<rect x=${P.l} y=${P.t} width=${chartW} height=${chartH} fill="transparent" style=${{cursor:"pointer"}}/>`}
     </svg>
   </div>`;
