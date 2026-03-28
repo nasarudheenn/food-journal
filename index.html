@@ -257,8 +257,41 @@ function WeightChartWeek({weights,target,onTap}){
       const cx=xOf(i);
       return html`<g key=${i}>
         <rect x=${cx-barW/2} y=${bTop} width=${barW} height=${bH} rx="3" fill=${barColor} opacity="0.85"/>
-        ${w.diff!==null&&html`<text x=${cx} y=${bTop-3} fontSize="7.5" fill=${barColor} textAnchor="middle" fontWeight="700">${w.isUp?"+":""}${w.diff}</text>`}
-        <text x=${cx} y=${w.diff!==null?bTop-13:bTop-3} fontSize="7" fill=${C.muted} textAnchor="middle">${v}</text>
+        ${w.diff!==null&&html`<text x=${cx} y=${bTop-8} fontSize="7" fill=${barColor} textAnchor="middle" fontWeight="700">${w.isUp?"+":""}${w.diff}</text>`}
+        <text x=${cx} y=${bTop-18} fontSize="7" fill=${C.text} textAnchor="middle" fontWeight="700">${v}</text>
+      </g>`;
+    })}
+    ${ticks.map(i=>html`<text key=${i} x=${xOf(i)} y=${H-2} fontSize="7.5" fill=${C.muted} textAnchor="middle">${fmtShort(weights[i].date)}</text>`)}
+    ${onTap&&html`<rect x=${P.l} y=${P.t} width=${chartW} height=${chartH} fill="transparent" style=${{cursor:"pointer"}}/>`}
+  </svg>`;
+}
+
+function WeightChartLine({weights,target,onTap}){
+  if(!weights.length)return null;
+  const W=320,H=130,P={t:24,r:10,b:20,l:10};
+  const MIN_W=50,MAX_W=100;
+  const chartH=H-P.t-P.b,chartW=W-P.l-P.r;
+  const n=weights.length;
+  const xOf=i=>P.l+(i)*(chartW/(n-1));
+  const yOf=v=>P.t+chartH-((v-MIN_W)/(MAX_W-MIN_W))*chartH;
+  const tY=target?yOf(Math.min(Math.max(target,MIN_W),MAX_W)):null;
+  const ticks=n<=7?weights.map((_,i)=>i):[0,Math.floor(n/2),n-1];
+  
+  // Create path for line
+  const pathD=weights.map((w,i)=>`${i===0?"M":"L"} ${xOf(i)} ${yOf(w.weight)}`).join(" ");
+  
+  return html`<svg width="100%" viewBox=${`0 0 ${W} ${H}`} style=${{display:"block",cursor:onTap?"pointer":"default"}} onClick=${onTap}>
+    ${[50,60,70,80,90,100].map(v=>{const y=yOf(v);return html`<g key=${v}>
+      <line x1=${P.l} y1=${y} x2=${W-P.r} y2=${y} stroke=${C.border} strokeDasharray="2,3" strokeWidth="0.5"/>
+    </g>`;})}
+    ${tY&&html`<line x1=${P.l} y1=${tY} x2=${W-P.r} y2=${tY} stroke=${C.green} strokeDasharray="5,3" strokeWidth="1.5"/>
+      <text x=${W-P.r-2} y=${tY-3} fontSize="8" fill=${C.green} textAnchor="end">Goal</text>`}
+    ${weights.length>1&&html`<path d=${pathD} fill="none" stroke=${C.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>`}
+    ${weights.map((w,i)=>{
+      const cx=xOf(i),cy=yOf(w.weight);
+      return html`<g key=${i}>
+        <circle cx=${cx} cy=${cy} r="3.5" fill=${C.accent} stroke=${C.bg} strokeWidth="1"/>
+        <text x=${cx} y=${cy-8} fontSize="7" fill=${C.text} textAnchor="middle" fontWeight="700">${w.weight}</text>
       </g>`;
     })}
     ${ticks.map(i=>html`<text key=${i} x=${xOf(i)} y=${H-2} fontSize="7.5" fill=${C.muted} textAnchor="middle">${fmtShort(weights[i].date)}</text>`)}
@@ -336,8 +369,8 @@ function WeightDetailModal({weights,target,onClose}){
       
       <!-- Detailed Log -->
       <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"12px 10px"}}>
-        <div style=${{fontSize:10,color:C.muted,marginBottom:10,textAlign:"center"}}>Daily Log</div>
-        ${weightChanges.map((w,i)=>html`<div key=${i} style=${{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,padding:"8px 6px",background:i%2?C.bg:C.card,borderTop:i===0?"none":`1px solid ${C.border}`}}>
+        <div style=${{fontSize:10,color:C.muted,marginBottom:10,textAlign:"center"}}>Daily Log (Newest to Oldest)</div>
+        ${weightChanges.slice().reverse().map((w,i)=>html`<div key=${i} style=${{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,padding:"8px 6px",background:i%2?C.bg:C.card,borderTop:i===0?"none":`1px solid ${C.border}`}}>
           <div style=${{fontSize:11,color:C.muted}}>${fmtDate(w.date)}</div>
           <div style=${{fontSize:12,fontWeight:600,color:C.text}}>${w.weight} kg</div>
           <div style=${{fontSize:11,color:w.diff===null?C.muted:w.isUp?C.red:C.green,textAlign:"right"}}>${w.diff===null?"-":w.isUp?"+":""}${w.diff===null?"-":w.diff} kg</div>
@@ -613,6 +646,7 @@ function App(){
   const [repPeriod,setRepPeriod]=useState("daily");
   const [repDetail,setRepDetail]=useState(null);
   const [nutriSummary,setNutriSummary]=useState(null);
+  const [weightChartType,setWeightChartType]=useState("bar");
 
   // One-time migration: update saved goal defaults for existing users
   useEffect(()=>{
@@ -1173,7 +1207,15 @@ ${tab==="profile"&&view==="main"&&html`
               <div style=${{textAlign:"right"}}><div style=${{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:2}}>Target</div><div style=${{fontSize:22,fontWeight:700,fontFamily:"monospace",color:C.green}}>${profile.targetWeight||"—"}<span style=${{fontSize:11,color:C.muted}}> kg</span></div></div>
             </div>
             ${profile.currentWeight&&profile.targetWeight&&html`<div style=${{fontSize:11,marginBottom:10}}>${parseFloat(profile.currentWeight)>parseFloat(profile.targetWeight)?html`<span style=${{color:C.orange}}>📉 ${(parseFloat(profile.currentWeight)-parseFloat(profile.targetWeight)).toFixed(1)} kg to goal</span>`:html`<span style=${{color:C.green}}>🎉 Target reached!</span>`}</div>`}
-            ${weights.length>0&&html`<${WeightChartWeek} weights=${weights} target=${parseFloat(profile.targetWeight)||null} onTap=${()=>setWeightDetailModal(true)}/>`}
+            ${weights.length>0&&html`<div style=${{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+              <div style=${{fontSize:10,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase"}}>Chart Type</div>
+              <div style=${{display:"flex",gap:6}}>
+                <button onClick=${()=>setWeightChartType("bar")} style=${{padding:"6px 12px",borderRadius:16,border:`1px solid ${weightChartType==="bar"?C.accent:C.border}`,background:weightChartType==="bar"?C.accent:"none",color:weightChartType==="bar"?C.bg:C.muted,fontSize:11,cursor:"pointer",fontFamily:"inherit",fontWeight:weightChartType==="bar"?700:400}}>📊 Bar</button>
+                <button onClick=${()=>setWeightChartType("line")} style=${{padding:"6px 12px",borderRadius:16,border:`1px solid ${weightChartType==="line"?C.accent:C.border}`,background:weightChartType==="line"?C.accent:"none",color:weightChartType==="line"?C.bg:C.muted,fontSize:11,cursor:"pointer",fontFamily:"inherit",fontWeight:weightChartType==="line"?700:400}}>📈 Line</button>
+              </div>
+            </div>`}
+            ${weights.length>0&&weightChartType==="bar"&&html`<${WeightChartWeek} weights=${weights} target=${parseFloat(profile.targetWeight)||null} onTap=${()=>setWeightDetailModal(true)}/>`}
+            ${weights.length>0&&weightChartType==="line"&&html`<${WeightChartLine} weights=${weights} target=${parseFloat(profile.targetWeight)||null} onTap=${()=>setWeightDetailModal(true)}/>`}
             ${weights.length===0&&html`<div style=${{textAlign:"center",padding:"12px 0",color:C.muted,fontSize:12}}>Log weight below to see graph</div>`}
             <div style=${{display:"flex",gap:8,marginTop:14}}>
               <input value=${newWt} onInput=${e=>setNewWt(e.target.value)} type="number" placeholder="Log today's weight (kg)" style=${{...IS,flex:1}}/>
