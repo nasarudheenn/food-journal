@@ -253,7 +253,7 @@ function WeightChartWeek({weights,target,onTap,chartType,onChartTypeChange}){
   const chartH=H-P.t-P.b,chartW=W-P.l-P.r;
   const n=displayWeights.length;
   const barW=Math.min(36,Math.floor(chartW/n)-2);
-  const xOf=i=>P.l+(i+0.5)*(chartW/n);
+  const xOf=i=>n>1?P.l+barW/2+i*((chartW-barW)/(n-1)):P.l+chartW/2;
   const yOf=v=>P.t+chartH-((v-MIN_W)/(MAX_W-MIN_W))*chartH;
   const tY=target?yOf(Math.min(Math.max(target,MIN_W),MAX_W)):null;
   
@@ -306,11 +306,11 @@ function WeightChartWeek({weights,target,onTap,chartType,onChartTypeChange}){
 
 function WeightChartLine({weights,target,onTap}){
   if(!weights.length)return null;
-  const W=320,H=130,P={t:24,r:10,b:20,l:10};
+  const W=320,H=140,P={t:26,r:20,b:22,l:4};
   const MIN_W=50,MAX_W=100;
   const chartH=H-P.t-P.b,chartW=W-P.l-P.r;
   const n=weights.length;
-  const xOf=i=>P.l+(i)*(chartW/(n-1));
+  const xOf=i=>n>1?P.l+i*(chartW/(n-1)):P.l+chartW/2;
   const yOf=v=>P.t+chartH-((v-MIN_W)/(MAX_W-MIN_W))*chartH;
   const tY=target?yOf(Math.min(Math.max(target,MIN_W),MAX_W)):null;
   const ticks=n<=7?weights.map((_,i)=>i):[0,Math.floor(n/2),n-1];
@@ -318,7 +318,7 @@ function WeightChartLine({weights,target,onTap}){
   // Create path for line
   const pathD=weights.map((w,i)=>`${i===0?"M":"L"} ${xOf(i)} ${yOf(w.weight)}`).join(" ");
   
-  return html`<svg width="100%" viewBox=${`0 0 ${W} ${H}`} style=${{display:"block",cursor:onTap?"pointer":"default"}} onClick=${onTap}>
+  return html`<svg width="100%" viewBox=${`0 0 ${W} ${H}`} overflow="visible" style=${{display:"block",cursor:onTap?"pointer":"default"}} onClick=${onTap}>
     ${[50,60,70,80,90,100].map(v=>{const y=yOf(v);return html`<g key=${v}>
       <line x1=${P.l} y1=${y} x2=${W-P.r} y2=${y} stroke=${C.border} strokeDasharray="2,3" strokeWidth="0.5"/>
     </g>`;})}
@@ -1325,7 +1325,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v31.1 · Mar 28, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v31.2 · Mar 28, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
