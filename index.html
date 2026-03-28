@@ -225,45 +225,90 @@ function WeightChart({weights,target,onTap}){
   </svg>`;
 }
 
-function WeightChartWeek({weights,target,onTap}){
+function WeightChartWeek({weights,target,onTap,chartType,onChartTypeChange}){
   if(!weights.length)return null;
+  
+  // Calculate weekly data
+  const weeklyData=[];
+  const sortedWeights=[...weights].sort((a,b)=>a.date.localeCompare(b.date));
+  
+  // Group by week
+  const weeks={};
+  sortedWeights.forEach(w=>{
+    const dt=new Date(w.date+"T00:00:00");
+    const dow=dt.getDay();
+    const mon=new Date(dt);mon.setDate(dt.getDate()-(dow===0?6:dow-1));
+    const weekKey=mon.toISOString().split("T")[0];
+    if(!weeks[weekKey])weeks[weekKey]={start:mon,dates:[]};
+    weeks[weekKey].dates.push(w);
+  });
+  
+  // Create weekly summary
+  Object.entries(weeks).forEach(([key,week])=>{
+    const sorted=week.dates.sort((a,b)=>a.date.localeCompare(b.date));
+    const first=sorted[0];
+    const last=sorted[sorted.length-1];
+    const change=Math.round((last.weight-first.weight)*10)/10;
+    weeklyData.push({
+      weekKey:key,
+      start:week.start,
+      firstWeight:first.weight,
+      lastWeight:last.weight,
+      change,
+      isGain:change>0,
+      dates:week.dates.map(d=>d.date)
+    });
+  });
+  
   const W=320,H=130,P={t:24,r:10,b:20,l:10};
   const MIN_W=50,MAX_W=100;
   const chartH=H-P.t-P.b,chartW=W-P.l-P.r;
-  const n=weights.length;
+  const n=weeklyData.length;
   const barW=Math.min(28,Math.floor(chartW/n)-4);
   const xOf=i=>P.l+(i+0.5)*(chartW/n);
   const yOf=v=>P.t+chartH-((v-MIN_W)/(MAX_W-MIN_W))*chartH;
   const tY=target?yOf(Math.min(Math.max(target,MIN_W),MAX_W)):null;
-  const ticks=n<=7?weights.map((_,i)=>i):[0,Math.floor(n/2),n-1];
+  const ticks=n<=7?weeklyData.map((_,i)=>i):[0,Math.floor(n/2),n-1];
   
-  // Calculate weight changes
-  const weightChanges=weights.map((w,i)=>{
-    const prev=i>0?weights[i-1].weight:null;
-    const diff=prev!==null?Math.round((w.weight-prev)*10)/10:null;
-    const isUp=diff!==null&&diff>0;
-    return{...w,diff,isUp};
-  });
+  const formatWeekLabel=w=>{
+    const start=new Date(w.start);
+    const end=new Date(start);end.setDate(start.getDate()+6);
+    return `${start.getDate()}-${end.getDate()}`;
+  };
   
-  return html`<svg width="100%" viewBox=${`0 0 ${W} ${H}`} style=${{display:"block",cursor:onTap?"pointer":"default"}} onClick=${onTap}>
-    ${[50,60,70,80,90,100].map(v=>{const y=yOf(v);return html`<g key=${v}>
-      <line x1=${P.l} y1=${y} x2=${W-P.r} y2=${y} stroke=${C.border} strokeDasharray="2,3" strokeWidth="0.5"/>
-    </g>`;})}
-    ${tY&&html`<line x1=${P.l} y1=${tY} x2=${W-P.r} y2=${tY} stroke=${C.green} strokeDasharray="5,3" strokeWidth="1.5"/>
-      <text x=${W-P.r-2} y=${tY-3} fontSize="8" fill=${C.green} textAnchor="end">Goal</text>`}
-    ${weightChanges.map((w,i)=>{
-      const v=w.weight,bTop=yOf(v),bH=chartH-(bTop-P.t);
-      const barColor=w.diff===null?C.accent:w.isUp?C.red:C.green;
-      const cx=xOf(i);
-      return html`<g key=${i}>
-        <rect x=${cx-barW/2} y=${bTop} width=${barW} height=${bH} rx="3" fill=${barColor} opacity="0.85"/>
-        ${w.diff!==null&&html`<text x=${cx} y=${bTop-8} fontSize="7" fill=${barColor} textAnchor="middle" fontWeight="700">${w.isUp?"+":""}${w.diff}</text>`}
-        <text x=${cx} y=${bTop-18} fontSize="7" fill=${C.text} textAnchor="middle" fontWeight="700">${v}</text>
-      </g>`;
-    })}
-    ${ticks.map(i=>html`<text key=${i} x=${xOf(i)} y=${H-2} fontSize="7.5" fill=${C.muted} textAnchor="middle">${fmtShort(weights[i].date)}</text>`)}
-    ${onTap&&html`<rect x=${P.l} y=${P.t} width=${chartW} height=${chartH} fill="transparent" style=${{cursor:"pointer"}}/>`}
-  </svg>`;
+  return html`<div style=${{position:"relative"}}>
+    <div style=${{position:"absolute",top:4,right:4,display:"flex",gap:4,zIndex:10}}>
+      <button onClick=${()=>onChartTypeChange("bar")} style=${{padding:"4px 8px",borderRadius:12,border:`1px solid ${chartType==="bar"?C.accent:C.border}`,background:chartType==="bar"?C.accent:"none",color:chartType==="bar"?C.bg:C.muted,fontSize:10,cursor:"pointer",fontFamily:"inherit",fontWeight:chartType==="bar"?700:400}}>📊 Bar</button>
+      <button onClick=${()=>onChartTypeChange("line")} style=${{padding:"4px 8px",borderRadius:12,border:`1px solid ${chartType==="line"?C.accent:C.border}`,background:chartType==="line"?C.accent:"none",color:chartType==="line"?C.bg:C.muted,fontSize:10,cursor:"pointer",fontFamily:"inherit",fontWeight:chartType==="line"?700:400}}>📈 Line</button>
+    </div>
+    <svg width="100%" viewBox=${`0 0 ${W} ${H}`} style=${{display:"block",cursor:onTap?"pointer":"default"}} onClick=${onTap}>
+      ${[50,60,70,80,90,100].map(v=>{const y=yOf(v);return html`<g key=${v}>
+        <line x1=${P.l} y1=${y} x2=${W-P.r} y2=${y} stroke=${C.border} strokeDasharray="2,3" strokeWidth="0.5"/>
+      </g>`;})}
+      ${tY&&html`<line x1=${P.l} y1=${tY} x2=${W-P.r} y2=${tY} stroke=${C.green} strokeDasharray="5,3" strokeWidth="1.5"/>
+        <text x=${W-P.r-2} y=${tY-3} fontSize="8" fill=${C.green} textAnchor="end">Goal</text>`}
+      ${chartType==="bar"&&weeklyData.map((w,i)=>{
+        const v=w.lastWeight,bTop=yOf(v),bH=chartH-(bTop-P.t);
+        const barColor=w.change===0?C.accent:w.isGain?C.red:C.green;
+        const cx=xOf(i);
+        return html`<g key=${i}>
+          <rect x=${cx-barW/2} y=${bTop} width=${barW} height=${bH} rx="3" fill=${barColor} opacity="0.85"/>
+          ${w.change!==0&&html`<text x=${cx} y=${bTop-8} fontSize="7" fill=${barColor} textAnchor="middle" fontWeight="700">${w.isGain?"+":""}${w.change}</text>`}
+          <text x=${cx} y=${bTop-18} fontSize="7" fill=${C.text} textAnchor="middle" fontWeight="700">${v}</text>
+        </g>`;
+      })}
+      ${chartType==="line"&&weeklyData.length>1&&html`<path d=${weeklyData.map((w,i)=>`${i===0?"M":"L"} ${xOf(i)} ${yOf(w.lastWeight)}`).join(" ")} fill="none" stroke=${C.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>`}
+      ${chartType==="line"&&weeklyData.map((w,i)=>{
+        const cx=xOf(i),cy=yOf(w.lastWeight);
+        return html`<g key=${i}>
+          <circle cx=${cx} cy=${cy} r="3.5" fill=${C.accent} stroke=${C.bg} strokeWidth="1"/>
+          <text x=${cx} y=${cy-8} fontSize="7" fill=${C.text} textAnchor="middle" fontWeight="700">${w.lastWeight}</text>
+        </g>`;
+      })}
+      ${ticks.map(i=>html`<text key=${i} x=${xOf(i)} y=${H-2} fontSize="7.5" fill=${C.muted} textAnchor="middle">${formatWeekLabel(weeklyData[i])}</text>`)}
+      ${onTap&&html`<rect x=${P.l} y=${P.t} width=${chartW} height=${chartH} fill="transparent" style=${{cursor:"pointer"}}/>`}
+    </svg>
+  </div>`;
 }
 
 function WeightChartLine({weights,target,onTap}){
@@ -1214,8 +1259,16 @@ ${tab==="profile"&&view==="main"&&html`
                 <button onClick=${()=>setWeightChartType("line")} style=${{padding:"6px 12px",borderRadius:16,border:`1px solid ${weightChartType==="line"?C.accent:C.border}`,background:weightChartType==="line"?C.accent:"none",color:weightChartType==="line"?C.bg:C.muted,fontSize:11,cursor:"pointer",fontFamily:"inherit",fontWeight:weightChartType==="line"?700:400}}>📈 Line</button>
               </div>
             </div>`}
-            ${weights.length>0&&weightChartType==="bar"&&html`<${WeightChartWeek} weights=${weights} target=${parseFloat(profile.targetWeight)||null} onTap=${()=>setWeightDetailModal(true)}/>`}
-            ${weights.length>0&&weightChartType==="line"&&html`<${WeightChartLine} weights=${weights} target=${parseFloat(profile.targetWeight)||null} onTap=${()=>setWeightDetailModal(true)}/>`}
+            ${weights.length>0&&weightChartType==="bar"&&html`<div style=${{overflowX:"auto",paddingBottom:8}}>
+              <div style=${{minWidth:"100%",paddingRight:16}}>
+                <${WeightChartWeek} weights=${weights} target=${parseFloat(profile.targetWeight)||null} onTap=${()=>setWeightDetailModal(true)} chartType=${weightChartType} onChartTypeChange=${setWeightChartType}/>
+              </div>
+            </div>`}
+            ${weights.length>0&&weightChartType==="line"&&html`<div style=${{overflowX:"auto",paddingBottom:8}}>
+              <div style=${{minWidth:"100%",paddingRight:16}}>
+                <${WeightChartLine} weights=${weights} target=${parseFloat(profile.targetWeight)||null} onTap=${()=>setWeightDetailModal(true)}/>
+              </div>
+            </div>`}
             ${weights.length===0&&html`<div style=${{textAlign:"center",padding:"12px 0",color:C.muted,fontSize:12}}>Log weight below to see graph</div>`}
             <div style=${{display:"flex",gap:8,marginTop:14}}>
               <input value=${newWt} onInput=${e=>setNewWt(e.target.value)} type="number" placeholder="Log today's weight (kg)" style=${{...IS,flex:1}}/>
