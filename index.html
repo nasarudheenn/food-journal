@@ -259,14 +259,12 @@ function WeightChartWeek({weights,target,onTap,chartType,onChartTypeChange}){
   
   const formatDayLabel=w=>{
     const dt=new Date(w.date+"T00:00:00");
-    return dt.toLocaleDateString("en-US",{weekday:"short",day:"numeric"});
+    const m=String(dt.getMonth()+1).padStart(2,"0");
+    const d=String(dt.getDate()).padStart(2,"0");
+    return `${m}/${d}`;
   };
   
   return html`<div style=${{position:"relative"}}>
-    <div style=${{position:"absolute",top:4,right:4,display:"flex",gap:4,zIndex:10}}>
-      <button onClick=${()=>onChartTypeChange("bar")} style=${{padding:"4px 8px",borderRadius:12,border:`1px solid ${chartType==="bar"?C.accent:C.border}`,background:chartType==="bar"?C.accent:"none",color:chartType==="bar"?C.bg:C.muted,fontSize:10,cursor:"pointer",fontFamily:"inherit",fontWeight:chartType==="bar"?700:400}}>📊 Bar</button>
-      <button onClick=${()=>onChartTypeChange("line")} style=${{padding:"4px 8px",borderRadius:12,border:`1px solid ${chartType==="line"?C.accent:C.border}`,background:chartType==="line"?C.accent:"none",color:chartType==="line"?C.bg:C.muted,fontSize:10,cursor:"pointer",fontFamily:"inherit",fontWeight:chartType==="line"?700:400}}>📈 Line</button>
-    </div>
     <svg width="100%" viewBox=${`0 0 ${W} ${H}`} style=${{display:"block",cursor:onTap?"pointer":"default"}} onClick=${onTap}>
       ${[50,60,70,80,90,100].map(v=>{const y=yOf(v);return html`<g key=${v}>
         <line x1=${P.l} y1=${y} x2=${W-P.r} y2=${y} stroke=${C.border} strokeDasharray="2,3" strokeWidth="0.5"/>
@@ -282,8 +280,8 @@ function WeightChartWeek({weights,target,onTap,chartType,onChartTypeChange}){
         const cx=xOf(i);
         return html`<g key=${i}>
           <rect x=${cx-barW/2} y=${bTop} width=${barW} height=${bH} rx="3" fill=${barColor} opacity="0.85"/>
-          ${diff!==null&&html`<text x=${cx} y=${bTop-8} fontSize="7" fill=${barColor} textAnchor="middle" fontWeight="700">${isUp?"+":""}${diff}</text>`}
-          <text x=${cx} y=${bTop-18} fontSize="7" fill=${C.text} textAnchor="middle" fontWeight="700">${v}</text>
+          <text x=${cx} y=${bTop-8} fontSize="7" fill=${C.text} textAnchor="middle" fontWeight="700">${v}</text>
+          ${diff!==null&&html`<text x=${cx} y=${bTop-1} fontSize="6.5" fill=${barColor} textAnchor="middle" fontWeight="700">${isUp?"+":""}${diff}</text>`}
         </g>`;
       })}
       ${chartType==="line"&&displayWeights.length>1&&html`<path d=${displayWeights.map((w,i)=>`${i===0?"M":"L"} ${xOf(i)} ${yOf(w.weight)}`).join(" ")} fill="none" stroke=${C.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>`}
@@ -332,7 +330,7 @@ function WeightChartLine({weights,target,onTap}){
         <text x=${cx} y=${cy-8} fontSize="7" fill=${C.text} textAnchor="middle" fontWeight="700">${w.weight}</text>
       </g>`;
     })}
-    ${ticks.map(i=>html`<text key=${i} x=${xOf(i)} y=${H-2} fontSize="7.5" fill=${C.muted} textAnchor="middle">${fmtShort(weights[i].date)}</text>`)}
+    ${ticks.map(i=>{const dt=new Date(weights[i].date+"T00:00:00"),m=String(dt.getMonth()+1).padStart(2,"0"),d=String(dt.getDate()).padStart(2,"0");return html`<text key=${i} x=${xOf(i)} y=${H-2} fontSize="7.5" fill=${C.muted} textAnchor="middle">${m}/${d}</text>`;})}
     ${onTap&&html`<rect x=${P.l} y=${P.t} width=${chartW} height=${chartH} fill="transparent" style=${{cursor:"pointer"}}/>`}
   </svg>`;
 }
@@ -1325,7 +1323,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v31.1 · Mar 28, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v31.2 · Mar 28, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
