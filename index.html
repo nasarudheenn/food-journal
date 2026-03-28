@@ -51,7 +51,7 @@ const store={
 const DEFAULT_PROFILE={name:"Nasarudheen N",currentWeight:"81",targetWeight:"70",height:"175",calorieGoal:1800,protein:100,carbs:180,fat:60,fiber:30,sugar:30,saturatedFat:20,polyFat:10,monoFat:15,cholesterol:300,sodium:1500,potassium:4700,calcium:1000,magnesium:410,iron:8,zinc:11,iodine:150,vitA:900,vitC:90,vitD:15,vitE:15,vitB12:2.4,folate:400};
 const C={bg:"#0f0e0c",card:"#222021",border:"#3a3835",accent:"#e8c547",accentDim:"#b89c2f",text:"#f0ece0",muted:"#7a7060",red:"#e05252",green:"#52c47a",blue:"#5299e0",orange:"#e08a52",purple:"#a07ee0"};
 const MEAL_TYPES=["Breakfast","Mid-Morning","Lunch","Evening","Dinner"];
-const MEAL_ICONS={Breakfast:"☀️","Mid-Morning":"🫐",Lunch:"🥗",Evening:"🍎",Dinner:"🌙"};
+const MEAL_ICONS={Breakfast:"☀️",Mid-Morning:"🫐",Lunch:"🥗",Evening:"🍎",Dinner:"🌙"};
 const MACRO_FIELDS=[
   {key:"calories",label:"Calories",unit:"kcal",color:C.accent},
   {key:"protein",label:"Protein",unit:"g",color:C.blue},
@@ -217,7 +217,7 @@ function WeightChart({weights,target,onTap}){
       return html`<g key=${i}>
         <rect x=${cx-barW/2} y=${bTop} width=${barW} height=${bH} rx="3" fill=${barColor} opacity="0.85"/>
         ${diff!==null&&html`<text x=${cx} y=${bTop-3} fontSize="7.5" fill=${barColor} textAnchor="middle" fontWeight="700">${isUp?"+":""}${diff}</text>`}
-        <text x=${cx} y=${diff!==null?bTop-13:bTop-3} fontSize="7" fill=${C.muted} textAnchor="middle">${v}</text>
+        <text x=${cx} y=${bTop-13} fontSize="7" fill=${C.muted} textAnchor="middle">${v}</text>
       </g>`;
     })}
     ${ticks.map(i=>html`<text key=${i} x=${xOf(i)} y=${H-2} fontSize="7.5" fill=${C.muted} textAnchor="middle">${fmtShort(weights[i].date)}</text>`)}
