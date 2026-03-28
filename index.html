@@ -88,7 +88,7 @@ const IS={width:"100%",padding:"10px 12px",background:"#222120",border:"1px soli
 const GOAL_KEYS=["calorieGoal","protein","carbs","fat","fiber","sugar","saturatedFat","polyFat","monoFat","cholesterol","sodium","potassium","calcium","magnesium","iron","zinc","iodine","vitA","vitC","vitD","vitE","vitB12","folate"];
 const GOAL_SECTIONS=[
   {id:"energy",title:"Energy & Macros",color:C.accent,fields:[{label:"Calories (kcal)",key:"calorieGoal",ph:"1800"},{label:"Protein (g)",key:"protein",ph:"100"},{label:"Carbs (g)",key:"carbs",ph:"180"},{label:"Fat (g)",key:"fat",ph:"60"},{label:"Fiber (g)",key:"fiber",ph:"30"},{label:"Sugar (g)",key:"sugar",ph:"30"}]},
-  {id:"fats",title:"Fats Detail",color:C.accentDim,fields:[{label:"Saturated Fat (g)",key:"saturatedFat",ph:"20"},{label:"Polyunsat. Fat (g)",key:"polyFat",ph:"10"},{label:"Monounsat. Fat (g)",key:"monoFat",ph:"15"},{label:"Cholesterol (mg)",key:"cholesterol",ph:"300"}]},
+  {id:"fats",title:"Fats",color:C.accentDim,fields:[{label:"Saturated Fat (g)",key:"saturatedFat",ph:"20"},{label:"Polyunsat. Fat (g)",key:"polyFat",ph:"10"},{label:"Monounsat. Fat (g)",key:"monoFat",ph:"15"},{label:"Cholesterol (mg)",key:"cholesterol",ph:"300"}]},
   {id:"minerals",title:"Minerals",color:C.purple,fields:[{label:"Sodium (mg)",key:"sodium",ph:"1500"},{label:"Potassium (mg)",key:"potassium",ph:"4700"},{label:"Calcium (mg)",key:"calcium",ph:"1000"},{label:"Magnesium (mg)",key:"magnesium",ph:"410"},{label:"Iron (mg)",key:"iron",ph:"8"},{label:"Zinc (mg)",key:"zinc",ph:"11"},{label:"Iodine (μg)",key:"iodine",ph:"150"}]},
   {id:"vitamins",title:"Vitamins",color:C.green,fields:[{label:"Vit A (μg)",key:"vitA",ph:"900"},{label:"Vit C (mg)",key:"vitC",ph:"90"},{label:"Vit D (μg)",key:"vitD",ph:"15"},{label:"Vit E (mg)",key:"vitE",ph:"15"},{label:"Vit B12 (μg)",key:"vitB12",ph:"2.4"},{label:"Folate (B9) (μg)",key:"folate",ph:"400"}]},
 ];
@@ -192,27 +192,35 @@ function MacroBar({label,value,goal,color,showPct}){
 
 function WeightChart({weights,target}){
   if(!weights.length)return null;
-  const W=320,H=100,P={t:8,r:28,b:20,l:36};
-  const vals=weights.map(w=>w.weight),dates=weights.map(w=>w.date);
-  const all=target?[...vals,target]:vals;
-  const mn=Math.min(...all)-0.5,mx=Math.max(...all)+0.5;
-  const xOf=i=>P.l+(i/(weights.length-1||1))*(W-P.l-P.r);
-  const yOf=v=>P.t+((mx-v)/(mx-mn))*(H-P.t-P.b);
-  const pathD=vals.map((v,i)=>`${i===0?"M":"L"}${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`).join(" ");
-  const areaD=`${pathD} L${xOf(vals.length-1).toFixed(1)},${H-P.b} L${xOf(0).toFixed(1)},${H-P.b} Z`;
-  const tY=target?yOf(target):null;
-  const ticks=weights.length<=5?weights.map((_,i)=>i):[0,Math.floor(weights.length/2),weights.length-1];
+  const W=320,H=130,P={t:24,r:10,b:20,l:10};
+  const MIN_W=50,MAX_W=100;
+  const chartH=H-P.t-P.b,chartW=W-P.l-P.r;
+  const n=weights.length;
+  const barW=Math.min(28,Math.floor(chartW/n)-4);
+  const xOf=i=>P.l+(i+0.5)*(chartW/n);
+  const yOf=v=>P.t+chartH-((v-MIN_W)/(MAX_W-MIN_W))*chartH;
+  const tY=target?yOf(Math.min(Math.max(target,MIN_W),MAX_W)):null;
+  const ticks=n<=5?weights.map((_,i)=>i):[0,Math.floor(n/2),n-1];
   return html`<svg width="100%" viewBox=${`0 0 ${W} ${H}`} style=${{display:"block"}}>
-    <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stopColor=${C.accent} stopOpacity="0.3"/>
-      <stop offset="100%" stopColor=${C.accent} stopOpacity="0"/>
-    </linearGradient></defs>
-    ${[0,0.5,1].map(t=>{const y=P.t+t*(H-P.t-P.b),v=mx-t*(mx-mn);return html`<g key=${t}><line x1=${P.l} y1=${y} x2=${W-P.r} y2=${y} stroke=${C.border} strokeDasharray="3,3"/><text x=${P.l-3} y=${y+3} fontSize="9" fill=${C.muted} textAnchor="end">${v.toFixed(1)}</text></g>`;})}
-    ${tY&&html`<line x1=${P.l} y1=${tY} x2=${W-P.r} y2=${tY} stroke=${C.green} strokeDasharray="4,3" strokeWidth="1.5"/><text x=${W-P.r+2} y=${tY+3} fontSize="8" fill=${C.green}>Goal</text>`}
-    ${vals.length>1&&html`<path d=${areaD} fill="url(#wg)"/>`}
-    ${vals.length>1&&html`<path d=${pathD} fill="none" stroke=${C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>`}
-    ${vals.map((v,i)=>html`<circle key=${i} cx=${xOf(i)} cy=${yOf(v)} r="3.5" fill=${C.accent}/>`)}
-    ${ticks.map(i=>html`<text key=${i} x=${xOf(i)} y=${H-2} fontSize="8" fill=${C.muted} textAnchor="middle">${fmtShort(dates[i])}</text>`)}
+    ${[50,60,70,80,90,100].map(v=>{const y=yOf(v);return html`<g key=${v}>
+      <line x1=${P.l} y1=${y} x2=${W-P.r} y2=${y} stroke=${C.border} strokeDasharray="2,3" strokeWidth="0.5"/>
+    </g>`;})}
+    ${tY&&html`<line x1=${P.l} y1=${tY} x2=${W-P.r} y2=${tY} stroke=${C.green} strokeDasharray="5,3" strokeWidth="1.5"/>
+      <text x=${W-P.r-2} y=${tY-3} fontSize="8" fill=${C.green} textAnchor="end">Goal</text>`}
+    ${weights.map((w,i)=>{
+      const v=w.weight,bTop=yOf(v),bH=chartH-(bTop-P.t);
+      const prev=i>0?weights[i-1].weight:null;
+      const diff=prev!==null?Math.round((v-prev)*10)/10:null;
+      const isUp=diff!==null&&diff>0;
+      const barColor=diff===null?C.accent:isUp?C.red:C.green;
+      const cx=xOf(i);
+      return html`<g key=${i}>
+        <rect x=${cx-barW/2} y=${bTop} width=${barW} height=${bH} rx="3" fill=${barColor} opacity="0.85"/>
+        ${diff!==null&&html`<text x=${cx} y=${bTop-3} fontSize="7.5" fill=${barColor} textAnchor="middle" fontWeight="700">${isUp?"+":""}${diff}</text>`}
+        <text x=${cx} y=${diff!==null?bTop-13:bTop-3} fontSize="7" fill=${C.muted} textAnchor="middle">${v}</text>
+      </g>`;
+    })}
+    ${ticks.map(i=>html`<text key=${i} x=${xOf(i)} y=${H-2} fontSize="7.5" fill=${C.muted} textAnchor="middle">${fmtShort(weights[i].date)}</text>`)}
   </svg>`;
 }
 
@@ -800,18 +808,19 @@ ${tab==="diary"&&view==="main"&&html`
         <div style=${{padding:"14px 18px"}}>
           <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style=${{display:"flex",alignItems:"center",gap:16}}>
-              <div style=${{position:"relative",width:88,height:88,flexShrink:0}}>
+              <div style=${{position:"relative",flexShrink:0}}>
                 <svg width="88" height="88" style=${{transform:"rotate(-90deg)"}}>
                   <circle cx="44" cy="44" r="36" fill="none" stroke=${C.border} strokeWidth="6"/>
                   <circle cx="44" cy="44" r="36" fill="none" stroke=${calOver?C.red:C.accent} strokeWidth="6"
                     strokeDasharray=${`${2*Math.PI*36}`} strokeDashoffset=${`${2*Math.PI*36*(1-calPct/100)}`}
                     strokeLinecap="round" style=${{transition:"stroke-dashoffset 0.6s ease"}}/>
                 </svg>
-                <div style=${{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-                  <span style=${{fontSize:11,fontWeight:700,color:calOver?C.red:C.text,fontFamily:"monospace",lineHeight:1}}>${Math.round(dayT.calories)}/${goals.calories}</span>
-                  <span style=${{fontSize:9,color:C.muted}}>kcal</span>
-                  <span style=${{fontSize:11,fontWeight:700,color:calOver?C.red:C.accent,fontFamily:"monospace"}}>${Math.round(calPct)}%</span>
-                  ${calOver&&html`<span style=${{fontSize:9,fontWeight:700,color:C.red,fontFamily:"monospace"}}>(${`+${Math.round(calExcessPct)}%`})</span>`}
+                <div style=${{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1}}>
+                  <span style=${{fontSize:Math.round(dayT.calories)>9999?8:10,fontWeight:700,color:calOver?C.red:C.text,fontFamily:"monospace",lineHeight:1,textAlign:"center"}}>${Math.round(dayT.calories)}</span>
+                  <span style=${{fontSize:7.5,color:C.muted}}>/${goals.calories}</span>
+                  <span style=${{fontSize:8,color:C.muted}}>kcal</span>
+                  <span style=${{fontSize:10,fontWeight:700,color:calOver?C.red:C.accent,fontFamily:"monospace"}}>${Math.round(calPct)}%</span>
+                  ${calOver&&html`<span style=${{fontSize:8,fontWeight:700,color:C.red,fontFamily:"monospace"}}>(+${Math.round(calExcessPct)}%)</span>`}
                 </div>
               </div>
               <div style=${{flex:1}}>
@@ -1048,8 +1057,10 @@ ${tab==="profile"&&view==="main"&&html`
           <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style=${{fontSize:14,fontWeight:700,marginBottom:14}}>Personal Info</div>
             <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              ${[{label:"Name",key:"name",type:"text",ph:"Your name"},{label:"Height (cm)",key:"height",type:"number",ph:"175"},{label:"Current Weight (kg)",key:"currentWeight",type:"number",ph:"81"},{label:"Target Weight (kg)",key:"targetWeight",type:"number",ph:"70"}].map(({label,key,type,ph})=>html`<div key=${key}><${Lbl}>${label}<//>
+              ${[{label:"Name",key:"name",type:"text",ph:"Your name"},{label:"Height (cm)",key:"height",type:"number",ph:"175"},{label:"Target Weight (kg)",key:"targetWeight",type:"number",ph:"70"}].map(({label,key,type,ph})=>html`<div key=${key}><${Lbl}>${label}<//>
                 <input value=${profEdit[key]||""} onInput=${e=>setProfEdit(p=>({...p,[key]:e.target.value}))} type=${type} placeholder=${ph} style=${IS}/></div>`)}
+              <div><${Lbl}>Beginning Weight (kg)<//>
+                <input value=${profEdit.currentWeight||""} readOnly style=${{...IS,opacity:0.6,cursor:"not-allowed"}}/></div>
             </div>
           </div>
           <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
@@ -1100,7 +1111,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v31.0 · Mar 27, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v31.1 · Mar 28, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
@@ -1235,6 +1246,13 @@ ${tab==="reports"&&view==="main"&&html`
               const inRange=Object.keys(entries).filter(d=>d>=cutStr);
               return sumE(inRange.flatMap(d=>entries[d]||[]));
             })();
+            // Days with actual entries (not total period days)
+            const daysWithEntries=(()=>{
+              if(repPeriod==="daily")return 1;
+              const cutDate=new Date();cutDate.setDate(cutDate.getDate()-(repPeriod==="weekly"?7:daysInMonth));
+              const cutStr=cutDate.toISOString().split("T")[0];
+              return Math.max(1,Object.keys(entries).filter(d=>d>=cutStr&&(entries[d]||[]).length>0).length);
+            })();
             const mealTotals=MEAL_TYPES.map(m=>{
               if(repPeriod==="daily"){return{meal:m,totals:sumE((entries[todayStr()]||[]).filter(e=>e.meal===m))};}
               const cutDate=new Date();cutDate.setDate(cutDate.getDate()-(repPeriod==="weekly"?7:daysInMonth));
@@ -1242,7 +1260,7 @@ ${tab==="reports"&&view==="main"&&html`
               const inRange=Object.keys(entries).filter(d=>d>=cutStr);
               return{meal:m,totals:sumE(inRange.flatMap(d=>(entries[d]||[]).filter(e=>e.meal===m)))};
             }).filter(m=>m.totals.calories>0);
-            const avgTotals=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,(totals[f.key]||0)/mult]));
+            const avgTotals=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,(totals[f.key]||0)/daysWithEntries]));
             return html`<div>
               ${repPeriod!=="daily"&&html`<div onClick=${()=>openNutritionSummary(repPeriod==="weekly"?"Weekly Average Nutrition":"Monthly Average Nutrition",repPeriod==="weekly"?"Current week daily averages":"Current month daily averages",avgTotals)} style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14,cursor:"pointer"}}>
                 <div style=${{fontSize:11,color:C.muted,marginBottom:4,letterSpacing:"0.06em",textTransform:"uppercase"}}>${repPeriod==="weekly"?"Current Week":"Current Month"} Average</div>
@@ -1250,7 +1268,7 @@ ${tab==="reports"&&view==="main"&&html`
                   <span style=${{fontSize:24,fontWeight:700,fontFamily:"monospace",color:C.accent}}>${Math.round(avgTotals.calories||0)}</span>
                   <span style=${{fontSize:12,color:C.muted}}>kcal / day</span>
                 </div>
-                <div style=${{fontSize:10,color:C.muted,marginTop:4}}>Tap to view all nutrient averages</div>
+                <div style=${{fontSize:10,color:C.muted,marginTop:4}}>Based on ${daysWithEntries} day${daysWithEntries!==1?"s":""} with entries · Tap to view all nutrients</div>
               </div>`}
               <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:16,marginBottom:14}}>
                 <div style=${{fontSize:13,fontWeight:600,marginBottom:2}}>Achievement vs Goal</div>
