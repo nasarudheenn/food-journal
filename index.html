@@ -248,11 +248,11 @@ function WeightChartWeek({weights,target,onTap,chartType,onChartTypeChange}){
   // If no current week data, use last 7 days
   let displayWeights=currentWeekWeights.length>0?currentWeekWeights:[...weights].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,7);
   
-  const W=320,H=140,P={t:26,r:20,b:22,l:10};
+  const W=320,H=140,P={t:26,r:20,b:22,l:4};
   const MIN_W=50,MAX_W=100;
   const chartH=H-P.t-P.b,chartW=W-P.l-P.r;
   const n=displayWeights.length;
-  const barW=Math.min(28,Math.floor(chartW/n)-4);
+  const barW=Math.min(36,Math.floor(chartW/n)-2);
   const xOf=i=>P.l+(i+0.5)*(chartW/n);
   const yOf=v=>P.t+chartH-((v-MIN_W)/(MAX_W-MIN_W))*chartH;
   const tY=target?yOf(Math.min(Math.max(target,MIN_W),MAX_W)):null;
@@ -278,11 +278,12 @@ function WeightChartWeek({weights,target,onTap,chartType,onChartTypeChange}){
         const isUp=diff!==null&&diff>0;
         const barColor=diff===null?C.accent:isUp?C.red:C.green;
         const cx=xOf(i);
+        const bLeft=cx-barW/2;
         const barBase=bTop+bH-3;
         return html`<g key=${i}>
-          <rect x=${cx-barW/2} y=${bTop} width=${barW} height=${bH} rx="3" fill=${barColor} opacity="0.85"/>
-          ${diff!==null&&html`<text x=${cx} y=${bTop-4} fontSize="6.5" fill=${barColor} textAnchor="middle" fontWeight="700">${isUp?"+":""}${diff}</text>`}
-          <text x=${cx} y=${barBase} fontSize="7" fill="#ffffff" textAnchor="start" dominantBaseline="middle" fontWeight="700" transform=${`rotate(-90, ${cx}, ${barBase})`}>${v}</text>
+          <rect x=${bLeft} y=${bTop} width=${barW} height=${bH} rx="3" fill=${barColor} opacity="0.85"/>
+          ${diff!==null&&html`<text x=${bLeft+barW/2} y=${bTop-4} fontSize="6.5" fill=${barColor} textAnchor="middle" fontWeight="700">${isUp?"+":""}${diff}</text>`}
+          <text x=${bLeft+barW/2} y=${barBase} fontSize="7" fill="#ffffff" textAnchor="start" dominantBaseline="middle" fontWeight="700" transform=${`rotate(-90, ${bLeft+barW/2}, ${barBase})`}>${v}</text>
         </g>`;
       })}
       ${chartType==="line"&&displayWeights.length>1&&html`<path d=${displayWeights.map((w,i)=>`${i===0?"M":"L"} ${xOf(i)} ${yOf(w.weight)}`).join(" ")} fill="none" stroke=${C.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>`}
@@ -297,7 +298,7 @@ function WeightChartWeek({weights,target,onTap,chartType,onChartTypeChange}){
           <text x=${cx} y=${cy-10} fontSize="7" fill=${C.text} textAnchor="middle" fontWeight="700">${w.weight}</text>
         </g>`;
       })}
-      ${displayWeights.map((w,i)=>html`<text key=${i} x=${xOf(i)} y=${H-2} fontSize="7.5" fill=${C.muted} textAnchor="middle">${formatDayLabel(w)}</text>`)}
+      ${displayWeights.map((w,i)=>{const bLeft=(xOf(i)-barW/2);return html`<text key=${i} x=${bLeft+barW/2} y=${H-2} fontSize="7.5" fill=${C.muted} textAnchor="middle">${formatDayLabel(w)}</text>`;})}
       ${onTap&&html`<rect x=${P.l} y=${P.t} width=${chartW} height=${chartH} fill="transparent" style=${{cursor:"pointer"}}/>`}
     </svg>
   </div>`;
@@ -1324,7 +1325,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v31.0 · Mar 28, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v31.1 · Mar 28, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
