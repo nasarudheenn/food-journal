@@ -227,79 +227,97 @@ function WeightChart({weights,target,onTap}){
 
 function WeightChartWeek({weights,target,onTap,chartType,onChartTypeChange}){
   if(!weights.length)return null;
-  
-  // Get current week data
+
+  // Build 7-slot week grid (Mon–Sun)
   const now=new Date();
   const dow=now.getDay();
   const monday=new Date(now);monday.setDate(now.getDate()-(dow===0?6:dow-1));
-  const currentWeekStart=monday.toISOString().split("T")[0];
-  
-  // Filter for current week
-  const currentWeekWeights=[];
+  const slots=[];
   for(let i=0;i<7;i++){
     const dt=new Date(monday);dt.setDate(monday.getDate()+i);
     const dateStr=dt.toISOString().split("T")[0];
-    const weightEntry=weights.find(w=>w.date===dateStr);
-    if(weightEntry){
-      currentWeekWeights.push({...weightEntry,dateStr});
-    }
-  }
-  
-  // If no current week data, use last 7 days
-  let displayWeights=currentWeekWeights.length>0?currentWeekWeights:[...weights].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,7);
-  
-  const W=320,H=140,P={t:26,r:20,b:22,l:4};
-  const MIN_W=50,MAX_W=100;
-  const chartH=H-P.t-P.b,chartW=W-P.l-P.r;
-  const n=displayWeights.length;
-  const barW=Math.min(36,Math.floor(chartW/n)-2);
-  const xOf=i=>n>1?P.l+barW/2+i*((chartW-barW)/(n-1)):P.l+chartW/2;
-  const yOf=v=>P.t+chartH-((v-MIN_W)/(MAX_W-MIN_W))*chartH;
-  const tY=target?yOf(Math.min(Math.max(target,MIN_W),MAX_W)):null;
-  
-  const formatDayLabel=w=>{
-    const dt=new Date(w.date+"T00:00:00");
     const m=String(dt.getMonth()+1).padStart(2,"0");
     const d=String(dt.getDate()).padStart(2,"0");
-    return `${m}/${d}`;
-  };
-  
-  return html`<div style=${{position:"relative",overflow:"visible"}}>
-    <svg width="100%" viewBox=${`0 0 ${W} ${H}`} overflow="visible" style=${{display:"block",cursor:onTap?"pointer":"default"}} onClick=${onTap}>
-      ${[50,60,70,80,90,100].map(v=>{const y=yOf(v);return html`<g key=${v}>
-        <line x1=${P.l} y1=${y} x2=${W-P.r} y2=${y} stroke=${C.border} strokeDasharray="2,3" strokeWidth="0.5"/>
-      </g>`;})}
-      ${tY&&html`<line x1=${P.l} y1=${tY} x2=${W-P.r} y2=${tY} stroke=${C.green} strokeDasharray="5,3" strokeWidth="1.5"/>
-        <text x=${W-P.r-2} y=${tY-3} fontSize="8" fill=${C.green} textAnchor="end">Goal</text>`}
-      ${chartType==="bar"&&displayWeights.map((w,i)=>{
-        const v=w.weight,bTop=yOf(v),bH=chartH-(bTop-P.t);
-        const prev=i>0?displayWeights[i-1].weight:null;
-        const diff=prev!==null?Math.round((v-prev)*10)/10:null;
+    const entry=weights.find(w=>w.date===dateStr)||null;
+    slots.push({dateStr,label:`${m}/${d}`,entry});
+  }
+  // If no current week data fall back to last 7 logged entries
+  const hasWeekData=slots.some(s=>s.entry);
+  let displaySlots=slots;
+  if(!hasWeekData){
+    const last7=[...weights].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,7).reverse();
+    displaySlots=last7.map(w=>{
+      const dt=new Date(w.date+"T00:00:00");
+      const m=String(dt.getMonth()+1).padStart(2,"0");
+      const d=String(dt.getDate()).padStart(2,"0");
+      return{dateStr:w.date,label:`${m}/${d}`,entry:w};
+    });
+  }
+
+  // Chart geometry — fixed 7 slots, full width
+  const SLOTS=displaySlots.length;
+  const W=280, H=160;
+  const PAD_T=22, PAD_B=18, PAD_L=0, PAD_R=0;
+  const chartW=W-PAD_L-PAD_R;
+  const chartH=H-PAD_T-PAD_B;
+  const slotW=chartW/SLOTS;          // each slot owns equal width
+  const barW=slotW*0.72;             // bar = 72% of slot, gap = 28%
+  const slotCx=i=>PAD_L+i*slotW+slotW/2;  // centre of each slot
+  const barX=i=>slotCx(i)-barW/2;         // bar left edge
+  const MIN_W=50,MAX_W=100;
+  const yOf=v=>PAD_T+chartH-((v-MIN_W)/(MAX_W-MIN_W))*chartH;
+  const tY=target?yOf(Math.min(Math.max(target,MIN_W),MAX_W)):null;
+
+  // For line chart: only slots with data
+  const linePoints=displaySlots.map((s,i)=>s.entry?{x:slotCx(i),y:yOf(s.entry.weight),w:s.entry.weight}:null).filter(Boolean);
+
+  return html`<div style=${{width:"100%",overflowX:"hidden"}}>
+    <svg width="100%" viewBox=${`0 0 ${W} ${H}`} preserveAspectRatio="none" style=${{display:"block"}}>
+
+      ${/* grid lines */[50,60,70,80,90,100].map(v=>html`<line key=${v} x1=${PAD_L} y1=${yOf(v)} x2=${W-PAD_R} y2=${yOf(v)} stroke=${C.border} strokeDasharray="2,3" strokeWidth="0.5"/>`)}
+
+      ${/* goal line */tY&&html`<g>
+        <line x1=${PAD_L} y1=${tY} x2=${W-PAD_R} y2=${tY} stroke=${C.green} strokeDasharray="5,3" strokeWidth="1.5"/>
+        <text x=${W-PAD_R-2} y=${tY-3} fontSize="8" fill=${C.green} textAnchor="end">Goal</text>
+      </g>`}
+
+      ${/* BAR chart */chartType==="bar"&&displaySlots.map((s,i)=>{
+        if(!s.entry)return null;
+        const v=s.entry.weight;
+        const bTop=yOf(v);
+        const bH=chartH-(bTop-PAD_T);
+        const prevEntry=i>0?displaySlots.slice(0,i).reverse().find(x=>x.entry)?.entry:null;
+        const diff=prevEntry!==null&&prevEntry!==undefined?Math.round((v-prevEntry.weight)*10)/10:null;
         const isUp=diff!==null&&diff>0;
         const barColor=diff===null?C.accent:isUp?C.red:C.green;
-        const cx=xOf(i);
-        const bLeft=cx-barW/2;
-        const barBase=bTop+bH-3;
+        const cx=slotCx(i);
+        const bx=barX(i);
+        const barBase=PAD_T+chartH-2;
         return html`<g key=${i}>
-          <rect x=${bLeft} y=${bTop} width=${barW} height=${bH} rx="3" fill=${barColor} opacity="0.85"/>
-          ${diff!==null&&html`<text x=${bLeft+barW/2} y=${bTop-4} fontSize="6.5" fill=${barColor} textAnchor="middle" fontWeight="700">${isUp?"+":""}${diff}</text>`}
-          <text x=${bLeft+barW/2} y=${barBase} fontSize="7" fill="#ffffff" textAnchor="start" dominantBaseline="middle" fontWeight="700" transform=${`rotate(-90, ${bLeft+barW/2}, ${barBase})`}>${v}</text>
+          <rect x=${bx} y=${bTop} width=${barW} height=${bH} rx="3" fill=${barColor} opacity="0.9"/>
+          ${diff!==null&&html`<text x=${cx} y=${bTop-5} fontSize="7" fill=${barColor} textAnchor="middle" fontWeight="700">${isUp?"+":""}${diff}</text>`}
+          <text
+            x=${cx} y=${barBase}
+            fontSize="7.5" fill="#ffffff" fontWeight="700"
+            textAnchor="start" dominantBaseline="central"
+            transform=${`rotate(-90,${cx},${barBase})`}
+          >${v}</text>
         </g>`;
       })}
-      ${chartType==="line"&&displayWeights.length>1&&html`<path d=${displayWeights.map((w,i)=>`${i===0?"M":"L"} ${xOf(i)} ${yOf(w.weight)}`).join(" ")} fill="none" stroke=${C.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>`}
-      ${chartType==="line"&&displayWeights.map((w,i)=>{
-        const cx=xOf(i),cy=yOf(w.weight);
-        const prev=i>0?displayWeights[i-1].weight:null;
-        const diff=prev!==null?Math.round((w.weight-prev)*10)/10:null;
-        const isUp=diff!==null&&diff>0;
-        const pointColor=diff===null?C.accent:isUp?C.red:C.green;
-        return html`<g key=${i}>
-          <circle cx=${cx} cy=${cy} r="4" fill=${pointColor} stroke=${C.bg} strokeWidth="1" style=${{cursor:"pointer"}} onClick=${(e)=>{e.stopPropagation();onTap&&onTap(w);}}/>
-          <text x=${cx} y=${cy-10} fontSize="7" fill=${C.text} textAnchor="middle" fontWeight="700">${w.weight}</text>
-        </g>`;
-      })}
-      ${displayWeights.map((w,i)=>{const bLeft=(xOf(i)-barW/2);return html`<text key=${i} x=${bLeft+barW/2} y=${H-2} fontSize="7.5" fill=${C.muted} textAnchor="middle">${formatDayLabel(w)}</text>`;})}
-      ${onTap&&html`<rect x=${P.l} y=${P.t} width=${chartW} height=${chartH} fill="transparent" style=${{cursor:"pointer"}}/>`}
+
+      ${/* LINE chart */chartType==="line"&&linePoints.length>1&&html`<path
+        d=${linePoints.map((p,i)=>`${i===0?"M":"L"} ${p.x} ${p.y}`).join(" ")}
+        fill="none" stroke=${C.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>`}
+      ${chartType==="line"&&linePoints.map((p,i)=>html`<g key=${i}>
+        <circle cx=${p.x} cy=${p.y} r="3.5" fill=${C.accent} stroke=${C.bg} strokeWidth="1"/>
+        <text x=${p.x} y=${p.y-9} fontSize="7" fill=${C.text} textAnchor="middle" fontWeight="700">${p.w}</text>
+      </g>`)}
+
+      ${/* date labels — one per slot, centred on slotCx */displaySlots.map((s,i)=>html`<text
+        key=${i} x=${slotCx(i)} y=${H-3}
+        fontSize="7.5" fill=${C.muted} textAnchor="middle"
+      >${s.label}</text>`)}
+
     </svg>
   </div>`;
 }
@@ -1325,7 +1343,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v31.2 · Mar 28, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v31.3 · Mar 28, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
