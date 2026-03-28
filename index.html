@@ -95,7 +95,7 @@ const GOAL_SECTIONS=[
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const todayStr=()=>new Date().toISOString().split("T")[0];
-const fmtDate=d=>new Date(d+"T00:00:00").toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"});
+const fmtDate=d=>{const dt=new Date(d+"T00:00:00");return `${dt.getFullYear()}-${dt.toLocaleDateString("en-US",{month:"long"})}-${String(dt.getDate()).padStart(2,"0")}`;};
 const fmtMonth=d=>new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"long"});
 const fmtShort=d=>new Date(d+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric"});
 const isoWeek=d=>{const dt=new Date(d+"T00:00:00"),j=new Date(dt.getFullYear(),0,1);return Math.ceil(((dt-j)/86400000+j.getDay()+1)/7);};
