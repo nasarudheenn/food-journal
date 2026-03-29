@@ -48,7 +48,7 @@ const store={
 };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const DEFAULT_PROFILE={name:"Nasarudheen N",currentWeight:"81",targetWeight:"70",height:"175",calorieGoal:1800,protein:100,carbs:180,fat:60,fiber:30,sugar:30,saturatedFat:20,polyFat:10,monoFat:15,cholesterol:300,sodium:1500,potassium:4700,calcium:1000,magnesium:410,iron:8,zinc:11,iodine:150,vitA:900,vitC:90,vitD:15,vitE:15,vitB12:2.4,folate:400};
+const DEFAULT_PROFILE={name:"",currentWeight:"",targetWeight:"",height:"",calorieGoal:1800,protein:100,carbs:180,fat:60,fiber:30,sugar:30,saturatedFat:20,polyFat:10,monoFat:15,cholesterol:300,sodium:1500,potassium:4700,calcium:1000,magnesium:410,iron:8,zinc:11,iodine:150,vitA:900,vitC:90,vitD:15,vitE:15,vitB12:2.4,folate:400};
 const C={bg:"#0f0e0c",card:"#222021",border:"#3a3835",accent:"#e8c547",accentDim:"#b89c2f",text:"#f0ece0",muted:"#7a7060",red:"#e05252",green:"#52c47a",blue:"#5299e0",orange:"#e08a52",purple:"#a07ee0"};
 const MEAL_TYPES=["Breakfast","Mid-Morning","Lunch","Evening","Dinner"];
 const MEAL_ICONS={Breakfast:"☀️","Mid-Morning":"🫐",Lunch:"🥗",Evening:"🍎",Dinner:"🌙"};
@@ -230,6 +230,7 @@ function WeightChartWeek({weights,target,onTap}){
 
   // Always use last 7 logged entries, oldest→newest
   const last7=[...weights].sort((a,b)=>a.date.localeCompare(b.date)).slice(-7);
+  const n=last7.length;
 
   const MON_SHORT=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const slots=last7.map(w=>{
@@ -237,30 +238,33 @@ function WeightChartWeek({weights,target,onTap}){
     return{entry:w,day:String(dt.getDate()),mon:MON_SHORT[dt.getMonth()]};
   });
 
-  // Geometry — fixed 7 slots
-  const SLOTS=7;
-  const W=280, H=170;
-  const PAD_T=22, PAD_B=26, PAD_L=0, PAD_R=0;
-  const chartW=W, chartH=H-PAD_T-PAD_B;
-  const slotW=chartW/SLOTS;
-  const barW=slotW*0.68;
-  const slotCx=i=>i*slotW+slotW/2;
-  const bx=i=>slotCx(i)-barW/2;
+  // Fixed viewBox — uniform scaling (no stretching), padding on all sides
+  const W=350, H=180;
+  const PL=6, PR=6, PT=20, PB=34;  // PB=34 for 2-line date
+  const chartW=W-PL-PR;
+  const chartH=H-PT-PB;
+  const slotW=chartW/7;             // always 7 equal slots
+  const barW=slotW*0.62;
+  const slotCx=i=>PL+i*slotW+slotW/2;
+  const bxOf=i=>slotCx(i)-barW/2;
   const MIN_W=50,MAX_W=100;
-  const yOf=v=>PAD_T+chartH-((v-MIN_W)/(MAX_W-MIN_W))*chartH;
+  const yOf=v=>PT+chartH-((v-MIN_W)/(MAX_W-MIN_W))*chartH;
   const tY=target?yOf(Math.min(Math.max(target,MIN_W),MAX_W)):null;
-  const barBase=PAD_T+chartH;
+  const barBase=PT+chartH;
 
   return html`<div style=${{width:"100%",cursor:"pointer"}} onClick=${onTap}>
-    <svg width="100%" viewBox=${`0 0 ${W} ${H}`} preserveAspectRatio="none" style=${{display:"block"}}>
-
-      ${[50,60,70,80,90,100].map(v=>html`<line key=${v}
-        x1=0 y1=${yOf(v)} x2=${W} y2=${yOf(v)}
+    <svg
+      width="100%" viewBox=${`0 0 ${W} ${H}`}
+      preserveAspectRatio="xMidYMid meet"
+      style=${{display:"block"}}
+    >
+      ${/* grid lines */[50,60,70,80,90,100].map(v=>html`<line key=${v}
+        x1=${PL} y1=${yOf(v)} x2=${W-PR} y2=${yOf(v)}
         stroke=${C.border} strokeDasharray="2,3" strokeWidth="0.5"/>`)}
 
-      ${tY&&html`<g>
-        <line x1=0 y1=${tY} x2=${W} y2=${tY} stroke=${C.green} strokeDasharray="4,3" strokeWidth="1.2"/>
-        <text x=${W-2} y=${tY-3} fontSize="7" fill=${C.green} textAnchor="end">Goal</text>
+      ${/* goal line */tY&&html`<g>
+        <line x1=${PL} y1=${tY} x2=${W-PR} y2=${tY} stroke=${C.green} strokeDasharray="4,3" strokeWidth="1"/>
+        <text x=${W-PR-2} y=${tY-3} fontSize="9" fill=${C.green} textAnchor="end" fontWeight="600">Goal</text>
       </g>`}
 
       ${slots.map((s,i)=>{
@@ -268,33 +272,36 @@ function WeightChartWeek({weights,target,onTap}){
         const v=s.entry.weight;
         const bTop=yOf(v);
         const bH=barBase-bTop;
+        const cx=slotCx(i);
+        const bx=bxOf(i);
         const prevEntry=i>0?slots[i-1].entry:null;
         const diff=prevEntry?Math.round((v-prevEntry.weight)*10)/10:null;
         const isUp=diff!==null&&diff>0;
         const isZero=diff===0;
         const barColor=diff===null?C.accent:isUp?C.red:C.green;
-        const cx=slotCx(i);
-        // diff label: just above bar top, clipped to bar x
-        const diffY=Math.max(PAD_T+8,bTop-4);
+        const diffColor=isZero?C.green:barColor;
+        const diffY=Math.max(PT+10,bTop-5);
         return html`<g key=${i}>
-          <rect x=${bx(i)} y=${bTop} width=${barW} height=${bH} rx="2.5" fill=${barColor} opacity="0.92"/>
+          <rect x=${bx} y=${bTop} width=${barW} height=${bH} rx="3" fill=${barColor} opacity="0.92"/>
+
           ${diff!==null&&html`<text
             x=${cx} y=${diffY}
-            fontSize="6.5" fill=${isZero?C.green:barColor} textAnchor="middle" fontWeight="700"
+            fontSize="8" fill=${diffColor} textAnchor="middle" fontWeight="700"
           >${isUp?"+":""}${diff}</text>`}
-          <text
-            x=${cx} y=${barBase-3}
-            fontSize="7" fill="#fff" fontWeight="700"
+
+          ${bH>16&&html`<text
+            x=${cx} y=${barBase-4}
+            fontSize="9" fill="#fff" fontWeight="700"
             textAnchor="start" dominantBaseline="central"
-            transform=${`rotate(-90,${cx},${barBase-3})`}
-          >${v}</text>
-          <text x=${cx} y=${H-14} fontSize="7.5" fill=${C.muted} textAnchor="middle">${s.day}</text>
-          <text x=${cx} y=${H-4} fontSize="6.5" fill=${C.muted} textAnchor="middle">${s.mon}</text>
+            transform=${`rotate(-90,${cx},${barBase-4})`}
+          >${v}</text>`}
+
+          <text x=${cx} y=${H-PB+10} fontSize="9" fill=${C.muted} textAnchor="middle" fontWeight="600">${s.day}</text>
+          <text x=${cx} y=${H-PB+22} fontSize="8" fill=${C.muted} textAnchor="middle">${s.mon}</text>
         </g>`;
       })}
-
     </svg>
-    <div style=${{textAlign:"center",fontSize:10,color:C.muted,marginTop:2,opacity:0.6}}>Tap to see progress</div>
+    <div style=${{textAlign:"center",fontSize:10,color:C.muted,marginTop:1,opacity:0.55}}>Tap to see progress ↑</div>
   </div>`;
 }
 
@@ -628,9 +635,21 @@ function IngredientModal({show,editData,onSave,onClose,apiKey}){
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 function App(){
-  // Persisted state
+  // Persisted state — personal fields always start blank, loaded only if user explicitly saved them
+  const PERSONAL_KEYS=["name","height","currentWeight","targetWeight"];
+  const loadProfile=()=>{
+    const p=store.get(SK.profile);
+    if(!p)return DEFAULT_PROFILE;
+    const clean={...DEFAULT_PROFILE,...p};
+    // Wipe any old hardcoded values so they never reappear
+    if(clean.name==="Nasarudheen N")clean.name="";
+    if(String(clean.height)==="175")clean.height="";
+    if(String(clean.currentWeight)==="81"||String(clean.currentWeight)==="81.15")clean.currentWeight="";
+    if(String(clean.targetWeight)==="70")clean.targetWeight="";
+    return clean;
+  };
   const [entries,setEntries]=useState(()=>store.get(SK.entries)||{});
-  const [profile,setProfile]=useState(()=>{const p=store.get(SK.profile);return p?{...DEFAULT_PROFILE,...p}:DEFAULT_PROFILE;});
+  const [profile,setProfile]=useState(loadProfile);
   const [weights,setWeights]=useState(()=>store.get(SK.weights)||[]);
   const [recipeBook,setRecipeBook]=useState(()=>store.get(SK.recipes)||[]);
   const [apiKey,setApiKey]=useState(()=>localStorage.getItem(SK.apiKey)||"");
@@ -694,7 +713,7 @@ function App(){
   const [useMeal,setUseMeal]=useState(()=>getMealByTime());
 
   // Profile
-  const [profEdit,setProfEdit]=useState(()=>{const p=store.get(SK.profile);return p?{...DEFAULT_PROFILE,...p}:DEFAULT_PROFILE;});
+  const [profEdit,setProfEdit]=useState(loadProfile);
   const [newWt,setNewWt]=useState("");
   const [apiKeyMsg,setApiKeyMsg]=useState("");
   const [goalSectionsOpen,setGoalSectionsOpen]=useState({energy:false,fats:false,minerals:false,vitamins:false});
@@ -705,6 +724,19 @@ function App(){
   const [repDetail,setRepDetail]=useState(null);
   const [nutriSummary,setNutriSummary]=useState(null);
   const [weightChartType,setWeightChartType]=useState("bar");
+
+  // One-time: scrub old hardcoded personal data from localStorage
+  useEffect(()=>{
+    const p=store.get(SK.profile);
+    if(!p)return;
+    let dirty=false;
+    const clean={...p};
+    if(clean.name==="Nasarudheen N"){clean.name="";dirty=true;}
+    if(String(clean.height)==="175"){clean.height="";dirty=true;}
+    if(String(clean.currentWeight)==="81"||String(clean.currentWeight)==="81.15"){clean.currentWeight="";dirty=true;}
+    if(String(clean.targetWeight)==="70"){clean.targetWeight="";dirty=true;}
+    if(dirty){store.set(SK.profile,clean);setProfile(p=>({...p,...clean}));setProfEdit(p=>({...p,...clean}));}
+  },[]);
 
   // One-time migration: update saved goal defaults for existing users
   useEffect(()=>{
@@ -928,7 +960,7 @@ function App(){
     if(!newWt)return;
     const e={date:todayStr(),weight:parseFloat(newWt)};
     const u=[...weights.filter(w=>w.date!==todayStr()),e].sort((a,b)=>a.date.localeCompare(b.date));
-    pW(u);const np={...profEdit,currentWeight:newWt};pP(np);setNewWt("");
+    pW(u);setNewWt("");
   }
   function saveApiKey(){
     const k=apiKeyInput.trim();localStorage.setItem(SK.apiKey,k);setApiKey(k);
@@ -1327,11 +1359,13 @@ ${tab==="diary"&&view==="history"&&html`
 ${tab==="profile"&&view==="main"&&html`
         <div style=${{padding:"16px 18px"}}>
           <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
+            ${(()=>{const latestW=weights.length>0?[...weights].sort((a,b)=>b.date.localeCompare(a.date))[0].weight:null;const toGoal=latestW&&profile.targetWeight?parseFloat(latestW)-parseFloat(profile.targetWeight):null;return html`
             <div style=${{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:weights.length>0?14:8}}>
-              <div><div style=${{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:2}}>Current Weight</div><div style=${{fontSize:28,fontWeight:700,fontFamily:"monospace"}}>${profile.currentWeight||"—"}<span style=${{fontSize:13,color:C.muted}}> kg</span></div></div>
+              <div><div style=${{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:2}}>Current Weight</div><div style=${{fontSize:28,fontWeight:700,fontFamily:"monospace"}}>${latestW||"—"}<span style=${{fontSize:13,color:C.muted}}> kg</span></div></div>
               <div style=${{textAlign:"right"}}><div style=${{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:2}}>Target</div><div style=${{fontSize:22,fontWeight:700,fontFamily:"monospace",color:C.green}}>${profile.targetWeight||"—"}<span style=${{fontSize:11,color:C.muted}}> kg</span></div></div>
             </div>
-            ${profile.currentWeight&&profile.targetWeight&&html`<div style=${{fontSize:11,marginBottom:10}}>${parseFloat(profile.currentWeight)>parseFloat(profile.targetWeight)?html`<span style=${{color:C.orange}}>📉 ${(parseFloat(profile.currentWeight)-parseFloat(profile.targetWeight)).toFixed(1)} kg to goal</span>`:html`<span style=${{color:C.green}}>🎉 Target reached!</span>`}</div>`}
+            ${toGoal!==null&&html`<div style=${{fontSize:11,marginBottom:10}}>${toGoal>0?html`<span style=${{color:C.orange}}>📉 ${toGoal.toFixed(1)} kg to goal</span>`:html`<span style=${{color:C.green}}>🎉 Target reached!</span>`}</div>`}
+            `;})()} 
             ${weights.length>0&&html`<div style=${{width:"100%"}}>
               <${WeightChartWeek} weights=${weights} target=${parseFloat(profile.targetWeight)||null} onTap=${()=>setWeightDetailModal(true)}/>
             </div>`}
@@ -1344,10 +1378,21 @@ ${tab==="profile"&&view==="main"&&html`
           <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style=${{fontSize:14,fontWeight:700,marginBottom:14}}>Personal Info</div>
             <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              ${[{label:"Name",key:"name",type:"text",ph:"Your name"},{label:"Height (cm)",key:"height",type:"number",ph:"175"},{label:"Target Weight (kg)",key:"targetWeight",type:"number",ph:"70"}].map(({label,key,type,ph})=>html`<div key=${key}><${Lbl}>${label}<//>
+              ${[{label:"Name",key:"name",type:"text",ph:"Your name"},{label:"Height (cm)",key:"height",type:"number",ph:""}].map(({label,key,type,ph})=>html`<div key=${key}><${Lbl}>${label}<//>
                 <input value=${profEdit[key]||""} onInput=${e=>setProfEdit(p=>({...p,[key]:e.target.value}))} type=${type} placeholder=${ph} style=${IS}/></div>`)}
               <div><${Lbl}>Beginning Weight (kg)<//>
-                <input value=${profEdit.currentWeight||""} readOnly style=${{...IS,opacity:0.6,cursor:"not-allowed"}}/></div>
+                <input
+                  value=${profEdit.currentWeight||""}
+                  onInput=${e=>!profile.currentWeight&&setProfEdit(p=>({...p,currentWeight:e.target.value}))}
+                  readOnly=${!!profile.currentWeight}
+                  placeholder="e.g. 80"
+                  type="number"
+                  style=${{...IS,opacity:profile.currentWeight?0.6:1,cursor:profile.currentWeight?"not-allowed":"text"}}
+                />
+                ${profile.currentWeight&&html`<div style=${{fontSize:9,color:C.muted,marginTop:3}}>Set at first log — cannot change</div>`}
+              </div>
+              <div><${Lbl}>Target Weight (kg)<//>
+                <input value=${profEdit.targetWeight||""} onInput=${e=>setProfEdit(p=>({...p,targetWeight:e.target.value}))} type="number" placeholder="" style=${IS}/></div>
             </div>
           </div>
           <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
@@ -1407,7 +1452,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v31.6 · Mar 28, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v32.0 · Mar 28, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
