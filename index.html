@@ -725,14 +725,30 @@ function App(){
     const today=todayStr();
     if(lb===today)return;
     const t=setTimeout(()=>{
-      try{
-        const data={version:1,exportedAt:new Date().toISOString(),entries:store.get(SK.entries)||{},profile:store.get(SK.profile)||{},weights:store.get(SK.weights)||[],recipeBook:store.get(SK.recipes)||[]};
-        const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement("a");a.href=url;a.download=`food-journal-backup-${today}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-        localStorage.setItem(SK.lastBackup,today);
-        setBackupMsg("✓ Auto-backup saved!");setTimeout(()=>setBackupMsg(""),4000);
-      }catch(e){console.error(e);}
+      (async()=>{
+        try{
+          const data={version:1,exportedAt:new Date().toISOString(),entries:store.get(SK.entries)||{},profile:store.get(SK.profile)||{},weights:store.get(SK.weights)||[],recipeBook:store.get(SK.recipes)||[]};
+          const handle=await getSavedHandle();
+          if(handle){
+            await writeToHandle(handle,data);
+            localStorage.setItem(SK.lastBackup,today);
+            setBackupMsg("✓ Auto-backup updated!");setTimeout(()=>setBackupMsg(""),4000);
+          }else if(FS_SUPPORTED){
+            // prompt user to pick location once
+            const h=await window.showSaveFilePicker({suggestedName:"food-journal-backup.json",types:[{description:"JSON Backup",accept:{"application/json":[".json"]}}]});
+            await writeToHandle(h,data);
+            await saveHandle(h);
+            localStorage.setItem(SK.lastBackup,today);
+            setBackupMsg("✓ Auto-backup location set & saved!");setTimeout(()=>setBackupMsg(""),4000);
+          }else{
+            const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+            const url=URL.createObjectURL(blob);
+            const a=document.createElement("a");a.href=url;a.download="food-journal-backup.json";document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+            localStorage.setItem(SK.lastBackup,today);
+            setBackupMsg("✓ Auto-backup saved!");setTimeout(()=>setBackupMsg(""),4000);
+          }
+        }catch(e){if(e.name!=="AbortError")console.error(e);}
+      })();
     },3000);
     return()=>clearTimeout(t);
   },[autoBackup]);
@@ -916,13 +932,64 @@ function App(){
     const k=apiKeyInput.trim();localStorage.setItem(SK.apiKey,k);setApiKey(k);
     setApiKeyMsg(k?"✓ Saved!":"Key removed.");setTimeout(()=>setApiKeyMsg(""),3000);
   }
+  // ── File System Access API helpers ──
+  const FS_SUPPORTED=typeof window.showSaveFilePicker==="function";
+  const IDB_NAME="fj-backup-db",IDB_STORE="handles";
+  function openHandleDB(){
+    return new Promise((res,rej)=>{
+      const req=indexedDB.open(IDB_NAME,1);
+      req.onupgradeneeded=e=>e.target.result.createObjectStore(IDB_STORE);
+      req.onsuccess=e=>res(e.target.result);
+      req.onerror=rej;
+    });
+  }
+  async function getSavedHandle(){
+    try{const db=await openHandleDB();return await new Promise((res,rej)=>{const r=db.transaction(IDB_STORE).objectStore(IDB_STORE).get("backupFile");r.onsuccess=e=>res(e.target.result);r.onerror=rej;});}catch{return null;}
+  }
+  async function saveHandle(h){
+    try{const db=await openHandleDB();await new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,"readwrite");tx.objectStore(IDB_STORE).put(h,"backupFile");tx.oncomplete=res;tx.onerror=rej;});}catch{}
+  }
+  async function clearHandle(){
+    try{const db=await openHandleDB();await new Promise((res,rej)=>{const tx=db.transaction(IDB_STORE,"readwrite");tx.objectStore(IDB_STORE).delete("backupFile");tx.oncomplete=res;tx.onerror=rej;});}catch{}
+  }
+  async function writeToHandle(handle,data){
+    const perm=await handle.queryPermission({mode:"readwrite"});
+    if(perm!=="granted"){const req=await handle.requestPermission({mode:"readwrite"});if(req!=="granted")throw new Error("Permission denied");}
+    const w=await handle.createWritable();
+    await w.write(JSON.stringify(data,null,2));
+    await w.close();
+  }
+
   function exportData(){
+    const data={version:1,exportedAt:new Date().toISOString(),entries,profile,weights,recipeBook};
+    if(FS_SUPPORTED){
+      (async()=>{
+        try{
+          const handle=await window.showSaveFilePicker({suggestedName:"food-journal-backup.json",types:[{description:"JSON Backup",accept:{"application/json":[".json"]}}]});
+          await writeToHandle(handle,data);
+          await saveHandle(handle);
+          localStorage.setItem(SK.lastBackup,todayStr());
+          setBackupMsg("✓ Backup saved — will overwrite this file next time!");setTimeout(()=>setBackupMsg(""),4000);
+        }catch(e){if(e.name!=="AbortError"){setBackupMsg("⚠ Save failed.");setTimeout(()=>setBackupMsg(""),3000);}}
+      })();
+    }else{
+      const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+      const url=URL.createObjectURL(blob);const a=document.createElement("a");
+      a.href=url;a.download="food-journal-backup.json";
+      document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+      localStorage.setItem(SK.lastBackup,todayStr());
+      setBackupMsg("✓ Backup saved!");setTimeout(()=>setBackupMsg(""),3000);
+    }
+  }
+
+  function exportToGDrive(){
     const data={version:1,exportedAt:new Date().toISOString(),entries,profile,weights,recipeBook};
     const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
     const url=URL.createObjectURL(blob);const a=document.createElement("a");
-    a.href=url;a.download=`food-journal-backup-${todayStr()}.json`;
+    a.href=url;a.download="food-journal-backup.json";
     document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-    setBackupMsg("✓ Backup saved!");setTimeout(()=>setBackupMsg(""),3000);
+    setTimeout(()=>window.open("https://drive.google.com/drive/my-drive","_blank"),600);
+    setBackupMsg("✓ File downloaded — upload it in Google Drive!");setTimeout(()=>setBackupMsg(""),5000);
   }
   function importDataFile(e){
     const file=e.target.files[0];if(!file)return;
@@ -1324,26 +1391,35 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:18,marginBottom:14}}>
             <div style=${{fontSize:14,fontWeight:700,marginBottom:6}}>Data Backup</div>
-            <div style=${{fontSize:12,color:C.muted,marginBottom:14,lineHeight:1.6}}>Export to keep data safe. Restore anytime.</div>
-            <div style=${{display:"flex",alignItems:"center",justifyContent:"space-between",background:C.bg,border:`1px solid ${autoBackup?C.green:C.border}`,borderRadius:10,padding:"12px 14px",marginBottom:12}}>
+            <div style=${{fontSize:12,color:C.muted,marginBottom:14,lineHeight:1.6}}>Saves to a single file — always overwrites the same file.</div>
+
+            <div style=${{display:"flex",alignItems:"center",justifyContent:"space-between",background:C.bg,border:`1px solid ${autoBackup?C.green:C.border}`,borderRadius:10,padding:"12px 14px",marginBottom:10}}>
               <div>
                 <div style=${{fontSize:13,fontWeight:600,color:autoBackup?C.green:C.text}}>🔄 Daily Auto-Backup</div>
-                <div style=${{fontSize:11,color:C.muted,marginTop:2}}>${autoBackup?"On — saves to Downloads daily":"Off — tap to enable"}</div>
-                ${autoBackup&&localStorage.getItem(SK.lastBackup)&&html`<div style=${{fontSize:10,color:C.green,marginTop:2}}>Last: ${localStorage.getItem(SK.lastBackup)}</div>`}
+                <div style=${{fontSize:11,color:C.muted,marginTop:2}}>${autoBackup?(FS_SUPPORTED?"On — overwrites same file daily":"On — downloads daily"):"Off — tap to enable"}</div>
+                ${autoBackup&&localStorage.getItem(SK.lastBackup)&&html`<div style=${{fontSize:10,color:C.green,marginTop:3}}>Last: ${localStorage.getItem(SK.lastBackup)}</div>`}
               </div>
               <button onClick=${()=>{const v=!autoBackup;setAutoBackup(v);localStorage.setItem(SK.autoBackup,String(v));}} style=${{width:50,height:28,borderRadius:14,border:"none",cursor:"pointer",background:autoBackup?C.green:C.border,position:"relative",transition:"background 0.2s",flexShrink:0}}>
                 <div style=${{width:22,height:22,borderRadius:"50%",background:"#fff",position:"absolute",top:3,transition:"left 0.2s",left:autoBackup?25:3}}/>
               </button>
             </div>
-            ${backupMsg&&html`<div style=${{fontSize:12,color:backupMsg.startsWith("✓")?C.green:C.red,marginBottom:12,padding:"10px",background:backupMsg.startsWith("✓")?"rgba(82,196,122,0.1)":"rgba(224,82,82,0.1)",borderRadius:8}}>${backupMsg}</div>`}
-            <div style=${{display:"flex",gap:10}}>
-              <button onClick=${exportData} style=${{flex:1,padding:"12px 10px",background:`linear-gradient(135deg,${C.blue},#3a79c0)`,border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><span>⬇️</span> Export</button>
-              <label style=${{flex:1,padding:"12px 10px",background:`linear-gradient(135deg,${C.orange},#b06830)`,border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}><span>⬆️</span> Restore<input type="file" accept=".json" onChange=${importDataFile} style=${{display:"none"}}/></label>
+
+            ${FS_SUPPORTED&&html`<button onClick=${async()=>{await clearHandle();setBackupMsg("📁 Location cleared — next backup will ask for new location.");setTimeout(()=>setBackupMsg(""),4000);}} style=${{width:"100%",padding:"8px",background:"none",border:`1px solid ${C.border}`,borderRadius:8,color:C.muted,fontSize:11,cursor:"pointer",fontFamily:"inherit",marginBottom:10}}>📁 Change backup file location</button>`}
+
+            ${backupMsg&&html`<div style=${{fontSize:12,color:backupMsg.startsWith("✓")?"#52c47a":backupMsg.startsWith("📁")?C.accent:C.red,marginBottom:10,padding:"10px",background:backupMsg.startsWith("✓")?"rgba(82,196,122,0.1)":backupMsg.startsWith("📁")?"rgba(232,197,71,0.1)":"rgba(224,82,82,0.1)",borderRadius:8}}>${backupMsg}</div>`}
+
+            <div style=${{display:"flex",gap:10,marginBottom:10}}>
+              <button onClick=${exportData} style=${{flex:1,padding:"12px 10px",background:`linear-gradient(135deg,${C.blue},#3a79c0)`,border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>⬇️ Export</button>
+              <label style=${{flex:1,padding:"12px 10px",background:`linear-gradient(135deg,${C.orange},#b06830)`,border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>⬆️ Restore<input type="file" accept=".json" onChange=${importDataFile} style=${{display:"none"}}/></label>
             </div>
+            <button onClick=${exportToGDrive} style=${{width:"100%",padding:"11px",background:"linear-gradient(135deg,#2d8cf0,#1a6abf)",border:"none",borderRadius:10,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              <svg width="16" height="16" viewBox="0 0 87.3 78" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.6 66.85l3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8H0a15.92 15.92 0 001.9 7.35l4.7 6.5z" fill="#0066da"/><path d="M43.65 25L29.9 1.2C28.55 2 27.4 3.1 26.6 4.5L1.9 47a15.92 15.92 0 00-1.9 7.35h27.5L43.65 25z" fill="#00ac47"/><path d="M73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25A15.92 15.92 0 0087.3 50H59.8L73.55 76.8z" fill="#ea4335"/><path d="M43.65 25L57.4 1.2C56.05.43 54.5 0 52.85 0H34.45c-1.65 0-3.2.43-4.55 1.2L43.65 25z" fill="#00832d"/><path d="M59.8 54.35H27.5L13.75 78.1c1.35.77 2.9 1.2 4.55 1.2h50.2c1.65 0 3.2-.43 4.55-1.2L59.8 54.35z" fill="#2684fc"/><path d="M73.4 27.5L60.7 4.5c-.8-1.4-1.95-2.5-3.3-3.3L43.65 25l16.15 29.35H87.3c0-2.65-.67-5.15-1.9-7.35L73.4 27.5z" fill="#ffba00"/></svg>
+              Save to Google Drive
+            </button>
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v31.4 · Mar 28, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v31.5 · Mar 28, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
