@@ -1383,13 +1383,11 @@ ${tab==="profile"&&view==="main"&&html`
               <div><${Lbl}>Beginning Weight (kg)<//>
                 <input
                   value=${profEdit.currentWeight||""}
-                  onInput=${e=>!profile.currentWeight&&setProfEdit(p=>({...p,currentWeight:e.target.value}))}
-                  readOnly=${!!profile.currentWeight}
+                  onInput=${e=>setProfEdit(p=>({...p,currentWeight:e.target.value}))}
                   placeholder="e.g. 80"
                   type="number"
-                  style=${{...IS,opacity:profile.currentWeight?0.6:1,cursor:profile.currentWeight?"not-allowed":"text"}}
+                  style=${IS}
                 />
-                ${profile.currentWeight&&html`<div style=${{fontSize:9,color:C.muted,marginTop:3}}>Set at first log — cannot change</div>`}
               </div>
               <div><${Lbl}>Target Weight (kg)<//>
                 <input value=${profEdit.targetWeight||""} onInput=${e=>setProfEdit(p=>({...p,targetWeight:e.target.value}))} type="number" placeholder="" style=${IS}/></div>
@@ -1452,7 +1450,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v32.0 · Mar 28, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v32.1 · Mar 28, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
