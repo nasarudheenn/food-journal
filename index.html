@@ -338,12 +338,12 @@ function WeightChartLine({weights,target,onTap}){
   </svg>`;
 }
 
-function WeightDetailModal({weights,target,onClose}){
+function WeightDetailModal({weights,target,beginningWeight,onClose}){
   if(!weights.length)return null;
 
   const sorted=[...weights].sort((a,b)=>a.date.localeCompare(b.date));
-  const firstWeight=sorted[0]?.weight||0;
   const lastWeight=sorted[sorted.length-1]?.weight||0;
+  const firstWeight=beginningWeight||sorted[0]?.weight||0;
   const totalChange=Math.round((lastWeight-firstWeight)*10)/10;
   const isGain=totalChange>0;
   const currentTarget=target||null;
@@ -635,18 +635,10 @@ function IngredientModal({show,editData,onSave,onClose,apiKey}){
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 function App(){
-  // Persisted state — personal fields always start blank, loaded only if user explicitly saved them
-  const PERSONAL_KEYS=["name","height","currentWeight","targetWeight"];
+  // Persisted state
   const loadProfile=()=>{
     const p=store.get(SK.profile);
-    if(!p)return DEFAULT_PROFILE;
-    const clean={...DEFAULT_PROFILE,...p};
-    // Wipe any old hardcoded values so they never reappear
-    if(clean.name==="Nasarudheen N")clean.name="";
-    if(String(clean.height)==="175")clean.height="";
-    if(String(clean.currentWeight)==="81"||String(clean.currentWeight)==="81.15")clean.currentWeight="";
-    if(String(clean.targetWeight)==="70")clean.targetWeight="";
-    return clean;
+    return p?{...DEFAULT_PROFILE,...p}:DEFAULT_PROFILE;
   };
   const [entries,setEntries]=useState(()=>store.get(SK.entries)||{});
   const [profile,setProfile]=useState(loadProfile);
@@ -725,17 +717,20 @@ function App(){
   const [nutriSummary,setNutriSummary]=useState(null);
   const [weightChartType,setWeightChartType]=useState("bar");
 
-  // One-time: scrub old hardcoded personal data from localStorage
+  // One-time: scrub old hardcoded personal data from localStorage (runs only once per device)
   useEffect(()=>{
+    if(localStorage.getItem("fj-personal-scrub-v1")==="done")return;
     const p=store.get(SK.profile);
-    if(!p)return;
-    let dirty=false;
-    const clean={...p};
-    if(clean.name==="Nasarudheen N"){clean.name="";dirty=true;}
-    if(String(clean.height)==="175"){clean.height="";dirty=true;}
-    if(String(clean.currentWeight)==="81"||String(clean.currentWeight)==="81.15"){clean.currentWeight="";dirty=true;}
-    if(String(clean.targetWeight)==="70"){clean.targetWeight="";dirty=true;}
-    if(dirty){store.set(SK.profile,clean);setProfile(p=>({...p,...clean}));setProfEdit(p=>({...p,...clean}));}
+    if(p){
+      const clean={...p};
+      let dirty=false;
+      if(clean.name==="Nasarudheen N"){clean.name="";dirty=true;}
+      if(String(clean.height)==="175"){clean.height="";dirty=true;}
+      if(String(clean.currentWeight)==="81"||String(clean.currentWeight)==="81.15"){clean.currentWeight="";dirty=true;}
+      if(String(clean.targetWeight)==="70"){clean.targetWeight="";dirty=true;}
+      if(dirty){store.set(SK.profile,clean);setProfile(pr=>({...pr,...clean}));setProfEdit(pr=>({...pr,...clean}));}
+    }
+    localStorage.setItem("fj-personal-scrub-v1","done");
   },[]);
 
   // One-time migration: update saved goal defaults for existing users
@@ -1093,7 +1088,7 @@ function App(){
       ${confirmModal&&html`<${ConfirmModal} title=${confirmModal.title} confirmText=${confirmModal.confirmText} msg=${confirmModal.msg} onConfirm=${()=>{confirmModal.onConfirm();setConfirmModal(null);}} onCancel=${()=>setConfirmModal(null)}/>`}
       ${repDetail&&html`<${ReportDetailModal} data=${repDetail} onClose=${()=>setRepDetail(null)}/>`}
       ${nutriSummary&&html`<${NutritionSummaryModal} data=${nutriSummary} onClose=${()=>setNutriSummary(null)}/>`}
-      ${weightDetailModal&&html`<${WeightDetailModal} weights=${weights} target=${parseFloat(profile.targetWeight)||null} onClose=${()=>setWeightDetailModal(null)}/>`}
+      ${weightDetailModal&&html`<${WeightDetailModal} weights=${weights} target=${parseFloat(profile.targetWeight)||null} beginningWeight=${parseFloat(profile.currentWeight)||null} onClose=${()=>setWeightDetailModal(null)}/>`}
       <${IngredientModal} show=${ingModal} editData=${ingEditData} onSave=${saveIng} onClose=${()=>setIngModal(false)} apiKey=${apiKey}/>
       ${backupMsg&&tab!=="profile"&&html`<div style=${{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:200,background:backupMsg.startsWith("✓")?"rgba(82,196,122,0.95)":"rgba(224,82,82,0.95)",color:"#fff",borderRadius:20,padding:"10px 20px",fontSize:12,fontWeight:600,boxShadow:"0 4px 16px rgba(0,0,0,0.3)",whiteSpace:"nowrap"}}>${backupMsg}</div>`}
       ${goalMigMsg&&html`<div style=${{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:201,background:"rgba(82,196,122,0.95)",color:"#fff",borderRadius:20,padding:"10px 20px",fontSize:12,fontWeight:600,boxShadow:"0 4px 16px rgba(0,0,0,0.3)",whiteSpace:"nowrap"}}>${goalMigMsg}</div>`}
@@ -1450,7 +1445,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v32.1 · Mar 28, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v32.2 · Mar 28, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
