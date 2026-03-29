@@ -225,100 +225,76 @@ function WeightChart({weights,target,onTap}){
   </svg>`;
 }
 
-function WeightChartWeek({weights,target,onTap,chartType,onChartTypeChange}){
+function WeightChartWeek({weights,target,onTap}){
   if(!weights.length)return null;
 
-  // Build 7-slot week grid (Mon–Sun)
-  const now=new Date();
-  const dow=now.getDay();
-  const monday=new Date(now);monday.setDate(now.getDate()-(dow===0?6:dow-1));
-  const slots=[];
-  for(let i=0;i<7;i++){
-    const dt=new Date(monday);dt.setDate(monday.getDate()+i);
-    const dateStr=dt.toISOString().split("T")[0];
-    const m=String(dt.getMonth()+1).padStart(2,"0");
-    const d=String(dt.getDate()).padStart(2,"0");
-    const entry=weights.find(w=>w.date===dateStr)||null;
-    slots.push({dateStr,label:`${m}/${d}`,entry});
-  }
-  // If no current week data fall back to last 7 logged entries
-  const hasWeekData=slots.some(s=>s.entry);
-  let displaySlots=slots;
-  if(!hasWeekData){
-    const last7=[...weights].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,7).reverse();
-    displaySlots=last7.map(w=>{
-      const dt=new Date(w.date+"T00:00:00");
-      const m=String(dt.getMonth()+1).padStart(2,"0");
-      const d=String(dt.getDate()).padStart(2,"0");
-      return{dateStr:w.date,label:`${m}/${d}`,entry:w};
-    });
-  }
+  // Always use last 7 logged entries, oldest→newest
+  const last7=[...weights].sort((a,b)=>a.date.localeCompare(b.date)).slice(-7);
 
-  // Chart geometry — fixed 7 slots, full width
-  const SLOTS=displaySlots.length;
-  const W=280, H=160;
-  const PAD_T=22, PAD_B=18, PAD_L=0, PAD_R=0;
-  const chartW=W-PAD_L-PAD_R;
-  const chartH=H-PAD_T-PAD_B;
-  const slotW=chartW/SLOTS;          // each slot owns equal width
-  const barW=slotW*0.72;             // bar = 72% of slot, gap = 28%
-  const slotCx=i=>PAD_L+i*slotW+slotW/2;  // centre of each slot
-  const barX=i=>slotCx(i)-barW/2;         // bar left edge
+  const MON_SHORT=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const slots=last7.map(w=>{
+    const dt=new Date(w.date+"T00:00:00");
+    return{entry:w,day:String(dt.getDate()),mon:MON_SHORT[dt.getMonth()]};
+  });
+
+  // Geometry — fixed 7 slots
+  const SLOTS=7;
+  const W=280, H=170;
+  const PAD_T=22, PAD_B=26, PAD_L=0, PAD_R=0;
+  const chartW=W, chartH=H-PAD_T-PAD_B;
+  const slotW=chartW/SLOTS;
+  const barW=slotW*0.68;
+  const slotCx=i=>i*slotW+slotW/2;
+  const bx=i=>slotCx(i)-barW/2;
   const MIN_W=50,MAX_W=100;
   const yOf=v=>PAD_T+chartH-((v-MIN_W)/(MAX_W-MIN_W))*chartH;
   const tY=target?yOf(Math.min(Math.max(target,MIN_W),MAX_W)):null;
+  const barBase=PAD_T+chartH;
 
-  // For line chart: only slots with data
-  const linePoints=displaySlots.map((s,i)=>s.entry?{x:slotCx(i),y:yOf(s.entry.weight),w:s.entry.weight}:null).filter(Boolean);
-
-  return html`<div style=${{width:"100%",overflowX:"hidden"}}>
+  return html`<div style=${{width:"100%",cursor:"pointer"}} onClick=${onTap}>
     <svg width="100%" viewBox=${`0 0 ${W} ${H}`} preserveAspectRatio="none" style=${{display:"block"}}>
 
-      ${/* grid lines */[50,60,70,80,90,100].map(v=>html`<line key=${v} x1=${PAD_L} y1=${yOf(v)} x2=${W-PAD_R} y2=${yOf(v)} stroke=${C.border} strokeDasharray="2,3" strokeWidth="0.5"/>`)}
+      ${[50,60,70,80,90,100].map(v=>html`<line key=${v}
+        x1=0 y1=${yOf(v)} x2=${W} y2=${yOf(v)}
+        stroke=${C.border} strokeDasharray="2,3" strokeWidth="0.5"/>`)}
 
-      ${/* goal line */tY&&html`<g>
-        <line x1=${PAD_L} y1=${tY} x2=${W-PAD_R} y2=${tY} stroke=${C.green} strokeDasharray="5,3" strokeWidth="1.5"/>
-        <text x=${W-PAD_R-2} y=${tY-3} fontSize="8" fill=${C.green} textAnchor="end">Goal</text>
+      ${tY&&html`<g>
+        <line x1=0 y1=${tY} x2=${W} y2=${tY} stroke=${C.green} strokeDasharray="4,3" strokeWidth="1.2"/>
+        <text x=${W-2} y=${tY-3} fontSize="7" fill=${C.green} textAnchor="end">Goal</text>
       </g>`}
 
-      ${/* BAR chart */chartType==="bar"&&displaySlots.map((s,i)=>{
+      ${slots.map((s,i)=>{
         if(!s.entry)return null;
         const v=s.entry.weight;
         const bTop=yOf(v);
-        const bH=chartH-(bTop-PAD_T);
-        const prevEntry=i>0?displaySlots.slice(0,i).reverse().find(x=>x.entry)?.entry:null;
-        const diff=prevEntry!==null&&prevEntry!==undefined?Math.round((v-prevEntry.weight)*10)/10:null;
+        const bH=barBase-bTop;
+        const prevEntry=i>0?slots[i-1].entry:null;
+        const diff=prevEntry?Math.round((v-prevEntry.weight)*10)/10:null;
         const isUp=diff!==null&&diff>0;
+        const isZero=diff===0;
         const barColor=diff===null?C.accent:isUp?C.red:C.green;
         const cx=slotCx(i);
-        const bx=barX(i);
-        const barBase=PAD_T+chartH-2;
+        // diff label: just above bar top, clipped to bar x
+        const diffY=Math.max(PAD_T+8,bTop-4);
         return html`<g key=${i}>
-          <rect x=${bx} y=${bTop} width=${barW} height=${bH} rx="3" fill=${barColor} opacity="0.9"/>
-          ${diff!==null&&html`<text x=${cx} y=${bTop-5} fontSize="7" fill=${barColor} textAnchor="middle" fontWeight="700">${isUp?"+":""}${diff}</text>`}
+          <rect x=${bx(i)} y=${bTop} width=${barW} height=${bH} rx="2.5" fill=${barColor} opacity="0.92"/>
+          ${diff!==null&&html`<text
+            x=${cx} y=${diffY}
+            fontSize="6.5" fill=${isZero?C.green:barColor} textAnchor="middle" fontWeight="700"
+          >${isUp?"+":""}${diff}</text>`}
           <text
-            x=${cx} y=${barBase}
-            fontSize="7.5" fill="#ffffff" fontWeight="700"
+            x=${cx} y=${barBase-3}
+            fontSize="7" fill="#fff" fontWeight="700"
             textAnchor="start" dominantBaseline="central"
-            transform=${`rotate(-90,${cx},${barBase})`}
+            transform=${`rotate(-90,${cx},${barBase-3})`}
           >${v}</text>
+          <text x=${cx} y=${H-14} fontSize="7.5" fill=${C.muted} textAnchor="middle">${s.day}</text>
+          <text x=${cx} y=${H-4} fontSize="6.5" fill=${C.muted} textAnchor="middle">${s.mon}</text>
         </g>`;
       })}
 
-      ${/* LINE chart */chartType==="line"&&linePoints.length>1&&html`<path
-        d=${linePoints.map((p,i)=>`${i===0?"M":"L"} ${p.x} ${p.y}`).join(" ")}
-        fill="none" stroke=${C.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>`}
-      ${chartType==="line"&&linePoints.map((p,i)=>html`<g key=${i}>
-        <circle cx=${p.x} cy=${p.y} r="3.5" fill=${C.accent} stroke=${C.bg} strokeWidth="1"/>
-        <text x=${p.x} y=${p.y-9} fontSize="7" fill=${C.text} textAnchor="middle" fontWeight="700">${p.w}</text>
-      </g>`)}
-
-      ${/* date labels — one per slot, centred on slotCx */displaySlots.map((s,i)=>html`<text
-        key=${i} x=${slotCx(i)} y=${H-3}
-        fontSize="7.5" fill=${C.muted} textAnchor="middle"
-      >${s.label}</text>`)}
-
     </svg>
+    <div style=${{textAlign:"center",fontSize:10,color:C.muted,marginTop:2,opacity:0.6}}>Tap to see progress</div>
   </div>`;
 }
 
@@ -357,79 +333,105 @@ function WeightChartLine({weights,target,onTap}){
 
 function WeightDetailModal({weights,target,onClose}){
   if(!weights.length)return null;
-  
-  // Calculate weight changes and statistics
-  const weightChanges=weights.map((w,i)=>{
-    const prev=i>0?weights[i-1].weight:null;
-    const diff=prev!==null?Math.round((w.weight-prev)*10)/10:null;
-    const isUp=diff!==null&&diff>0;
-    return{...w,diff,isUp};
-  });
-  
-  const firstWeight=weights[0]?.weight||0;
-  const lastWeight=weights[weights.length-1]?.weight||0;
+
+  const sorted=[...weights].sort((a,b)=>a.date.localeCompare(b.date));
+  const firstWeight=sorted[0]?.weight||0;
+  const lastWeight=sorted[sorted.length-1]?.weight||0;
   const totalChange=Math.round((lastWeight-firstWeight)*10)/10;
   const isGain=totalChange>0;
-  
-  // Calculate weekly average change
-  const avgDailyChange=weights.length>1?totalChange/(weights.length-1):0;
-  
-  // Get current target progress
   const currentTarget=target||null;
   const targetDiff=currentTarget?Math.round((lastWeight-currentTarget)*10)/10:null;
   const isAboveTarget=currentTarget?lastWeight>currentTarget:false;
-  
+
+  // Build weekly average points for line chart
+  const weekBuckets={};
+  sorted.forEach(w=>{
+    const dt=new Date(w.date+"T00:00:00");
+    const dow=dt.getDay();
+    const mon=new Date(dt);mon.setDate(dt.getDate()-(dow===0?6:dow-1));
+    const key=mon.toISOString().split("T")[0];
+    if(!weekBuckets[key])weekBuckets[key]={dates:[],total:0,count:0,monDate:mon};
+    weekBuckets[key].total+=w.weight;weekBuckets[key].count++;weekBuckets[key].dates.push(w.date);
+  });
+  const weekPoints=Object.values(weekBuckets).sort((a,b)=>a.monDate-b.monDate).map(b=>{
+    const avg=Math.round((b.total/b.count)*100)/100;
+    const dt=b.monDate;
+    const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return{avg,label:`${MON[dt.getMonth()]} ${dt.getDate()}`};
+  });
+
+  // Line chart SVG
+  const WC=300,HC=120,PT=18,PB=22,PL=8,PR=8;
+  const cW=WC-PL-PR,cH=HC-PT-PB;
+  const n=weekPoints.length;
+  const allVals=weekPoints.map(p=>p.avg);
+  const minV=Math.min(...allVals)-0.5,maxV=Math.max(...allVals)+0.5;
+  const xOf=i=>n>1?PL+i*(cW/(n-1)):PL+cW/2;
+  const yOf=v=>PT+cH-((v-minV)/(maxV-minV))*cH;
+  const tYL=target?yOf(Math.min(Math.max(target,minV),maxV)):null;
+
+  // Daily log
+  const MON_SHORT=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const dailyLog=[...sorted].reverse().map((w,i,arr)=>{
+    const prev=arr[i+1];
+    const diff=prev?Math.round((w.weight-prev.weight)*10)/10:null;
+    const isUp=diff!==null&&diff>0;
+    const dt=new Date(w.date+"T00:00:00");
+    const label=`${dt.getFullYear()}-${MON_SHORT[dt.getMonth()]}-${String(dt.getDate()).padStart(2,"0")}`;
+    return{label,weight:w.weight,diff,isUp};
+  });
+
   return html`<div className="mov" onClick=${onClose}>
     <div className="mbx" onClick=${e=>e.stopPropagation()} style=${{borderRadius:20,paddingBottom:18}}>
       <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div>
           <div style=${{fontSize:16,fontWeight:700}}>Weight Progress</div>
-          <div style=${{fontSize:11,color:C.muted,marginTop:2}}>Current week logs</div>
+          <div style=${{fontSize:11,color:C.muted,marginTop:2}}>Based on beginning weight</div>
         </div>
         <button onClick=${onClose} style=${{background:"none",border:"none",color:C.muted,fontSize:22,cursor:"pointer"}}>✕</button>
       </div>
-      
-      <!-- Summary Cards -->
-      <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
-        <div style=${{background:C.bg,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 10px",textAlign:"center"}}>
-          <div style=${{fontSize:10,color:C.muted,marginBottom:4}}>Starting</div>
-          <div style=${{fontSize:16,fontWeight:700,color:C.text}}>${firstWeight}<span style=${{fontSize:10,color:C.muted}}> kg</span></div>
-        </div>
-        <div style=${{background:C.bg,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 10px",textAlign:"center"}}>
-          <div style=${{fontSize:10,color:C.muted,marginBottom:4}}>Current</div>
-          <div style=${{fontSize:16,fontWeight:700,color:C.text}}>${lastWeight}<span style=${{fontSize:10,color:C.muted}}> kg</span></div>
-        </div>
-        <div style=${{background:C.bg,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 10px",textAlign:"center"}}>
-          <div style=${{fontSize:10,color:C.muted,marginBottom:4}}>Change</div>
-          <div style=${{fontSize:16,fontWeight:700,color:isGain?C.red:C.green}}>${isGain?"+":""}${totalChange}<span style=${{fontSize:10,color:C.muted}}> kg</span></div>
-        </div>
+
+      <div style=${{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+        ${[["Starting",firstWeight,C.text],["Current",lastWeight,C.text],["Change",(isGain?"+":"")+totalChange,isGain?C.red:C.green]].map(([lbl,val,col])=>html`
+          <div style=${{background:C.bg,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 8px",textAlign:"center"}}>
+            <div style=${{fontSize:9,color:C.muted,marginBottom:3,textTransform:"uppercase",letterSpacing:"0.06em"}}>${lbl}</div>
+            <div style=${{fontSize:15,fontWeight:700,color:col}}>${val}<span style=${{fontSize:9,color:C.muted}}> kg</span></div>
+          </div>`)}
       </div>
-      
-      <!-- Target Progress -->
-      ${currentTarget&&html`<div style=${{background:C.bg,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px 10px",marginBottom:16}}>
-        <div style=${{fontSize:10,color:C.muted,marginBottom:6}}>Target Progress</div>
-        <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-          <span style=${{fontSize:12,color:C.text}}>Target: ${currentTarget} kg</span>
-          <span style=${{fontSize:12,color:isAboveTarget?C.red:C.green}}>${isAboveTarget?"+":""}${targetDiff} kg</span>
+
+      ${currentTarget&&html`<div style=${{background:C.bg,border:`1px solid ${C.border}`,borderRadius:10,padding:"12px",marginBottom:14}}>
+        <div style=${{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+          <span style=${{fontSize:11,color:C.muted}}>Target Progress</span>
+          <span style=${{fontSize:11,color:isAboveTarget?C.red:C.green}}>${isAboveTarget?"+":""}${targetDiff} kg</span>
         </div>
+        <div style=${{fontSize:12,color:C.text,marginBottom:6}}>Target: ${currentTarget} kg</div>
         <div style=${{height:6,background:C.border,borderRadius:3,overflow:"hidden"}}>
           <div style=${{height:"100%",width:`${Math.min(100,Math.max(0,(lastWeight/currentTarget)*100))}%`,background:isAboveTarget?C.red:C.green,borderRadius:3}}/>
         </div>
       </div>`}
-      
-      <!-- Full Chart -->
-      <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"12px 8px",marginBottom:16}}>
-        <div style=${{fontSize:10,color:C.muted,marginBottom:8,textAlign:"center"}}>Full Week Chart</div>
-        <${WeightChart} weights=${weights} target=${target}/>
+
+      <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"12px 8px",marginBottom:14}}>
+        <div style=${{fontSize:10,color:C.muted,marginBottom:8,textAlign:"center",letterSpacing:"0.06em",textTransform:"uppercase"}}>Weekly Average Trend</div>
+        ${weekPoints.length<2?html`<div style=${{textAlign:"center",color:C.muted,fontSize:11,padding:"12px 0"}}>Log more entries across weeks to see trend</div>`:html`
+        <svg width="100%" viewBox=${`0 0 ${WC} ${HC}`} overflow="visible" style=${{display:"block"}}>
+          ${[minV,maxV].map(v=>html`<line key=${v} x1=${PL} y1=${yOf(v)} x2=${WC-PR} y2=${yOf(v)} stroke=${C.border} strokeDasharray="2,3" strokeWidth="0.5"/>`)}
+          ${tYL&&html`<line x1=${PL} y1=${tYL} x2=${WC-PR} y2=${tYL} stroke=${C.green} strokeDasharray="4,3" strokeWidth="1"/>`}
+          <path d=${weekPoints.map((p,i)=>`${i===0?"M":"L"} ${xOf(i)} ${yOf(p.avg)}`).join(" ")}
+            fill="none" stroke=${C.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          ${weekPoints.map((p,i)=>html`<g key=${i}>
+            <circle cx=${xOf(i)} cy=${yOf(p.avg)} r="4" fill=${C.accent} stroke=${C.bg} strokeWidth="1.5"/>
+            <text x=${xOf(i)} y=${yOf(p.avg)-9} fontSize="7" fill=${C.text} textAnchor="middle" fontWeight="700">${p.avg}</text>
+            <text x=${xOf(i)} y=${HC-6} fontSize="6.5" fill=${C.muted} textAnchor="middle">${p.label}</text>
+          </g>`)}
+        </svg>`}
       </div>
-      
-      <!-- Detailed Log -->
+
       <div style=${{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"12px 10px"}}>
-        <div style=${{fontSize:10,color:C.muted,marginBottom:10,textAlign:"center"}}>Daily Log (Newest to Oldest)</div>
-        ${weightChanges.slice().reverse().map((w,i)=>html`<div key=${i} style=${{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,padding:"8px 6px",background:i%2?C.bg:C.card,borderTop:i===0?"none":`1px solid ${C.border}`}}>
-          <div style=${{fontSize:11,color:C.muted}}>${fmtDate(w.date)}</div>
+        <div style=${{fontSize:10,color:C.muted,marginBottom:10,textAlign:"center",letterSpacing:"0.06em",textTransform:"uppercase"}}>Daily Log (Newest to Oldest)</div>
+        ${dailyLog.map((w,i)=>html`<div key=${i} style=${{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,padding:"8px 6px",background:i%2?C.bg:C.card,borderTop:i===0?"none":`1px solid ${C.border}`}}>
+          <div style=${{fontSize:11,color:C.muted}}>${w.label}</div>
           <div style=${{fontSize:12,fontWeight:600,color:C.text}}>${w.weight} kg</div>
-          <div style=${{fontSize:11,color:w.diff===null?C.muted:w.isUp?C.red:C.green,textAlign:"right"}}>${w.diff===null?"-":w.isUp?"+":""}${w.diff===null?"-":w.diff} kg</div>
+          <div style=${{fontSize:11,color:w.diff===null?C.muted:w.isUp?C.red:C.green,textAlign:"right"}}>${w.diff===null?"--":w.isUp?"+":""}${w.diff===null?"":w.diff} kg</div>
           <div style=${{fontSize:10,color:C.muted,textAlign:"right"}}>${w.diff===null?"No prev":w.isUp?"Gain":"Loss"}</div>
         </div>`)}
       </div>
@@ -1330,22 +1332,8 @@ ${tab==="profile"&&view==="main"&&html`
               <div style=${{textAlign:"right"}}><div style=${{fontSize:9,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:2}}>Target</div><div style=${{fontSize:22,fontWeight:700,fontFamily:"monospace",color:C.green}}>${profile.targetWeight||"—"}<span style=${{fontSize:11,color:C.muted}}> kg</span></div></div>
             </div>
             ${profile.currentWeight&&profile.targetWeight&&html`<div style=${{fontSize:11,marginBottom:10}}>${parseFloat(profile.currentWeight)>parseFloat(profile.targetWeight)?html`<span style=${{color:C.orange}}>📉 ${(parseFloat(profile.currentWeight)-parseFloat(profile.targetWeight)).toFixed(1)} kg to goal</span>`:html`<span style=${{color:C.green}}>🎉 Target reached!</span>`}</div>`}
-            ${weights.length>0&&html`<div style=${{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-              <div style=${{fontSize:10,color:C.muted,letterSpacing:"0.08em",textTransform:"uppercase"}}>Chart Type</div>
-              <div style=${{display:"flex",gap:6}}>
-                <button onClick=${()=>setWeightChartType("bar")} style=${{padding:"6px 12px",borderRadius:16,border:`1px solid ${weightChartType==="bar"?C.accent:C.border}`,background:weightChartType==="bar"?C.accent:"none",color:weightChartType==="bar"?C.bg:C.muted,fontSize:11,cursor:"pointer",fontFamily:"inherit",fontWeight:weightChartType==="bar"?700:400}}>📊 Bar</button>
-                <button onClick=${()=>setWeightChartType("line")} style=${{padding:"6px 12px",borderRadius:16,border:`1px solid ${weightChartType==="line"?C.accent:C.border}`,background:weightChartType==="line"?C.accent:"none",color:weightChartType==="line"?C.bg:C.muted,fontSize:11,cursor:"pointer",fontFamily:"inherit",fontWeight:weightChartType==="line"?700:400}}>📈 Line</button>
-              </div>
-            </div>`}
-            ${weights.length>0&&weightChartType==="bar"&&html`<div style=${{overflowX:"visible",paddingBottom:8}}>
-              <div style=${{minWidth:"100%"}}>
-                <${WeightChartWeek} weights=${weights} target=${parseFloat(profile.targetWeight)||null} onTap=${()=>setWeightDetailModal(true)} chartType=${weightChartType} onChartTypeChange=${setWeightChartType}/>
-              </div>
-            </div>`}
-            ${weights.length>0&&weightChartType==="line"&&html`<div style=${{overflowX:"auto",paddingBottom:8}}>
-              <div style=${{minWidth:"100%",paddingRight:16}}>
-                <${WeightChartLine} weights=${weights} target=${parseFloat(profile.targetWeight)||null} onTap=${()=>setWeightDetailModal(true)}/>
-              </div>
+            ${weights.length>0&&html`<div style=${{width:"100%"}}>
+              <${WeightChartWeek} weights=${weights} target=${parseFloat(profile.targetWeight)||null} onTap=${()=>setWeightDetailModal(true)}/>
             </div>`}
             ${weights.length===0&&html`<div style=${{textAlign:"center",padding:"12px 0",color:C.muted,fontSize:12}}>Log weight below to see graph</div>`}
             <div style=${{display:"flex",gap:8,marginTop:14}}>
@@ -1419,7 +1407,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v31.5 · Mar 28, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v31.6 · Mar 28, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
