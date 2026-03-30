@@ -747,7 +747,7 @@ function App(){
     localStorage.setItem(SK.goalMigration,"done");
   },[]);
 
-  // Auto-backup
+  // Auto-backup — runs on every app mount, not just when toggle changes
   useEffect(()=>{
     if(!autoBackup)return;
     const lb=localStorage.getItem(SK.lastBackup)||"";
@@ -759,28 +759,31 @@ function App(){
           const data={version:1,exportedAt:new Date().toISOString(),entries:store.get(SK.entries)||{},profile:store.get(SK.profile)||{},weights:store.get(SK.weights)||[],recipeBook:store.get(SK.recipes)||[]};
           const handle=await getSavedHandle();
           if(handle){
-            await writeToHandle(handle,data);
-            localStorage.setItem(SK.lastBackup,today);
-            setBackupMsg("✓ Auto-backup updated!");setTimeout(()=>setBackupMsg(""),4000);
-          }else if(FS_SUPPORTED){
-            // prompt user to pick location once
-            const h=await window.showSaveFilePicker({suggestedName:"food-journal-backup.json",types:[{description:"JSON Backup",accept:{"application/json":[".json"]}}]});
-            await writeToHandle(h,data);
-            await saveHandle(h);
-            localStorage.setItem(SK.lastBackup,today);
-            setBackupMsg("✓ Auto-backup location set & saved!");setTimeout(()=>setBackupMsg(""),4000);
-          }else{
-            const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-            const url=URL.createObjectURL(blob);
-            const a=document.createElement("a");a.href=url;a.download="food-journal-backup.json";document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-            localStorage.setItem(SK.lastBackup,today);
-            setBackupMsg("✓ Auto-backup saved!");setTimeout(()=>setBackupMsg(""),4000);
+            // Silently overwrite saved file handle
+            try{
+              await writeToHandle(handle,data);
+              localStorage.setItem(SK.lastBackup,today);
+              setBackupMsg("✓ Auto-backup updated!");setTimeout(()=>setBackupMsg(""),4000);
+              return;
+            }catch(e){
+              // Handle expired/invalid — fall through to download
+              await clearHandle();
+            }
           }
-        }catch(e){if(e.name!=="AbortError")console.error(e);}
+          // Fallback: plain download (works without user gesture)
+          const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+          const url=URL.createObjectURL(blob);
+          const a=document.createElement("a");
+          a.href=url;a.download="food-journal-backup.json";
+          document.body.appendChild(a);a.click();
+          document.body.removeChild(a);URL.revokeObjectURL(url);
+          localStorage.setItem(SK.lastBackup,today);
+          setBackupMsg("✓ Auto-backup downloaded!");setTimeout(()=>setBackupMsg(""),4000);
+        }catch(e){console.error("Auto-backup failed:",e);}
       })();
-    },3000);
+    },2000);
     return()=>clearTimeout(t);
-  },[autoBackup]);
+  },[]);  // empty deps — run on every mount
 
   // Persist helpers
   const pE=d=>{setEntries(d);store.set(SK.entries,d);};
@@ -1051,10 +1054,14 @@ function App(){
   const getReportDates=()=>{
     if(repPeriod==="daily")return[todayStr()];
     const now=new Date();
-    const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
-    const backDays=repPeriod==="weekly"?7:daysInMonth;
-    const cutDate=new Date();cutDate.setDate(cutDate.getDate()-backDays);
-    const cutStr=cutDate.toISOString().split("T")[0];
+    let cutStr;
+    if(repPeriod==="weekly"){
+      const dow=now.getDay();const mon=new Date(now);
+      mon.setDate(now.getDate()-(dow===0?6:dow-1));mon.setHours(0,0,0,0);
+      cutStr=mon.toISOString().split("T")[0];
+    }else{
+      cutStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`;
+    }
     return Object.keys(entries).filter(d=>d>=cutStr);
   };
   const openRepDetail=(key,meal)=>{
@@ -1445,7 +1452,7 @@ ${tab==="profile"&&view==="main"&&html`
           </div>
           <${Btn} onClick=${()=>pP({...profEdit})} color=${C.green}>Save Profile & Goals<//>
           <div style=${{textAlign:"center",marginTop:16,paddingBottom:8}}>
-            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v32.2 · Mar 28, 2026</div>
+            <div style=${{fontSize:11,color:C.muted}}>Food Journal · v32.4 · Mar 28, 2026</div>
           </div>
         </div>`}
 ${tab==="recipes"&&view==="main"&&html`
@@ -1573,24 +1580,24 @@ ${tab==="reports"&&view==="main"&&html`
             const now=new Date(),daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
             const mult=repPeriod==="weekly"?7:repPeriod==="monthly"?daysInMonth:1;
             const pGoals=Object.fromEntries(ALL_FIELDS.map(f=>[f.key,(goals[f.key]||0)*mult]));
+            const getCutStr=()=>{
+              if(repPeriod==="weekly"){const dow=now.getDay();const mon=new Date(now);mon.setDate(now.getDate()-(dow===0?6:dow-1));return mon.toISOString().split("T")[0];}
+              return`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`;
+            };
             const totals=(()=>{
               if(repPeriod==="daily"){return sumE(entries[todayStr()]||[]);}
-              const cutDate=new Date();cutDate.setDate(cutDate.getDate()-(repPeriod==="weekly"?7:daysInMonth));
-              const cutStr=cutDate.toISOString().split("T")[0];
+              const cutStr=getCutStr();
               const inRange=Object.keys(entries).filter(d=>d>=cutStr);
               return sumE(inRange.flatMap(d=>entries[d]||[]));
             })();
-            // Days with actual entries (not total period days)
             const daysWithEntries=(()=>{
               if(repPeriod==="daily")return 1;
-              const cutDate=new Date();cutDate.setDate(cutDate.getDate()-(repPeriod==="weekly"?7:daysInMonth));
-              const cutStr=cutDate.toISOString().split("T")[0];
+              const cutStr=getCutStr();
               return Math.max(1,Object.keys(entries).filter(d=>d>=cutStr&&(entries[d]||[]).length>0).length);
             })();
             const mealTotals=MEAL_TYPES.map(m=>{
               if(repPeriod==="daily"){return{meal:m,totals:sumE((entries[todayStr()]||[]).filter(e=>e.meal===m))};}
-              const cutDate=new Date();cutDate.setDate(cutDate.getDate()-(repPeriod==="weekly"?7:daysInMonth));
-              const cutStr=cutDate.toISOString().split("T")[0];
+              const cutStr=getCutStr();
               const inRange=Object.keys(entries).filter(d=>d>=cutStr);
               return{meal:m,totals:sumE(inRange.flatMap(d=>(entries[d]||[]).filter(e=>e.meal===m)))};
             }).filter(m=>m.totals.calories>0);
@@ -1694,18 +1701,28 @@ ${tab==="reports"&&view==="reports-history"&&html`
               sortedDates.forEach(d=>{const dt=new Date(d+"T00:00:00");const dow=dt.getDay();const mon=new Date(dt);mon.setDate(dt.getDate()-(dow===0?6:dow-1));const sun=new Date(mon);sun.setDate(mon.getDate()+6);const key=mon.toISOString().split("T")[0];if(!buckets[key])buckets[key]={start:mon,end:sun,dates:[]};buckets[key].dates.push(d);});
               const weeks=Object.values(buckets).sort((a,b)=>b.start-a.start);
               return weeks.length===0?html`<div style=${{textAlign:"center",padding:"40px",color:C.muted}}>No report history yet.</div>`:
-                weeks.map((w,i)=>{const t=sumE(w.dates.flatMap(d=>entries[d]||[]));const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];const yr=w.start.getFullYear();const sm=MONTHS[w.start.getMonth()];const em=MONTHS[w.end.getMonth()];const lbl=`${yr} · ${sm}, ${w.start.getDate()} – ${em}, ${w.end.getDate()}`;const mult=7;const overCal=t.calories>(goals.calories*mult),overP=t.protein>(goals.protein*mult),overC=t.carbs>(goals.carbs*mult),overF=t.fat>(goals.fat*mult),overFi=t.fiber>(goals.fiber*mult);return html`<button key=${i} onClick=${()=>openNutritionSummary(`Weekly Summary · ${lbl}`,"Consolidated weekly nutrition",t)} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                weeks.map((w,i)=>{const t=sumE(w.dates.flatMap(d=>entries[d]||[]));const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];const yr=w.start.getFullYear();const sm=MONTHS[w.start.getMonth()];const em=MONTHS[w.end.getMonth()];const lbl=`${yr} · ${sm}, ${w.start.getDate()} – ${em}, ${w.end.getDate()}`;const mult=7;const daysLogged=Math.max(1,w.dates.length);const avgCal=Math.round(t.calories/daysLogged);const overCal=t.calories>(goals.calories*mult),overP=t.protein>(goals.protein*mult),overC=t.carbs>(goals.carbs*mult),overF=t.fat>(goals.fat*mult),overFi=t.fiber>(goals.fiber*mult);return html`<button key=${i} onClick=${()=>openNutritionSummary(`Weekly Summary · ${lbl}`,"Consolidated weekly nutrition",t)} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                   <div><div style=${{fontSize:13,fontWeight:600}}>${lbl}</div><div style=${{fontSize:11,color:C.muted,marginTop:2}}><span style=${{color:overP?C.red:C.muted}}>P:${Math.round(t.protein)}g</span> <span style=${{color:overC?C.red:C.muted}}>C:${Math.round(t.carbs)}g</span> <span style=${{color:overF?C.red:C.muted}}>F:${Math.round(t.fat)}g</span> <span style=${{color:overFi?C.red:C.muted}}>Fi:${Math.round(t.fiber)}g</span></div></div>
-                  <div style=${{textAlign:"right"}}><div style=${{fontSize:15,fontWeight:700,fontFamily:"monospace",color:overCal?C.red:C.accent}}>${Math.round(t.calories)}</div><div style=${{fontSize:9,color:C.muted}}>kcal</div></div>
+                  <div style=${{textAlign:"right",minWidth:72}}>
+                    <div style=${{fontSize:15,fontWeight:700,fontFamily:"monospace",color:overCal?C.red:C.accent}}>${Math.round(t.calories)}</div>
+                    <div style=${{fontSize:9,color:C.muted}}>kcal total</div>
+                    <div style=${{fontSize:11,fontWeight:600,fontFamily:"monospace",color:C.muted,marginTop:2}}>${avgCal}</div>
+                    <div style=${{fontSize:9,color:C.muted}}>kcal/day</div>
+                  </div>
                 </button>`;});
             }
             const months={};
             sortedDates.forEach(d=>{const mo=d.slice(0,7);if(!months[mo])months[mo]=[];months[mo].push(d);});
             const monthKeys=Object.keys(months).sort((a,b)=>b.localeCompare(a));
             return monthKeys.length===0?html`<div style=${{textAlign:"center",padding:"40px",color:C.muted}}>No report history yet.</div>`:
-              monthKeys.map(mo=>{const t=sumE(months[mo].flatMap(d=>entries[d]||[]));const dt=new Date(mo+"-01T00:00:00");const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];const lbl=`${dt.getFullYear()} · ${MONTHS[dt.getMonth()]}`;const mult=new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate();const overCal=t.calories>(goals.calories*mult),overP=t.protein>(goals.protein*mult),overC=t.carbs>(goals.carbs*mult),overF=t.fat>(goals.fat*mult),overFi=t.fiber>(goals.fiber*mult);return html`<button key=${mo} onClick=${()=>openNutritionSummary(`Monthly Summary · ${lbl}`,"Consolidated monthly nutrition",t)} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              monthKeys.map(mo=>{const t=sumE(months[mo].flatMap(d=>entries[d]||[]));const dt=new Date(mo+"-01T00:00:00");const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];const lbl=`${dt.getFullYear()} · ${MONTHS[dt.getMonth()]}`;const mult=new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate();const daysLogged=Math.max(1,months[mo].length);const avgCal=Math.round(t.calories/daysLogged);const overCal=t.calories>(goals.calories*mult),overP=t.protein>(goals.protein*mult),overC=t.carbs>(goals.carbs*mult),overF=t.fat>(goals.fat*mult),overFi=t.fiber>(goals.fiber*mult);return html`<button key=${mo} onClick=${()=>openNutritionSummary(`Monthly Summary · ${lbl}`,"Consolidated monthly nutrition",t)} style=${{width:"100%",background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 15px",marginBottom:8,cursor:"pointer",textAlign:"left",color:C.text,fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <div><div style=${{fontSize:13,fontWeight:600}}>${lbl}</div><div style=${{fontSize:11,color:C.muted,marginTop:2}}><span style=${{color:overP?C.red:C.muted}}>P:${Math.round(t.protein)}g</span> <span style=${{color:overC?C.red:C.muted}}>C:${Math.round(t.carbs)}g</span> <span style=${{color:overF?C.red:C.muted}}>F:${Math.round(t.fat)}g</span> <span style=${{color:overFi?C.red:C.muted}}>Fi:${Math.round(t.fiber)}g</span></div></div>
-                <div style=${{textAlign:"right"}}><div style=${{fontSize:15,fontWeight:700,fontFamily:"monospace",color:overCal?C.red:C.accent}}>${Math.round(t.calories)}</div><div style=${{fontSize:9,color:C.muted}}>kcal</div></div>
+                <div style=${{textAlign:"right",minWidth:72}}>
+                  <div style=${{fontSize:15,fontWeight:700,fontFamily:"monospace",color:overCal?C.red:C.accent}}>${Math.round(t.calories)}</div>
+                  <div style=${{fontSize:9,color:C.muted}}>kcal total</div>
+                  <div style=${{fontSize:11,fontWeight:600,fontFamily:"monospace",color:C.muted,marginTop:2}}>${avgCal}</div>
+                  <div style=${{fontSize:9,color:C.muted}}>kcal/day</div>
+                </div>
               </button>`;});
           })()}
         </div>`}
